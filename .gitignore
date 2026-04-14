@@ -1,0 +1,9 @@
+# Local env
+.direnv/
+
+# Local build outputs
+output/
+dl/
+
+# Unused debugging patches
+board/**/patches/.old/
