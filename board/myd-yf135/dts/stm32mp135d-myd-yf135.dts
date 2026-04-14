@@ -1,0 +1,261 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * Device tree for MYD-YF135-256N-256D
+ * SoC:   STM32MP135DAF7 (Cortex-A7, up to 1 GHz)
+ * RAM:   256 MB LPDDR3
+ * Flash: 256 MB SPI-NAND (Micron MT29F2G01ABAGDWB) via QSPI
+ *
+ * Enabled: console UART4, USB gadget (usbotg_hs), USB host (usbh_ehci),
+ *          SPI-NAND via QSPI, SD card
+ * Disabled: ethernet, audio, display, camera, CAN, I2C
+ * Power: USB-powered; no suspend/sleep power states configured.
+ *
+ *
+ * Derived from:
+ *   upstream arch/arm/boot/dts/st/stm32mp135f-dk.dts (Linux 6.12)
+ *   arch/arm/boot/dts/st/stm32mp13xx-dhcor-som.dtsi  (QSPI pattern)
+ *   myir-st-linux: myb-stm32mp135x-base.dtsi + myb-stm32mp135x-256m.dts
+ *
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/leds/common.h>
+#include <dt-bindings/regulator/st,stm32mp13-regulator.h>
+
+#include "stm32mp135.dtsi"
+#include "stm32mp13xf.dtsi"
+#include "stm32mp13-pinctrl.dtsi"
+
+/ {
+	model = "DBL MYD-YF135-256N-256D";
+	compatible = "myir,stm32mp135d-myd-yf135", "st,stm32mp135";
+
+	aliases {
+		serial0 = &uart4;
+		mmc0    = &sdmmc1;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	/* 256 MB LPDDR3 */
+	memory@c0000000 {
+		device_type = "memory";
+		reg = <0xc0000000 0x10000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		/*
+		 * 256 MB layout (memory ends at 0xd0000000):
+		 *   OP-TEE shmem   @ 0xcd000000  16 MB
+		 *   OP-TEE secure  @ 0xce000000  32 MB
+		 * Must match CFG_TZDRAM_START / CFG_SHMEM_START in OP-TEE build.
+		 */
+		optee_framebuffer: optee-framebuffer@cd000000 {
+			reg = <0xcd000000 0x1000000>;
+			no-map;
+		};
+		optee: optee@ce000000 {
+			reg = <0xce000000 0x2000000>;
+			no-map;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led-blue {
+			function = LED_FUNCTION_HEARTBEAT;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&gpioh 12 GPIO_ACTIVE_LOW>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	/* USB PHY supply */
+	vdd_usb: regulator-vdd-usb {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_usb";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
+	/* SD card MMC supply */
+	vddmmc: regulator-vddmmc {
+		compatible = "regulator-fixed";
+		regulator-name = "vddmmc";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+	};
+};
+
+&iwdg2 {
+	timeout-sec = <32>;
+	status = "okay";
+};
+
+&cryp  { status = "okay"; };
+
+/* Console :: UART4 */
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pins_a>;
+	/delete-property/ dmas;
+	/delete-property/ dma-names;
+	status = "okay";
+};
+
+/* SD card :: dev/flashing only */
+&sdmmc1 {
+	pinctrl-names = "default", "opendrain";
+	pinctrl-0 = <&sdmmc1_b4_pins_a &sdmmc1_clk_pins_a>;
+	pinctrl-1 = <&sdmmc1_b4_od_pins_a &sdmmc1_clk_pins_a>;
+	cd-gpios = <&gpioh 4 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+	disable-wp;
+	st,neg-edge;
+	bus-width = <4>;
+	vmmc-supply = <&vddmmc>;
+	status = "okay";
+};
+
+/* Board-specific QSPI BK1 pins :: IO2/IO3 differ from upstream qspi_bk1_pins_a.
+ * Upstream uses PD11/PH7; this board routes them to PD7/PD13. */
+&pinctrl {
+	qspi_bk1_pins_b: qspi-bk1-1 {
+		pins {
+			pinmux = <STM32_PINMUX('F', 8, AF10)>,  /* QSPI_BK1_IO0 */
+				 <STM32_PINMUX('F', 9, AF10)>,  /* QSPI_BK1_IO1 */
+				 <STM32_PINMUX('D', 7, AF11)>,  /* QSPI_BK1_IO2 */
+				 <STM32_PINMUX('D', 13, AF9)>;  /* QSPI_BK1_IO3 */
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <1>;
+		};
+	};
+	qspi_bk1_sleep_pins_b: qspi-bk1-sleep-1 {
+		pins {
+			pinmux = <STM32_PINMUX('F', 8, ANALOG)>,
+				 <STM32_PINMUX('F', 9, ANALOG)>,
+				 <STM32_PINMUX('D', 7, ANALOG)>,
+				 <STM32_PINMUX('D', 13, ANALOG)>;
+		};
+	};
+};
+
+/* SPI-NAND via QSPI :: production boot and storage */
+&qspi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&qspi_clk_pins_a &qspi_bk1_pins_b &qspi_cs1_pins_a>;
+	reg = <0x58003000 0x1000>, <0x70000000 0x4000000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	flash0: spi-nand@0 {
+		compatible = "spi-nand";
+		reg = <0>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+		spi-max-frequency = <100000000>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		label = "spi-nand0";
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "fsbl1";
+				reg = <0x000000 0x080000>; /* 512 KB (TF-A BL2 copy 1) */
+			};
+			partition@80000 {
+				label = "fsbl2";
+				reg = <0x080000 0x080000>; /* 512 KB (TF-A BL2 copy 2) */
+			};
+			partition@100000 {
+				label = "metadata1";
+				reg = <0x100000 0x080000>; /* 512 KB (FWU metadata A) */
+			};
+			partition@180000 {
+				label = "metadata2";
+				reg = <0x180000 0x080000>; /* 512 KB (FWU metadata B) */
+			};
+			partition@200000 {
+				label = "fip-a1";
+				reg = <0x200000 0x400000>; /* 4 MB (FIP bank A copy 1) */
+			};
+			partition@600000 {
+				label = "fip-a2";
+				reg = <0x600000 0x400000>; /* 4 MB (FIP bank A copy 2) */
+			};
+			partition@a00000 {
+				label = "fip-b1";
+				reg = <0xa00000 0x400000>; /* 4 MB (FIP bank B copy 1) */
+			};
+			partition@e00000 {
+				label = "fip-b2";
+				reg = <0xe00000 0x400000>; /* 4 MB (FIP bank B copy 2) */
+			};
+			partition@1200000 {
+				label = "UBI";
+				reg = <0x1200000 0xee00000>; /* remaining ~238 MB (rootfs + data) */
+			};
+		};
+	};
+};
+
+/* USB gadget :: USB ethernet, ACM, mass storage via g_ether etc. */
+&usbotg_hs {
+	dr_mode = "peripheral";
+	phys = <&usbphyc_port1 0>;
+	phy-names = "usb2-phy";
+	status = "okay";
+};
+
+/* USB host */
+&usbh_ehci {
+	phys = <&usbphyc_port0>;
+	status = "okay";
+};
+
+&usbphyc {
+	status = "okay";
+};
+
+&usbphyc_port0 {
+	phy-supply = <&vdd_usb>;
+	st,current-boost-microamp = <1000>;
+	st,decrease-hs-slew-rate;
+	st,tune-hs-dc-level = <2>;
+	st,enable-hs-rftime-reduction;
+	st,trim-hs-current = <11>;
+	st,trim-hs-impedance = <2>;
+	st,tune-squelch-level = <1>;
+	st,enable-hs-rx-gain-eq;
+	st,no-hs-ftime-ctrl;
+	st,no-lsfs-sc;
+};
+
+&usbphyc_port1 {
+	phy-supply = <&vdd_usb>;
+	st,current-boost-microamp = <1000>;
+	st,decrease-hs-slew-rate;
+	st,tune-hs-dc-level = <2>;
+	st,enable-hs-rftime-reduction;
+	st,trim-hs-current = <11>;
+	st,trim-hs-impedance = <2>;
+	st,tune-squelch-level = <1>;
+	st,enable-hs-rx-gain-eq;
+	st,no-hs-ftime-ctrl;
+	st,no-lsfs-sc;
+};

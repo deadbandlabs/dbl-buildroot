@@ -1,0 +1,8 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * TF-A main DTS for MYD-YF135-256N-256D
+ * Included by stm32mp135d-myd-yf135-tf-a.dtsi
+ */
+
+/dts-v1/;
+#include "stm32mp135d-myd-yf135-tf-a.dtsi"

@@ -1,0 +1,303 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * OP-TEE DTS for DBL MYD-YF135-256N-256D
+ *
+ * Embedded in OP-TEE at build time via CFG_EMBED_DTB_SOURCE_FILE.
+ *
+ * Modeled on stm32mp135f-dk.dts from upstream OP-TEE OS 4.3.0.
+ * ST-fork-specific constructs (DECPROT/&etzpc, &scmi_regu, &tzc400,
+ * STM32_PM_* suspend modes) are omitted. Upstream OP-TEE configures
+ * ETZPC and TZC400 statically in C for the STM32MP13 platform.
+ *
+ * SOM provides all power regulation internally, set fixed always-on regulators.
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/clock/stm32mp13-clksrc.h>
+#include <dt-bindings/regulator/st,stm32mp13-regulator.h>
+
+#include "stm32mp135.dtsi"
+#include "stm32mp13xf.dtsi"
+#include "stm32mp13-pinctrl.dtsi"
+
+/ {
+	model = "DBL MYD-YF135 OP-TEE";
+	compatible = "myir,stm32mp135d-myd-yf135", "st,stm32mp135";
+
+	aliases {
+		serial0 = &uart4;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@c0000000 {
+		device_type = "memory";
+		reg = <0xc0000000 0x10000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		/* Must match Linux DTS and CFG_TZDRAM_START/CFG_SHMEM_START */
+		optee_framebuffer: optee-framebuffer@cd000000 {
+			reg = <0xcd000000 0x1000000>;
+			no-map;
+		};
+	};
+
+	/* SOM provides all power regulation internally, set fixed always-on.
+	 * Note: sdmmc1_io / sdmmc2_io are already defined in stm32mp131.dtsi,
+	 * only provide their supply via the &sdmmc1_io reference below. */
+
+	vddcpu: vddcpu {
+		compatible = "regulator-fixed";
+		regulator-name = "vddcpu";
+		regulator-min-microvolt = <1350000>;
+		regulator-max-microvolt = <1350000>;
+		regulator-always-on;
+	};
+
+	vdd: vdd {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	vddcore: vddcore {
+		compatible = "regulator-fixed";
+		regulator-name = "vddcore";
+		regulator-min-microvolt = <1250000>;
+		regulator-max-microvolt = <1350000>;
+		regulator-always-on;
+	};
+
+	vdd_usb: vdd_usb {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_usb";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	v3v3_sw: v3v3_sw {
+		compatible = "regulator-fixed";
+		regulator-name = "v3v3_sw";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	v1v8_periph: v1v8_periph {
+		compatible = "regulator-fixed";
+		regulator-name = "v1v8_periph";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+};
+
+&bsec {
+	board_id: board-id@f0 {
+		reg = <0xf0 0x4>;
+		st,non-secure-otp;
+	};
+};
+
+&cpu0 {
+	cpu-supply = <&vddcpu>;
+};
+
+&hash {
+	status = "okay";
+};
+
+&iwdg1 {
+	timeout-sec = <32>;
+	status = "okay";
+};
+
+&pka {
+	status = "okay";
+};
+
+&pwr_regulators {
+	vdd-supply = <&vdd>;
+	vdd_3v3_usbfs-supply = <&vdd_usb>;
+};
+
+&rng {
+	status = "okay";
+	clock-error-detect;
+};
+
+&saes {
+	status = "okay";
+};
+
+&sdmmc1_io {
+	vddsd1-supply = <&vdd>;
+};
+
+&sdmmc2_io {
+	vddsd2-supply = <&vdd>;
+};
+
+/*
+ * Clock configuration must match what TF-A configured.
+ * Without this node priv->nb_div = 0 and stm32_div_set_value() panics
+ * immediately on the first divider access during OP-TEE clock init.
+ *
+ * PLL1: VCO=2000 MHz -> P=1000 MHz (CPU @ 1 GHz)
+ * PLL2: VCO=1066 MHz -> P=533 MHz (AXI), R=533 MHz (DDR)
+ * PLL3: VCO=417 MHz  -> P=208 MHz, Q=24 MHz, R=11 MHz (MLAHB/PER)
+ * PLL4: VCO=600 MHz  -> P=100 MHz, Q=10 MHz, R=50 MHz (QSPI/SDMMC/RNG)
+ */
+&rcc {
+	compatible = "st,stm32mp13-rcc", "syscon";
+
+	st,clksrc = <
+		CLK_MPU_PLL1P
+		CLK_AXI_PLL2P
+		CLK_MLAHBS_PLL3
+		CLK_RTC_LSE
+		CLK_MCO1_DISABLED
+		CLK_MCO2_DISABLED
+		CLK_CKPER_HSE
+		CLK_SDMMC1_PLL4P
+		CLK_STGEN_HSE
+		CLK_USBPHY_HSE
+		CLK_USBO_USBPHY
+		CLK_UART4_HSI
+		CLK_SAES_AXI
+		CLK_RNG1_PLL4R
+	>;
+
+	st,clkdiv = <
+		DIV(DIV_MPU, 1)
+		DIV(DIV_AXI, 0)
+		DIV(DIV_MLAHB, 0)
+		DIV(DIV_APB1, 1)
+		DIV(DIV_APB2, 1)
+		DIV(DIV_APB3, 1)
+		DIV(DIV_APB4, 1)
+		DIV(DIV_APB5, 2)
+		DIV(DIV_APB6, 1)
+		DIV(DIV_RTC, 0)
+		DIV(DIV_MCO1, 0)
+		DIV(DIV_MCO2, 0)
+	>;
+
+	st,pll_vco {
+		pll1_vco_2000Mhz: pll1-vco-2000Mhz {
+			src = <CLK_PLL12_HSE>;
+			divmn = <1 82>;
+			frac = <0xAAA>;
+		};
+
+		pll1_vco_1300Mhz: pll1-vco-1300Mhz {
+			src = <CLK_PLL12_HSE>;
+			divmn = <2 80>;
+			frac = <0x800>;
+		};
+
+		pll2_vco_1066Mhz: pll2-vco-1066Mhz {
+			src = <CLK_PLL12_HSE>;
+			divmn = <2 65>;
+			frac = <0x1400>;
+		};
+
+		pll3_vco_417Mhz: pll3-vco-417Mhz {
+			src = <CLK_PLL3_HSE>;
+			divmn = <1 33>;
+			frac = <0x1a04>;
+		};
+
+		pll4_vco_600Mhz: pll4-vco-600Mhz {
+			src = <CLK_PLL4_HSE>;
+			divmn = <1 49>;
+		};
+	};
+
+	/* PLL1: VCO=2000 MHz -> P=1000 MHz (CPU @ 1 GHz) */
+	pll1: st,pll@0 {
+		compatible = "st,stm32mp1-pll";
+		reg = <0>;
+		st,pll = <&pll1_cfg2>;
+
+		pll1_cfg1: pll1_cfg1 {
+			st,pll_vco = <&pll1_vco_1300Mhz>;
+			st,pll_div_pqr = <0 1 1>;
+		};
+
+		pll1_cfg2: pll1_cfg2 {
+			st,pll_vco = <&pll1_vco_2000Mhz>;
+			st,pll_div_pqr = <0 1 1>;
+		};
+	};
+
+	/* VCO = 1066 MHz -> P = 533 MHz (AXI), R = 533 MHz (DDR) */
+	pll2: st,pll@1 {
+		compatible = "st,stm32mp1-pll";
+		reg = <1>;
+		st,pll = <&pll2_cfg1>;
+
+		pll2_cfg1: pll2_cfg1 {
+			st,pll_vco = <&pll2_vco_1066Mhz>;
+			st,pll_div_pqr = <1 1 0>;
+		};
+	};
+
+	/* VCO = 417 MHz -> P = 208 MHz, Q = 24 MHz, R = 11 MHz */
+	pll3: st,pll@2 {
+		compatible = "st,stm32mp1-pll";
+		reg = <2>;
+		st,pll = <&pll3_cfg1>;
+
+		pll3_cfg1: pll3_cfg1 {
+			st,pll_vco = <&pll3_vco_417Mhz>;
+			st,pll_div_pqr = <1 16 36>;
+		};
+	};
+
+	/* PLL4: VCO=600 MHz -> P=100 MHz, Q=10 MHz, R=50 MHz */
+	pll4: st,pll@3 {
+		compatible = "st,stm32mp1-pll";
+		reg = <3>;
+		st,pll = <&pll4_cfg1>;
+
+		pll4_cfg1: pll4_cfg1 {
+			st,pll_vco = <&pll4_vco_600Mhz>;
+			st,pll_div_pqr = <5 59 11>;
+		};
+	};
+
+	st,clk_opp {
+		/* CPU OPPs: OP-TEE uses these to validate/switch CPU frequency */
+		st,ck_mpu {
+			cfg_1 {
+				hz = <650000000>;
+				st,clksrc = <CLK_MPU_PLL1P>;
+				st,pll = <&pll1_cfg1>;
+			};
+
+			cfg_2 {
+				hz = <1000000000>;
+				st,clksrc = <CLK_MPU_PLL1P>;
+				st,pll = <&pll1_cfg2>;
+			};
+		};
+	};
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pins_a>;
+	status = "okay";
+};

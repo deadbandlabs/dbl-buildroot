@@ -1,0 +1,20 @@
+#Opt	Id	Name	Type	IP	Offset	Binary
+# USB DFU loaders: loaded into RAM, not written to NAND.
+# TF-A is built with STM32MP_USB_PROGRAMMER=1 + STM32MP_SPI_NAND=1
+# The same binary serves both bootstrap USB programming and spinand boot roles
+-	0x01	fsbl-boot	Binary	none	0x0	../../output/images/tf-a-stm32mp135d-myd-yf135-tf-a.stm32
+-	0x03	fip-boot	FIP	none	0x0	../../output/images/fip.bin
+# NAND bring-up programming profile (aligned with DTS fixed-partitions).
+# Programs only slots needed for initial boot: fsbl1/fsbl2/fip-a1/UBI.
+# Reserved regions (metadata1/metadata2/fip-a2/fip-b1/fip-b2) are intentionally not
+# programmed yet and will be revisited for RAUC + secure-boot/A-B update flow.
+# Kept as '-' entries so STM32CubeProgrammer computes partition sizes by gaps.
+P	0x04	fsbl1	Binary	spi-nand0	0x000000	../../output/images/tf-a-stm32mp135d-myd-yf135-tf-a.stm32
+P	0x05	fsbl2	Binary	spi-nand0	0x080000	../../output/images/tf-a-stm32mp135d-myd-yf135-tf-a.stm32
+-	0x06	metadata1	Binary	spi-nand0	0x100000	none
+-	0x07	metadata2	Binary	spi-nand0	0x180000	none
+P	0x08	fip-a1	FIP	spi-nand0	0x200000	../../output/images/fip.bin
+-	0x09	fip-a2	FIP	spi-nand0	0x600000	../../output/images/fip.bin
+-	0x0A	fip-b1	FIP	spi-nand0	0xa00000	../../output/images/fip.bin
+-	0x0B	fip-b2	FIP	spi-nand0	0xe00000	../../output/images/fip.bin
+P	0x0C	UBI	System	spi-nand0	0x1200000	../../output/images/rootfs.ubi

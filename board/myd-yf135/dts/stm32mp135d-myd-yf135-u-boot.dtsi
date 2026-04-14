@@ -1,0 +1,116 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * U-Boot additions for DBL MYD-YF135-256N-256D
+ *
+ * Included on top of stm32mp135d-myd-yf135.dts when building U-Boot.
+ * Adds bootph markers (so drivers initialise before relocation) and the
+ * /config node for boot parameters.
+ *
+ * bootph-pre-ram  (formerly u-boot,dm-pre-reloc): bind before DRAM relocation
+ * bootph-all      (formerly u-boot,dm-spl):       bind in all phases (+SPL)
+ */
+
+#include "stm32mp13-u-boot.dtsi"
+
+/ {
+	config {
+		u-boot,mmc-env-partition = "u-boot-env";
+	};
+
+	memory@c0000000 {
+		device_type = "memory";
+		reg = <0xc0000000 0x10000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		optee_framebuffer@cd000000 {
+			reg = <0xcd000000 0x1000000>;
+			no-map;
+		};
+
+		optee@ce000000 {
+			reg = <0xce000000 0x02000000>;
+			no-map;
+		};
+	};
+};
+
+/* UART4 must be available before relocation for the console */
+&uart4 {
+	bootph-pre-ram;
+};
+
+&uart4_pins_a {
+	bootph-pre-ram;
+	pins1 {
+		bootph-pre-ram;
+	};
+	pins2 {
+		bootph-pre-ram;
+	};
+};
+
+/* QSPI needed early for SPI-NAND boot */
+&qspi {
+	bootph-pre-ram;
+
+	flash0: spi-nand@0 {
+		bootph-pre-ram;
+	};
+};
+
+&qspi_clk_pins_a {
+	bootph-pre-ram;
+	pins {
+		bootph-pre-ram;
+	};
+};
+
+&qspi_cs1_pins_a {
+	bootph-pre-ram;
+	pins {
+		bootph-pre-ram;
+	};
+};
+
+/* Board-specific QSPI IO2/IO3 pins (defined in board DTS as qspi_bk1_pins_b) */
+&qspi_bk1_pins_b {
+	bootph-pre-ram;
+	pins {
+		bootph-pre-ram;
+	};
+};
+
+&qspi_bk1_sleep_pins_b {
+	bootph-pre-ram;
+	pins {
+		bootph-pre-ram;
+	};
+};
+
+/*
+ * Stubs for nodes referenced in the shared board DTS that are absent from
+ * U-Boot's stm32mp131.dtsi.  U-Boot does not use these peripherals; these
+ * definitions exist only so dtc can resolve the &label references.
+ */
+/ {
+	soc {
+		sram1: sram@30000000 {
+			compatible = "mmio-sram";
+			reg = <0x30000000 0x10000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <0 0x30000000 0x10000>;
+		};
+
+		crc1: crc@58009000 {
+			compatible = "st,stm32f7-crc";
+			reg = <0x58009000 0x400>;
+			status = "disabled";
+		};
+	};
+};

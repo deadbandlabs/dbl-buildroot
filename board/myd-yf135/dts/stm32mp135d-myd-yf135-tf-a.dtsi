@@ -1,0 +1,412 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
+/*
+ * TF-A BL2 DTSI for DBL MYD-YF135-256N-256D
+ *
+ * Based on basiccode-STM32MP135_Dev_Board_Buildroot (same SOM, same DDR chip).
+ * The MYC-YF135 SOM provides all power regulation internally with no external PMIC.
+ * Added: QSPI SPI-NAND for production boot (not present on basiccode board).
+ *
+ * DDR: DDR3L 16-bit 533 MHz, 256 MB, with timings taken directly from @BasicCode/STM32MP135_Dev_Board_Buildroot.
+ * CPU: 1 GHz via PLL1 VCO @ 2000 MHz.
+ */
+
+/* DDR3L 16-bit 533 MHz timings */
+#define DDR_MEM_NAME	"DDR3-DDR3L 16bits 533000kHz"
+#define DDR_MEM_SPEED	533000
+#define DDR_MEM_SIZE	0x10000000
+
+#define DDR_MSTR	0x00040401
+#define DDR_MRCTRL0	0x00000010
+#define DDR_MRCTRL1	0x00000000
+#define DDR_DERATEEN	0x00000000
+#define DDR_DERATEINT	0x00800000
+#define DDR_PWRCTL	0x00000000
+#define DDR_PWRTMG	0x00400010
+#define DDR_HWLPCTL	0x00000000
+#define DDR_RFSHCTL0	0x00210000
+#define DDR_RFSHCTL3	0x00000000
+#define DDR_RFSHTMG	0x0081008B
+#define DDR_CRCPARCTL0	0x00000000
+#define DDR_DRAMTMG0	0x0F101B0F
+#define DDR_DRAMTMG1	0x000A041C
+#define DDR_DRAMTMG2	0x0608090F
+#define DDR_DRAMTMG3	0x0050400C
+#define DDR_DRAMTMG4	0x08040608
+#define DDR_DRAMTMG5	0x06060403
+#define DDR_DRAMTMG6	0x02020002
+#define DDR_DRAMTMG7	0x00000202
+#define DDR_DRAMTMG8	0x00001005
+#define DDR_DRAMTMG14	0x000000A0
+#define DDR_ZQCTL0	0xC2000040
+#define DDR_DFITMG0	0x02060105
+#define DDR_DFITMG1	0x00000202
+#define DDR_DFILPCFG0	0x07000000
+#define DDR_DFIUPD0	0xC0400003
+#define DDR_DFIUPD1	0x00000000
+#define DDR_DFIUPD2	0x00000000
+#define DDR_DFIPHYMSTR	0x00000000
+#define DDR_ODTCFG	0x06000600
+#define DDR_ODTMAP	0x00000001
+#define DDR_SCHED	0x00000F01
+#define DDR_SCHED1	0x00000000
+#define DDR_PERFHPR1	0x00000001
+#define DDR_PERFLPR1	0x04000200
+#define DDR_PERFWR1	0x08000400
+#define DDR_DBG0	0x00000000
+#define DDR_DBG1	0x00000000
+#define DDR_DBGCMD	0x00000000
+#define DDR_POISONCFG	0x00000000
+#define DDR_PCCFG	0x00000010
+#define DDR_PCFGR_0	0x00000000
+#define DDR_PCFGW_0	0x00000000
+#define DDR_PCFGQOS0_0	0x00100009
+#define DDR_PCFGQOS1_0	0x00000020
+#define DDR_PCFGWQOS0_0	0x01100B03
+#define DDR_PCFGWQOS1_0	0x01000200
+#define DDR_ADDRMAP1	0x00080808
+#define DDR_ADDRMAP2	0x00000000
+#define DDR_ADDRMAP3	0x00000000
+#define DDR_ADDRMAP4	0x00001F1F
+#define DDR_ADDRMAP5	0x07070707
+#define DDR_ADDRMAP6	0x0F0F0707
+#define DDR_ADDRMAP9	0x00000000
+#define DDR_ADDRMAP10	0x00000000
+#define DDR_ADDRMAP11	0x00000000
+#define DDR_PGCR	0x01442E02
+#define DDR_PTR0	0x0022AA5B
+#define DDR_PTR1	0x04841104
+#define DDR_PTR2	0x042DA068
+#define DDR_ACIOCR	0x10400812
+#define DDR_DXCCR	0x00000C40
+#define DDR_DSGCR	0xF200011F
+#define DDR_DCR		0x0000000B
+#define DDR_DTPR0	0x38D488D0
+#define DDR_DTPR1	0x098B00D8
+#define DDR_DTPR2	0x10023600
+#define DDR_MR0		0x00000840
+#define DDR_MR1		0x00000000
+#define DDR_MR2		0x00000208
+#define DDR_MR3		0x00000000
+#define DDR_ODTCR	0x00010000
+#define DDR_ZQ0CR1	0x00000038
+#define DDR_DX0GCR	0x0000CE81
+#define DDR_DX1GCR	0x0000CE81
+
+#include <dt-bindings/clock/stm32mp13-clksrc.h>
+#include <dt-bindings/pinctrl/stm32-pinfunc.h>
+
+#include "stm32mp135.dtsi"
+#include "stm32mp13xf.dtsi"
+#include "stm32mp13-pinctrl.dtsi"
+#include "stm32mp13-ddr.dtsi"
+
+/ {
+	model = "DBL MYD-YF135 TF-A";
+	compatible = "myir,stm32mp135d-myd-yf135", "st,stm32mp135";
+
+	aliases {
+		serial0 = &uart4;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	memory@c0000000 {
+		device_type = "memory";
+		reg = <0xc0000000 0x10000000>;
+	};
+
+	/*
+	 * MYC-YF135 SOM has on-board power regulation, declare all as
+	 * fixed always-on regulators; TF-A cannot sequence them.
+	 */
+	v3v3_ao: v3v3_ao {
+		compatible = "regulator-fixed";
+		regulator-name = "v3v3_ao";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	vddcpu: vddcpu {
+		compatible = "regulator-fixed";
+		regulator-name = "vddcpu";
+		regulator-min-microvolt = <1350000>;
+		regulator-max-microvolt = <1350000>;
+		regulator-always-on;
+		regulator-over-current-protection;
+	};
+
+	vdd: vdd {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		st,mask-reset;
+		regulator-over-current-protection;
+	};
+
+	vdd_ddr: vdd_ddr {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_ddr";
+		regulator-min-microvolt = <1350000>;
+		regulator-max-microvolt = <1350000>;
+		regulator-always-on;
+	};
+
+	vref_ddr: vref_ddr {
+		compatible = "regulator-fixed";
+		regulator-name = "vref_ddr";
+		regulator-min-microvolt = <675000>;
+		regulator-max-microvolt = <675000>;
+		regulator-always-on;
+	};
+
+	vdd_usb: vdd_usb {
+		compatible = "regulator-fixed";
+		regulator-name = "vdd_usb";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	clocks {
+		clk_hsi: clk-hsi {
+			clock-frequency = <64000000>;
+		};
+		clk_lse: clk-lse {
+			clock-frequency = <32768>;
+			st,drive = <LSEDRV_MEDIUM_HIGH>;
+		};
+		clk_hse: clk-hse {
+			clock-frequency = <24000000>;
+		};
+		clk_i2sin: clk-i2sin {
+			status = "disabled";
+		};
+	};
+};
+
+&pinctrl {
+	/* UART4: TX=PD6(AF8), RX=PD8(AF8), inline for TF-A portability */
+	uart4_pins_mx: uart4-mx-0 {
+		pins1 {
+			pinmux = <STM32_PINMUX('D', 6, AF8)>; /* UART4_TX */
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <0>;
+		};
+		pins2 {
+			pinmux = <STM32_PINMUX('D', 8, AF8)>; /* UART4_RX */
+			bias-disable;
+		};
+	};
+
+	/* SDMMC1: standard 4-bit */
+	sdmmc1_pins_mx: sdmmc1-mx-0 {
+		pins {
+			pinmux = <STM32_PINMUX('C', 8,  AF12)>, /* SDMMC1_D0  */
+				 <STM32_PINMUX('C', 9,  AF12)>, /* SDMMC1_D1  */
+				 <STM32_PINMUX('C', 10, AF12)>, /* SDMMC1_D2  */
+				 <STM32_PINMUX('C', 11, AF12)>, /* SDMMC1_D3  */
+				 <STM32_PINMUX('C', 12, AF12)>, /* SDMMC1_CK  */
+				 <STM32_PINMUX('D', 2,  AF12)>; /* SDMMC1_CMD */
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <1>;
+		};
+	};
+
+	/*
+	 * QSPI: board-specific IO2/IO3 mapping (see README.md, "Key board-specific pin fix").
+	 * Combined into one group for simplicity in TF-A.
+	 */
+	qspi_pins_myir: qspi-myir-0 {
+		pins1 {
+			pinmux = <STM32_PINMUX('F', 8,  AF10)>, /* QSPI_BK1_IO0 */
+				 <STM32_PINMUX('F', 9,  AF10)>, /* QSPI_BK1_IO1 */
+				 <STM32_PINMUX('D', 7,  AF11)>, /* QSPI_BK1_IO2 */
+				 <STM32_PINMUX('D', 13, AF9)>,  /* QSPI_BK1_IO3 */
+				 <STM32_PINMUX('F', 10, AF9)>;  /* QSPI_CLK     */
+			bias-disable;
+			drive-push-pull;
+			slew-rate = <1>;
+		};
+		pins2 {
+			pinmux = <STM32_PINMUX('B', 2, AF9)>;   /* QSPI_BK1_NCS */
+			bias-pull-up;
+			drive-push-pull;
+			slew-rate = <1>;
+		};
+	};
+};
+
+&bsec {
+	status = "okay";
+
+	board_id: board-id@f0 {
+		reg = <0xf0 0x4>;
+		st,non-secure-otp;
+	};
+};
+
+&cpu0 {
+	cpu-supply = <&vddcpu>;
+};
+
+&ddr {
+	vdd-supply = <&vdd_ddr>;
+	vref-supply = <&vref_ddr>;
+};
+
+&hash {
+	status = "okay";
+};
+
+&pka {
+	status = "okay";
+};
+
+&pwr_regulators {
+	status = "okay";
+	vdd-supply = <&vdd>;
+	vdd_3v3_usbfs-supply = <&vdd_usb>;
+};
+
+&qspi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&qspi_pins_myir>;
+	reg = <0x58003000 0x1000>, <0x70000000 0x4000000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	flash0: spi-nand@0 {
+		compatible = "spi-nand";
+		reg = <0>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+		spi-max-frequency = <100000000>;
+	};
+};
+
+&rcc {
+	status = "okay";
+
+	st,clksrc = <
+		CLK_MPU_PLL1P
+		CLK_AXI_PLL2P
+		CLK_MLAHBS_PLL3
+		CLK_CKPER_HSE
+		CLK_SDMMC1_PLL4P
+		CLK_QSPI_PLL4P
+		CLK_STGEN_HSE
+		CLK_UART4_HSI
+		CLK_RNG1_PLL4R
+		CLK_SAES_AXI
+	>;
+
+	st,clkdiv = <
+		DIV(DIV_MPU, 1)
+		DIV(DIV_AXI, 0)
+		DIV(DIV_MLAHB, 0)
+		DIV(DIV_APB1, 1)
+		DIV(DIV_APB2, 1)
+		DIV(DIV_APB3, 1)
+		DIV(DIV_APB4, 1)
+		DIV(DIV_APB5, 2)
+		DIV(DIV_APB6, 1)
+	>;
+
+	st,pll_vco {
+		pll1_vco_2000Mhz: pll1-vco-2000Mhz {
+			src = <CLK_PLL12_HSE>;
+			divmn = <1 82>;
+			frac = <0xAAA>;
+		};
+		pll2_vco_1066Mhz: pll2-vco-1066Mhz {
+			src = <CLK_PLL12_HSE>;
+			divmn = <2 65>;
+			frac = <0x1400>;
+		};
+		pll3_vco_417Mhz: pll3-vco-417Mhz {
+			src = <CLK_PLL3_HSE>;
+			divmn = <1 33>;
+			frac = <0x1a04>;
+		};
+		pll4_vco_600Mhz: pll4-vco-600Mhz {
+			src = <CLK_PLL4_HSE>;
+			divmn = <1 49>;
+		};
+	};
+
+	/* PLL1: VCO=2000 MHz -> P=1000 MHz (CPU @ 1 GHz) */
+	pll1: st,pll@0 {
+		compatible = "st,stm32mp1-pll";
+		reg = <0>;
+		st,pll = <&pll1_cfg1>;
+		pll1_cfg1: pll1_cfg1 {
+			st,pll_vco = <&pll1_vco_2000Mhz>;
+			st,pll_div_pqr = <0 1 1>;
+		};
+	};
+
+	/* PLL2: VCO=1066 MHz -> P=533 MHz (AXI), R=533 MHz (DDR) */
+	pll2: st,pll@1 {
+		compatible = "st,stm32mp1-pll";
+		reg = <1>;
+		st,pll = <&pll2_cfg1>;
+		pll2_cfg1: pll2_cfg1 {
+			st,pll_vco = <&pll2_vco_1066Mhz>;
+			st,pll_div_pqr = <1 1 0>;
+		};
+	};
+
+	/* PLL3: VCO=417 MHz -> P=208 MHz, Q=24 MHz, R=11 MHz */
+	pll3: st,pll@2 {
+		compatible = "st,stm32mp1-pll";
+		reg = <2>;
+		st,pll = <&pll3_cfg1>;
+		pll3_cfg1: pll3_cfg1 {
+			st,pll_vco = <&pll3_vco_417Mhz>;
+			st,pll_div_pqr = <1 16 36>;
+		};
+	};
+
+	/* PLL4: VCO=600 MHz -> P=100 MHz, Q=10 MHz, R=50 MHz */
+	pll4: st,pll@3 {
+		compatible = "st,stm32mp1-pll";
+		reg = <3>;
+		st,pll = <&pll4_cfg1>;
+		pll4_cfg1: pll4_cfg1 {
+			st,pll_vco = <&pll4_vco_600Mhz>;
+			st,pll_div_pqr = <5 59 11>;
+		};
+	};
+};
+
+&rng {
+	status = "okay";
+};
+
+&saes {
+	status = "okay";
+};
+
+&sdmmc1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc1_pins_mx>;
+	disable-wp;
+	st,neg-edge;
+	bus-width = <4>;
+	vmmc-supply = <&v3v3_ao>;
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pins_mx>;
+	status = "okay";
+};
