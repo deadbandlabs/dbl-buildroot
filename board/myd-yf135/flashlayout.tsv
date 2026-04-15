@@ -1,6 +1,3 @@
-## SPDX-License-Identifier: GPL-2.0-or-later
-## Copyright 2026 Deadband Inc.
-
 #Opt	Id	Name	Type	IP	Offset	Binary
 # USB DFU loaders: loaded into RAM, not written to NAND.
 # TF-A is built with STM32MP_USB_PROGRAMMER=1 + STM32MP_SPI_NAND=1

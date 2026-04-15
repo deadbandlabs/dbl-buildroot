@@ -1,0 +1,78 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+---
+name: Pre-commit checks
+
+"on":
+  push:
+    branches:
+      - main
+      - 'release/*'
+      - 'dev/*'
+
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+      - 'dev/*'
+
+"jobs":
+  nix-env:
+    name: Verify Nix devShell (fetch Linux source)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            max-jobs = auto
+
+      - name: Cache Buildroot downloads
+        uses: actions/cache@v5
+        with:
+          path: dl/
+          key: br-dl-${{ hashFiles('buildroot.lock') }}
+          restore-keys: br-dl-
+
+      - name: Fetch Linux source
+        run: nix develop .#ci --command bash -c 'make myd_yf135_defconfig && make linux-source'
+
+  pre-commit:
+    name: Run pre-commit
+    needs: nix-env
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            max-jobs = auto
+
+      - name: Restore Buildroot downloads
+        uses: actions/cache/restore@v5
+        with:
+          path: dl/
+          key: br-dl-${{ hashFiles('buildroot.lock') }}
+
+      - name: Set up pre-commit shell
+        run: nix develop --option warn-dirty false .#pre-commit -c true
+
+      - name: Run pre-commit hooks
+        env:
+          CZ_CHECK_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          output=$(./support/pre-commit.sh 2>&1) || status=$?
+          echo "$output"
+          {
+            echo "## Pre-commit results"
+            echo '```'
+            echo "$output"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "${status:-0}"

@@ -3,7 +3,7 @@
 # Copyright 2026 Deadband Inc.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
+repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
@@ -34,6 +34,16 @@ exec "$repo_root/support/pre-commit.sh" run --hook-stage commit-msg --commit-msg
 EOF
 
 chmod +x .githooks/commit-msg
+
+cat >.githooks/pre-push <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+exec "$repo_root/support/pre-commit.sh" run --hook-stage pre-push
+EOF
+
+chmod +x .githooks/pre-push
 
 nix develop .#pre-commit -c pre-commit install-hooks
 

@@ -3,14 +3,14 @@
 # Copyright 2026 Deadband Inc.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
 tarball="$(find dl/linux -maxdepth 1 -type f \( -name 'linux-*.tar' -o -name 'linux-*.tar.*' \) | sort | tail -n1)"
 
 if [ -z "$tarball" ]; then
   echo "error: no linux source tarball found under dl/linux" >&2
-  echo "hint: build or fetch kernel sources first so scripts/checkpatch.pl is available" >&2
+  echo "hint: build or fetch kernel sources first using 'make linux-source'" >&2
   exit 1
 fi
 

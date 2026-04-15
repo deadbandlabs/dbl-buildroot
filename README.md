@@ -41,6 +41,12 @@ If you need board bring-up details, jump to:
 - [Flashing](#flashing)
 - [Serial console](#serial-console)
 
+For info on contributing:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): patch guidelines, pre-commit setup, commit style
+- [SECURITY.md](SECURITY.md): vulnerability reporting
+- [docs/ci.md](docs/ci.md): GitHub Actions workflows and running CI locally with `act`
+
 ## Reproducible build environment (Nix)
 
 Buildroot target output can be reproducible, but requires careful setup host-to-host.
@@ -121,6 +127,10 @@ To run hooks manually:
 ./support/pre-commit.sh
 ./support/pre-commit.sh run --files README.md
 ```
+
+## CI
+
+GitHub Actions runs pre-commit hooks on push and PRs. See [docs/ci.md](docs/ci.md) for workflow details, caching strategy, and how to run workflows locally with `act`.
 
 ## Build
 

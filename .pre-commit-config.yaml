@@ -7,24 +7,28 @@ repos:
         entry: shellcheck -x
         language: system
         types: [shell]
+        stages: [pre-commit]
 
       - id: shfmt
         name: shfmt
         entry: shfmt -w -i 2 -ci
         language: system
         types: [shell]
+        stages: [pre-commit]
 
       - id: yamllint
         name: yamllint
         entry: yamllint -s -c .yamllint
         language: system
         files: \.(ya?ml)$
+        stages: [pre-commit]
 
       - id: nixfmt
         name: nixfmt
         entry: nixfmt
         language: system
         files: \.nix$
+        stages: [pre-commit]
 
       - id: no-tabs
         name: no tabs in repo text files
@@ -32,27 +36,33 @@ repos:
         language: system
         files: (\.envrc|\.gitignore|\.pre-commit-config\.yaml|external\.desc|\.ya?ml|\.nix|\.sh|\.toml|\.cfg|\.conf|\.fragment|\.defconfig)$
         exclude: (^|/)Makefile$|\.patch$
+        stages: [pre-commit]
 
       - id: dts-checkpatch
         name: dts checkpatch
         entry: ./support/pre-commit/checkpatch-dts.sh
         language: system
         files: \.dtsi?$
+        stages: [pre-commit]
 
       - id: mdformat
         name: mdformat
         entry: mdformat
         language: system
         files: \.md$
+        stages: [pre-commit]
 
       - id: commitizen-check
-        name: commitizen check (warn only)
-        entry: ./support/pre-commit/commit-msg-warn.sh
+        name: commitizen check
+        entry: ./support/pre-commit/commitizen-check-push.sh
         language: system
-        stages: [commit-msg]
+        stages: [pre-push, manual]
+        pass_filenames: false
+        always_run: true
 
       - id: reuse-lint
         name: reuse lint
         entry: reuse lint
         language: system
+        stages: [pre-commit]
         pass_filenames: false
