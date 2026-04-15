@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
 # STM32CubeProgrammer CLI tools
 # Supporting CLI-only, GUI launcher removed/nonfunctional
 #

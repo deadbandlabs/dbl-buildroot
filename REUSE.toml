@@ -1,0 +1,40 @@
+version = 1
+
+[[annotations]]
+path = [
+  ".envrc",
+  ".githooks/pre-commit",
+  ".gitignore",
+  ".pre-commit-config.yaml",
+  "external.desc",
+  "buildroot.lock",
+  "flake.lock",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Deadband Inc."
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = [
+  "board/myd-yf135/patches/uboot/0003-stm32mp13-add-spi-nand-ubi-boot-support.patch",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = [
+  "2022 STMicroelectronics - All Rights Reserved",
+  "2026 Deadband Inc.",
+]
+SPDX-License-Identifier = "GPL-2.0-or-later OR BSD-3-Clause"
+
+[[annotations]]
+path = [
+  "board/myd-yf135/linux-debug.fragment",
+  "board/myd-yf135/uboot-debug.fragment",
+  "configs/myd_yf135_debug.fragment",
+  "board/myd-yf135/linux.config",
+  "board/myd-yf135/rootfs-overlay/boot/extlinux/extlinux.conf",
+  "README.md",
+  "docs/debug.md",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Deadband Inc."
+SPDX-License-Identifier = "GPL-2.0-or-later"

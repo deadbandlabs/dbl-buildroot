@@ -1,3 +1,5 @@
+## SPDX-License-Identifier: GPL-2.0-or-later
+## Copyright 2026 Deadband Inc.
 # DBL MYD-YF135-256N-256D (STM32MP135D) defconfig
 # SoC:   STM32MP135D (Cortex-A7 single core, up to 1 GHz)
 # RAM:   256 MB LPDDR3 @ 0xc0000000

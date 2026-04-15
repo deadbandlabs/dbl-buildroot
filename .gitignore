@@ -1,5 +1,7 @@
 # Local env
 .direnv/
+.cache/
+.githooks/
 
 # Local build outputs
 output/

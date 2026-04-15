@@ -94,6 +94,23 @@ It is recommended to use [direnv](https://direnv.net) and [nix-direnv](https://g
 direnv allow
 ```
 
+### Pre-commit Environment
+
+Use the dedicated pre-commit shell so hook tooling does not bleed into the Buildroot build shell:
+
+```bash
+./support/install-pre-commit.sh
+```
+
+This configures `core.hooksPath=.githooks`, installs a repository-local pre-commit launcher,
+and pre-warms hook environments using flake shell `.#pre-commit`.
+To run hooks manually:
+
+```bash
+./support/pre-commit.sh
+./support/pre-commit.sh run --files README.md
+```
+
 ## Build
 
 ```bash

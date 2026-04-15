@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
 {
   description = "Buildroot for MYD-YF135-256N-256D (STM32MP135D) SOM";
 
@@ -74,103 +76,123 @@
       inherit stm32cubeprog;
     };
 
-    devShells.${system}.default = pkgs.mkShell {
-      name = "myd-yf135-buildroot";
+    devShells = {
+      "${system}" = {
+        default = pkgs.mkShell {
+          name = "dbl-buildroot";
 
-      # Nix's GCC wrapper injects -Werror=format-security by default
-      # Buildroot's host-gcc-initial (GCC 13) doesn't satisfy this in its own
-      # libcpp, so the host compiler build fails. Disable for this shell
-      hardeningDisable = [ "format" ];
+          # Nix's GCC wrapper injects -Werror=format-security by default
+          # Buildroot's host-gcc-initial (GCC 13) doesn't satisfy this in its own
+          # libcpp, so the host compiler build fails. Disable for this shell
+          hardeningDisable = [ "format" ];
 
-      packages = with pkgs; [
-        # Core build toolchain
-        gcc
-        binutils
-        gnumake
-        cmake-compat
+          packages = with pkgs; [
+            # Core build toolchain
+            gcc
+            binutils
+            gnumake
+            cmake-compat
 
-        # Scripting / config
-        # Note: Buildroot builds its own host Python
-        # Nix's gcc-wrapper injects include paths from all devShell packages via
-        # NIX_CFLAGS_COMPILE; having python3 here causes the 3.13 headers to
-        # bleed into the host-python-markupsafe C extension build, producing a
-        # cpython-313 SOABI tag that mismatches the running Python 3.12
-        perl
-        bison
-        flex
+            # Scripting / config
+            # Note: Buildroot builds its own host Python
+            # Nix's gcc-wrapper injects include paths from all devShell packages via
+            # NIX_CFLAGS_COMPILE; having python3 here causes the 3.13 headers to
+            # bleed into the host-python-markupsafe C extension build, producing a
+            # cpython-313 SOABI tag that mismatches the running Python 3.12
+            perl
+            bison
+            flex
 
-        # Buildroot host dependencies (mirrors buildroot.nix FHS env)
-        bc
-        cpio
-        file
-        rsync
-        unzip
-        wget
-        which
-        util-linux
-        libxcrypt
-        pkg-config
-        linux-pam  # host-libcap pam_cap module needs security/pam_modules.h
-        gnutls.dev # u-boot mkeficapsule needs gnutls/gnutls.h
+            # Buildroot host dependencies (mirrors buildroot.nix FHS env)
+            bc
+            cpio
+            file
+            rsync
+            unzip
+            wget
+            which
+            util-linux
+            libxcrypt
+            pkg-config
+            linux-pam  # host-libcap pam_cap module needs security/pam_modules.h
+            gnutls.dev # u-boot mkeficapsule needs gnutls/gnutls.h
 
-        # ncurses for menuconfig / linux configurators
-        ncurses
-        ncurses.dev
+            # ncurses for menuconfig / linux configurators
+            ncurses
+            ncurses.dev
 
-        # Compression
-        gzip
-        lzop
-        lz4
+            # Compression
+            gzip
+            lzop
+            lz4
 
-        # Device tree tooling
-        dtc
+            # Device tree tooling
+            dtc
 
-        # Source management
-        git
-        patch
-        diffutils
-        findutils
-        gnugrep
-        gnused
-        gawk
+            # Source management
+            git
+            patch
+            diffutils
+            findutils
+            gnugrep
+            gnused
+            gawk
 
-        # Optional: openssl for signing/secure-boot tooling
-        openssl
+            # Optional: openssl for signing/secure-boot tooling
+            openssl
 
-        # STM32CubeProgrammer CLI for USB DFU flashing of STM32MP1
-        # Requires manual download due to license; see pkgs/stm32cubeprog.nix
-        stm32cubeprog
+            # STM32CubeProgrammer CLI for USB DFU flashing of STM32MP1
+            # Requires manual download due to license; see pkgs/stm32cubeprog.nix
+            stm32cubeprog
 
-        # dfu-util for writing rootfs.ubi to SPI-NAND via U-Boot DFU
-        dfu-util
-      ];
+            # dfu-util for writing rootfs.ubi to SPI-NAND via U-Boot DFU
+            dfu-util
+          ];
 
-      # stdenv.cc.cc.lib provides libstdc++.so.6 / libgcc_s.so.1
-      # Buildroot compiles patchelf with RUNPATH=$ORIGIN/../lib; that directory
-      # doesn't hold these Nix-store libs, so we expose them via LD_LIBRARY_PATH.
-      # libidn2 + libunistring: host-cmake links host-OS libcurl which pulls in
-      # /usr/lib/libidn2.so / libunistring.so; both must be resolvable at
-      # link time and runtime.
-      LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
-        pkgs.stdenv.cc.cc.lib
-        pkgs.libidn2
-        pkgs.libunistring
-      ];
+          # stdenv.cc.cc.lib provides libstdc++.so.6 / libgcc_s.so.1
+          # Buildroot compiles patchelf with RUNPATH=$ORIGIN/../lib; that directory
+          # doesn't hold these Nix-store libs, so we expose them via LD_LIBRARY_PATH.
+          # libidn2 + libunistring: host-cmake links host-OS libcurl which pulls in
+          # /usr/lib/libidn2.so / libunistring.so; both must be resolvable at
+          # link time and runtime.
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+            pkgs.stdenv.cc.cc.lib
+            pkgs.libidn2
+            pkgs.libunistring
+          ];
 
-      shellHook = ''
-        echo "MYD-YF135 buildroot development shell"
-        echo "  Buildroot: 2025.02 LTS"
-        echo "  Target:    STM32MP135D (MYD-YF135-256N-256D)"
-        echo ""
-        echo "Common commands:"
-        echo "  make myd_yf135_defconfig"
-        echo "  make menuconfig"
-        echo ""
-        echo "Nix hermetic build:"
-        echo "  make nix-lock         # first time / after pkg version changes"
-        echo "  nix build             # build image"
-        export BUILDROOT_SRC="${buildroot}"
-      '';
+          shellHook = ''
+            echo "DBL buildroot development shell"
+            echo "  Buildroot: 2025.02 LTS"
+            echo "  Target:    STM32MP135D (MYD-YF135-256N-256D)"
+            echo ""
+            echo "Common commands:"
+            echo "  make myd_yf135_defconfig"
+            echo "  make menuconfig"
+            echo ""
+            echo "Nix hermetic build:"
+            echo "  make nix-lock         # first time / after pkg version changes"
+            echo "  nix build             # build image"
+            export BUILDROOT_SRC="${buildroot}"
+          '';
+        };
+
+        lint = pkgs.mkShell {
+          name = "dbl-lint";
+          packages = with pkgs; [ pre-commit ];
+        };
+
+        pre-commit = pkgs.mkShell {
+          name = "dbl-pre-commit";
+          packages = with pkgs; [ pre-commit git reuse ];
+
+          shellHook = ''
+            export PRE_COMMIT_HOME="$PWD/.cache/pre-commit"
+            echo "DBL pre-commit shell"
+            echo "  Cache: $PRE_COMMIT_HOME"
+          '';
+        };
+      };
     };
   };
 }
