@@ -19,9 +19,14 @@ import sys
 
 def fix_cargo2_uris(lockdata):
     for source, info in lockdata.items():
-        if "cargo2" not in source:
+        if "cargo2" not in source or not isinstance(info, dict):
             continue
-        mirror_uris = [u for u in info["uris"] if "sources.buildroot.net" in u]
+
+        uris = info.get("uris")
+        if not isinstance(uris, list):
+            continue
+
+        mirror_uris = [u for u in uris if "sources.buildroot.net" in u]
         if mirror_uris:
             info["uris"] = mirror_uris
     return lockdata

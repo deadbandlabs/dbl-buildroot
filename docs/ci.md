@@ -13,6 +13,21 @@ Jobs:
 
 If `nix-env` fails, `pre-commit` is blocked and the failure is clearly attributed to the environment rather than a hook.
 
+### `build.yml` Release image build
+
+Runs on push and pull requests to `main` and `release/*`, plus manual dispatch.
+
+Jobs:
+
+- **`lockfile`**: Verifies state of `flake.lock` and `buildroot.lock`.
+
+- **`image`**: Hermetic `nix build` of the release image and SDK:
+
+  - **Image** (`nix build`): full Buildroot run with toolchain, packages, and images in one derivation.
+  - **SDK** (`nix build .#sdk`): relocatable cross-compiler SDK; built as a second output of the same derivation, uses cache once the image is built.
+
+  Uses Cachix to cache Nix store paths across runs. Uploads images and SDK as separate artifacts.
+
 #### Commit message checks
 
 Commit messages are validated against [Conventional Commits](https://www.conventionalcommits.org/) at push time (via the `pre-push` git hook) and in CI. They are intentionally not checked on every local commit to allow rebasing and fixups without friction.
@@ -48,10 +63,22 @@ act -W .github/workflows/pre-commit.yml
 act -W .github/workflows/pre-commit.yml -j pre-commit
 ```
 
+Act defaults may not suit the build requirements. A local ~/.actrc may require
+
+```
+# use podman instead of Docker
+--container-daemon-socket $XDG_RUNTIME_DIR/podman/podman.sock
+# buildFHSEnv uses bubblewrap which requires user namespaces inside Docker
+--privileged
+# use a similar ubuntu-latest image to GH Actions
+-P ubuntu-latest=image=catthehacker/ubuntu:act-latest
+```
+
 ### Known limitations
 
 - **Nix install warning**: `cachix/install-nix-action` prints a warning about running as root inside the Act container. This is cosmetic; Nix installs and works correctly.
 - **Cache action**: `actions/cache@v5` will not be using cache from GitHub. This may work differently depending on local configuration.
+- **Artifacts action**: Use `act -s ACTIONS_RUNTIME_TOKEN=local` to skip steps uploading artifacts
 
 ## The `ci` Nix devShell
 

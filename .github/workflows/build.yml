@@ -1,0 +1,102 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+---
+name: Build
+
+"on":
+  push:
+    branches:
+      - main
+      - 'release/*'
+
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+
+  workflow_dispatch:
+
+"jobs":
+  lockfile:
+    name: Check lockfile is up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Allow user namespaces for buildFHSEnv
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+        continue-on-error: true  # not available with act
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            build-users-group =
+            sandbox = false
+            max-jobs = auto
+
+      - uses: cachix/cachix-action@v14
+        with:
+          name: deadbandlabs
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Check flake.lock is updated
+        run: nix flake lock --no-update-lock-file
+
+      - name: Regenerate lockfile
+        run: make nix-lock
+
+      - name: Check buildroot.lock is updated
+        run: |
+          if ! git diff --exit-code buildroot.lock; then
+            echo "::error::buildroot.lock is out of date. Run 'make nix-lock' and commit the result."
+            exit 1
+          fi
+
+  image:
+    name: Build release image
+    needs: lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Allow user namespaces for buildFHSEnv
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+        continue-on-error: true  # not available with act
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            build-users-group =
+            sandbox = false
+            max-jobs = auto
+
+      - uses: cachix/cachix-action@v14
+        with:
+          name: deadbandlabs
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Build image
+        run: nix build --print-build-logs
+
+      - name: Build SDK
+        run: nix build .#sdk --print-build-logs
+
+      - name: Package artifacts
+        run: |
+          mkdir -p artifacts/images artifacts/sdk
+          cp -r result/images/. artifacts/images/
+          cp -r result-sdk/. artifacts/sdk/
+
+      - name: Upload image artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: myd-yf135-images
+          path: artifacts/images/
+          if-no-files-found: error
+
+      - name: Upload SDK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: myd-yf135-sdk
+          path: artifacts/sdk/
+          if-no-files-found: error

@@ -24,10 +24,11 @@ name: Pre-commit checks
       - uses: actions/checkout@v6
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: nixbuild/nix-quick-install-action@v34
         with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
+          nix_conf: |
+            build-users-group =
+            sandbox = false
             max-jobs = auto
 
       - name: Cache Buildroot downloads
@@ -48,10 +49,11 @@ name: Pre-commit checks
       - uses: actions/checkout@v6
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: nixbuild/nix-quick-install-action@v34
         with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
+          nix_conf: |
+            build-users-group =
+            sandbox = false
             max-jobs = auto
 
       - name: Restore Buildroot downloads

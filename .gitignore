@@ -4,8 +4,13 @@
 .githooks/
 
 # Local build outputs
+# Makefile build
 output/
+# Makefile download cache
 dl/
+# Hermetic Nix build result
+result
+result-sdk
 
 # Unused debugging patches
 board/**/patches/.old/

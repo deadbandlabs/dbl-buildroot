@@ -19,7 +19,7 @@ We are committed to providing a welcoming and inclusive environment. Please be r
 1. Fork the repository
 1. Create a feature branch: `git checkout -b fix/your-fix` or `git checkout -b feat/your-feature`
 1. Make your changes
-1. **Use [Conventional Commits](https://www.conventionalcommits.org/) format**: Commitizen checks this at commit-msg time in warning-only mode (e.g., `fix: correct serial init`, `feat: add debug variant`)
+1. **Use [Conventional Commits](https://www.conventionalcommits.org/) format**: Commitizen enforces this at **pre-push** time. Commits that don't conform will block the push. Examples: `fix: correct serial init`, `feat: add debug variant`
 1. Install pre-commit hooks: `./support/pre-commit/install-pre-commit.sh`
 1. Run hooks: `./support/pre-commit.sh run --all-files` uses the Nix environment automatically
 1. Push to your fork and submit a pull request
@@ -27,13 +27,15 @@ We are committed to providing a welcoming and inclusive environment. Please be r
 
 ### Code Style
 
-All code is auto-formatted by pre-commit hooks:
+All code is auto-formatted and linted by pre-commit hooks:
 
-- Shell scripts: `shfmt` (2-space indent)
+- Shell scripts: `shfmt` (2-space indent) + `shellcheck`
 - Nix: `nixfmt` (RFC style)
 - YAML: `yamllint`
 - Markdown: `mdformat`
+- Device tree sources: Linux kernel `checkpatch.pl` style check on `.dts`/`.dtsi` files
 - Tabs: forbidden in text files (tabs required in Makefiles only)
+- REUSE / SPDX: `reuse lint` enforces SPDX headers on every file
 
 Run `./support/pre-commit.sh run --all-files` before pushing or install hooks via `support/pre-commit/install-pre-commit.sh`.
 
@@ -55,6 +57,10 @@ Before proposing large changes, review the project's goals:
 - **Minimal drift**: board changes stay in `board/` and `configs/` only; keep core external tree generic
 - **Reproducibility**: Nix flakes pin tooling; changes should not degrade hermetic builds
 - **Small surface area**: support upstream-only hardware; if the vendor ships something unsupported upstream, it's out of scope
+
+### CI
+
+GitHub Actions workflows run automatically on pushes and PRs, see [ci.md](docs/ci.md).
 
 ### Testing
 

@@ -175,9 +175,28 @@ make savedefconfig BR2_DEFCONFIG=$(pwd)/configs/myd_yf135_defconfig
 _See https://github.com/velentr/buildroot.nix?tab=readme-ov-file#reproducibility for limitations and recommendations._
 
 ```bash
-make nix-lock   # update lock
-nix build       # reproducible image
+make nix-lock    # update lockfile (first time or after pkg/env changes)
+nix build        # full image build
+nix build .#sdk  # cross-compiler SDK (relocatable tarball)
 ```
+
+Build outputs:
+
+- `nix/build.nix`: build definition
+- `nix/devshell.nix`: development shell configurations
+
+## Make vs Nix Build
+
+For typical local development, the `make` workflow allows incremental builds. This matches typical buildroot usage. I.e.:
+
+- rerun only specific Buildroot targets like `uboot-rebuild`, or `linux-menuconfig`
+- reuse Buildroot-local caches such as `dl/` and `output/ccache` which can be easily inspected for build debugging
+
+Use the Nix + Cachix path for reproducible full builds:
+
+- `nix build` restores cached Nix outputs across machines and CI if cached
+- `nix build .#sdk` produces a relocatable cross-compiler SDK tarball
+- Replicates the repository’s GitHub Actions workflow (see [docs/ci.md](docs/ci.md))
 
 ## Flashing
 
