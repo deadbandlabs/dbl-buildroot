@@ -27,9 +27,9 @@ implementation details.
 
 If you are evaluating whether to use or fork this repo, review these resources:
 
-* [Why this external tree exists](#why-this-external-tree-exists)
-* [Setup](#setup)
-* [Differences from vendor and community configs](#differences-from-vendor-and-community-configs)
+- [Why this external tree exists](#why-this-external-tree-exists)
+- [Setup](#setup)
+- [Differences from vendor and community configs](#differences-from-vendor-and-community-configs)
 
 If you need board bring-up details, jump to:
 
@@ -104,7 +104,7 @@ direnv allow
 Use the dedicated pre-commit shell so hook tooling does not bleed into the Buildroot build shell:
 
 ```bash
-./support/install-pre-commit.sh
+./support/pre-commit/install-pre-commit.sh
 ```
 
 This configures `core.hooksPath=.githooks`, installs a repository-local pre-commit launcher,

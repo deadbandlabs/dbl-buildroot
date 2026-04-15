@@ -3,7 +3,7 @@
 # Copyright 2026 Deadband Inc.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+repo_root="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$repo_root"
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
@@ -25,6 +25,16 @@ EOF
 
 chmod +x .githooks/pre-commit
 
+cat >.githooks/commit-msg <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+exec "$repo_root/support/pre-commit.sh" run --hook-stage commit-msg --commit-msg-filename "$1"
+EOF
+
+chmod +x .githooks/commit-msg
+
 nix develop .#pre-commit -c pre-commit install-hooks
 
-echo "Installed pre-commit launcher in .githooks using flake shell .#pre-commit"
+echo "Installed pre-commit + commit-msg launchers in .githooks using flake shell .#pre-commit"

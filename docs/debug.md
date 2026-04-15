@@ -31,7 +31,7 @@ Host sharing is enabled by default. If release host tools are missing,
 debug build auto-runs `make MODE=release host-toolchain` first.
 It then links `output/debug/host` and `output/debug/build/host-*`
 to release equivalents so host package stamps are reused.
-See `support/share-host-artifacts.sh`.
+See `support/build/share-host-artifacts.sh`.
 
 Manual prebuild (optional):
 

@@ -20,8 +20,8 @@ BR2_DL_DIR    ?= $(CURDIR)/dl
 RELEASE_DEFCONFIG := $(CURDIR)/configs/myd_yf135_defconfig
 DEBUG_DEFCONFIG   := $(O)/myd_yf135_debug_defconfig
 DEBUG_FRAGMENT    := $(CURDIR)/configs/myd_yf135_debug.fragment
-GEN_DEBUG_SCRIPT  := $(CURDIR)/support/gen-debug-defconfig.sh
-SHARE_HOST_SCRIPT := $(CURDIR)/support/share-host-artifacts.sh
+GEN_DEBUG_SCRIPT  := $(CURDIR)/support/build/gen-debug-defconfig.sh
+SHARE_HOST_SCRIPT := $(CURDIR)/support/build/share-host-artifacts.sh
 
 # BR2_EXTERNAL is a ':' separated list. Default to this repository.
 # Downstream/super-projects can append with BR2_EXTERNAL_EXTRA or override BR2_EXTERNAL entirely.

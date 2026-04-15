@@ -79,6 +79,15 @@
       "https://sources.buildroot.net/bison-3.8.2.tar.xz"
     ]
   },
+  "blake3-1.5.4.tar.gz": {
+    "algo": "sha256",
+    "checksum": "ddd24f26a31d23373e63d9be2e723263ac46c8b6d49902ab08024b573fd2a416",
+    "uris": [
+      "https://github.com/BLAKE3-team/BLAKE3/archive/1.5.4/blake3-1.5.4.tar.gz",
+      "https://sources.buildroot.net/blake3/blake3-1.5.4.tar.gz",
+      "https://sources.buildroot.net/blake3-1.5.4.tar.gz"
+    ]
+  },
   "build-1.2.2.tar.gz": {
     "algo": "sha256",
     "checksum": "119b2fb462adef986483438377a13b2f42064a2a3a4161f24a0cca698a07ac8c",
@@ -95,6 +104,15 @@
       "https://www.busybox.net/downloads/busybox-1.37.0.tar.bz2",
       "https://sources.buildroot.net/busybox/busybox-1.37.0.tar.bz2",
       "https://sources.buildroot.net/busybox-1.37.0.tar.bz2"
+    ]
+  },
+  "ccache-4.10.2.tar.xz": {
+    "algo": "sha256",
+    "checksum": "c0b85ddfc1a3e77b105ec9ada2d24aad617fa0b447c6a94d55890972810f0f5a",
+    "uris": [
+      "https://github.com/ccache/ccache/releases/download/v4.10.2/ccache-4.10.2.tar.xz",
+      "https://sources.buildroot.net/ccache/ccache-4.10.2.tar.xz",
+      "https://sources.buildroot.net/ccache-4.10.2.tar.xz"
     ]
   },
   "cffi-1.17.1.tar.gz": {
@@ -247,6 +265,15 @@
       "https://ftpmirror.gnu.org/gperf/gperf-3.1.tar.gz",
       "https://sources.buildroot.net/gperf/gperf-3.1.tar.gz",
       "https://sources.buildroot.net/gperf-3.1.tar.gz"
+    ]
+  },
+  "hiredis-1.3.0.tar.gz": {
+    "algo": "sha256",
+    "checksum": "25cee4500f359cf5cad3b51ed62059aadfc0939b05150c1f19c7e2829123631c",
+    "uris": [
+      "https://github.com/redis/hiredis/archive/v1.3.0/hiredis-1.3.0.tar.gz",
+      "https://sources.buildroot.net/hiredis/hiredis-1.3.0.tar.gz",
+      "https://sources.buildroot.net/hiredis-1.3.0.tar.gz"
     ]
   },
   "installer-0.7.0.tar.gz": {
@@ -661,6 +688,15 @@
       "https://files.pythonhosted.org/packages/8a/98/2d9906746cdc6a6ef809ae6338005b3f21bb568bea3165cfc6a243fdc25c/wheel-0.45.1.tar.gz",
       "https://sources.buildroot.net/python-wheel/wheel-0.45.1.tar.gz",
       "https://sources.buildroot.net/wheel-0.45.1.tar.gz"
+    ]
+  },
+  "xxhash-0.8.3.tar.gz": {
+    "algo": "sha256",
+    "checksum": "aae608dfe8213dfd05d909a57718ef82f30722c392344583d3f39050c7f29a80",
+    "uris": [
+      "https://github.com/Cyan4973/xxHash/archive/v0.8.3/xxhash-0.8.3.tar.gz",
+      "https://sources.buildroot.net/xxhash/xxhash-0.8.3.tar.gz",
+      "https://sources.buildroot.net/xxhash-0.8.3.tar.gz"
     ]
   },
   "zlib-1.3.2.tar.xz": {

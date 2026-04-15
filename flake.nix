@@ -204,6 +204,8 @@
               nixfmt-rfc-style
               perl
               gnutar
+              mdformat
+              commitizen
             ];
 
             shellHook = ''
