@@ -7,15 +7,15 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
 if ! git rev-parse --git-dir >/dev/null 2>&1; then
-	echo "error: not inside a git repository" >&2
-	exit 1
+  echo "error: not inside a git repository" >&2
+  exit 1
 fi
 
 git config core.hooksPath .githooks
 
 mkdir -p .githooks
 
-cat > .githooks/pre-commit <<'EOF'
+cat >.githooks/pre-commit <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 

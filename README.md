@@ -13,6 +13,7 @@ The main goal of this repo is to stay close to upstream Buildroot/kernel/firmwar
 fixes land quickly and version bumps stay practical instead of depending on vendor updates.
 
 Highlights of this project:
+
 - upstream tags for Buildroot/Linux/TF-A/OP-TEE/U-Boot
 - board changes isolated in `board/` and `configs/`
 - small drift, easier release-to-release incremental upgrades
@@ -24,12 +25,14 @@ implementation details.
 
 ## Navigation
 
-If you are evaluating whether to use or fork this repo, read in this order:
-1. [Why this external tree exists](#why-this-external-tree-exists)
-2. [Setup](#setup)
-3. [Differences from vendor and community configs](#differences-from-vendor-and-community-configs)
+If you are evaluating whether to use or fork this repo, review these resources:
+
+* [Why this external tree exists](#why-this-external-tree-exists)
+* [Setup](#setup)
+* [Differences from vendor and community configs](#differences-from-vendor-and-community-configs)
 
 If you need board bring-up details, jump to:
+
 - [Hardware](#hardware)
 - [Software stack](#software-stack)
 - [Boot chain](#boot-chain)
@@ -71,7 +74,9 @@ building from this repository directly.
 ## Prerequisites
 
 ### Nix
+
 NixOS or Nix installed on your OS with flakes enabled. For example, on Arch:
+
 ```bash
 sudo pacman -S nix
 sudo systemctl enable --now nix-daemon.service
@@ -120,9 +125,11 @@ make                # release image (default)
 ### Release and Debug Variants
 
 Debug configurations can be build by setting `MODE=debug`:
+
 ```bash
 MODE=debug make     # debug symbols + verbose firmware
 ```
+
 `make release` and `make debug` are available as aliases. Defconfigs can also
 be applied directly: `make myd_yf135_defconfig` or `make myd_yf135_debug_defconfig`.
 See [docs/debug.md](docs/debug.md) for variant details, cache setup, and host-tool reuse behavior.
@@ -166,7 +173,6 @@ Current `flashlayout.tsv` is a **bring-up profile**: it programs only `fsbl1`,
 `fsbl2`, `fip-a1`, and `UBI`. Reserved slots (`metadata*`, `fip-a2`, `fip-b*`)
 remain for upcoming RAUC + secure-boot/A-B update work.
 
-
 Set BOOT pins before flashing ([switch settings reference](https://docs.u-boot.org/en/latest/board/st/stm32mp1.html#switch-setting-for-boot-mode)):
 
 | Mode | BOOT pins |
@@ -186,9 +192,10 @@ STM32_Programmer_CLI -c port=usb1 -w board/myd-yf135/flashlayout.tsv
 Runtime console uses **UART4 TTL** at **115200 8N1**.
 
 Typical usage:
+
 1. Connect USB-to-TTL adapter to board UART4 header (GND/RX/TX).
-2. Set BOOT pins to SPI-NAND mode and reset/power-cycle board.
-3. Open console with minicom:
+1. Set BOOT pins to SPI-NAND mode and reset/power-cycle board.
+1. Open console with minicom:
 
 ```bash
 minicom -D /dev/ttyUSB0 -b 115200 -8
@@ -229,6 +236,7 @@ ROM -> TF-A BL2 (fsbl1/fsbl2) -> FIP -> OP-TEE (BL32) -> U-Boot (BL33) -> Linux 
 ```
 
 TF-A produces:
+
 - `*.stm32`: raw BL2, written to `fsbl1` / `fsbl2`
 - `fip.bin`: FIP (BL32 + BL33), written to `fip-a*` / `fip-b*`
 

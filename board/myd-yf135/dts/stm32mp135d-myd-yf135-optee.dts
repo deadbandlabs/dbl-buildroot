@@ -51,9 +51,11 @@
 		};
 	};
 
-	/* SOM provides all power regulation internally, set fixed always-on.
+	/*
+	 * SOM provides all power regulation internally, set fixed always-on.
 	 * Note: sdmmc1_io / sdmmc2_io are already defined in stm32mp131.dtsi,
-	 * only provide their supply via the &sdmmc1_io reference below. */
+	 * only provide their supply via the &sdmmc1_io reference below.
+	 */
 
 	vddcpu: vddcpu {
 		compatible = "regulator-fixed";

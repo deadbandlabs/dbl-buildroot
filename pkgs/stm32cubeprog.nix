@@ -112,7 +112,6 @@ stdenv.mkDerivation {
       runHook postInstall
     '';
 
-
   meta = {
     description = "STM32CubeProgrammer CLI for flashing STM32 devices via USB DFU, UART, SWD/JTAG";
     homepage = "https://www.st.com/en/development-tools/stm32cubeprog.html";

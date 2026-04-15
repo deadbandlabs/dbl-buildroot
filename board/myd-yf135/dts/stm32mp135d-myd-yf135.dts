@@ -127,8 +127,10 @@
 	status = "okay";
 };
 
-/* Board-specific QSPI BK1 pins :: IO2/IO3 differ from upstream qspi_bk1_pins_a.
- * Upstream uses PD11/PH7; this board routes them to PD7/PD13. */
+/*
+ * Board-specific QSPI BK1 pins :: IO2/IO3 differ from upstream qspi_bk1_pins_a.
+ * Upstream uses PD11/PH7; this board routes them to PD7/PD13.
+ */
 &pinctrl {
 	qspi_bk1_pins_b: qspi-bk1-1 {
 		pins {
