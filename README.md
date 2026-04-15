@@ -69,6 +69,12 @@ Super-project defconfigs can reference this board layer via
 `$(BR2_EXTERNAL_MYD_YF135_PATH)`. Standalone behavior is unchanged when
 building from this repository directly.
 
+## Contact
+
+For security vulnerabilities: `security@deadband.dev`
+
+For general questions or issues: use GitHub issues and discussions.
+
 # Setup
 
 ## Prerequisites

@@ -38,6 +38,8 @@ path = [
   "support/pre-commit/commit-msg-warn.sh",
   "README.md",
   "docs/debug.md",
+  "CONTRIBUTING.md",
+  "SECURITY.md",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
