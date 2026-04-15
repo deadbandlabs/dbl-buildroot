@@ -19,7 +19,9 @@
     },
     "buildroot-nix": {
       "inputs": {
-        "buildroot": "buildroot_2",
+        "buildroot": [
+          "buildroot"
+        ],
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -38,23 +40,6 @@
         "ref": "master",
         "repo": "buildroot.nix",
         "type": "github"
-      }
-    },
-    "buildroot_2": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1768938685,
-        "narHash": "sha256-9YPQ7vB0W+sd/uHoyn+NDwsq1kv39hglh+8u8bJaG20=",
-        "owner": "buildroot.org",
-        "repo": "buildroot",
-        "rev": "1bf78b41855b907afd86327b1b96268c80ec3b44",
-        "type": "gitlab"
-      },
-      "original": {
-        "owner": "buildroot.org",
-        "ref": "2025.11.1",
-        "repo": "buildroot",
-        "type": "gitlab"
       }
     },
     "nixpkgs": {

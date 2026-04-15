@@ -532,7 +532,6 @@
     "algo": "sha256",
     "checksum": "85cb9d02cf5237881d0b62abab086acd1149d972f6f8c5aece4f8e10a37c944c",
     "uris": [
-      "https://files.pythonhosted.org/packages/c7/67/545c79fe50f7af51dbad56d16b23fe33f63ee6a5d956b3cb68ea110cbe64/cryptography-44.0.1.tar.gz?buildroot-path=filename/python-cryptography-44.0.1-cargo2.tar.gz",
       "https://sources.buildroot.net/python-cryptography/python-cryptography-44.0.1-cargo2.tar.gz",
       "https://sources.buildroot.net/python-cryptography-44.0.1-cargo2.tar.gz"
     ]
@@ -541,7 +540,6 @@
     "algo": "sha256",
     "checksum": "91da291029b8d62103044a91d8b9cf0220c73e282de096c20d1a38c55aa82dd1",
     "uris": [
-      "https://files.pythonhosted.org/packages/30/0b/3fd746cf5cfa3c8d7e20ea08c0dbc2c2c765ae051d0fc43d808a38bc9548/maturin-1.8.3.tar.gz?buildroot-path=filename/python-maturin-1.8.3-cargo2.tar.gz",
       "https://sources.buildroot.net/python-maturin/python-maturin-1.8.3-cargo2.tar.gz",
       "https://sources.buildroot.net/python-maturin-1.8.3-cargo2.tar.gz"
     ]

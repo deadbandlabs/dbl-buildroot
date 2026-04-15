@@ -9,6 +9,7 @@
     buildroot-nix = {
       url = "github:velentr/buildroot.nix/master";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.buildroot.follows = "buildroot";
     };
 
     # Buildroot 2025.02.12 (LTS)
@@ -74,6 +75,7 @@
         lockfile = ./buildroot.lock;
         nativeBuildInputs = [
           cmake-compat
+          pkgs.git
           pkgs.linux-pam
           pkgs.gnutls.dev
         ];

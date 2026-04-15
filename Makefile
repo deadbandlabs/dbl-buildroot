@@ -131,6 +131,7 @@ $(MENUCONFIG_TARGETS):
 nix-lock:
 	nix build .#lockfile --out-link $(O)/nix-lockfile
 	cp -L $(O)/nix-lockfile buildroot.lock
+	python3 $(CURDIR)/support/build/fix-cargo2-lockfile.py buildroot.lock
 
 # Forward everything else to buildroot, tee'd stdout+stderr to $(LOG)
 # Explicit local targets above take precedence over this catch-all
