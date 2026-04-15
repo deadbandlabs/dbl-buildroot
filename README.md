@@ -45,6 +45,27 @@ Nix + flakes pins host tooling across machines, reducing distro/package mismatch
 Buildroot flow stays normal; Nix standardizes the environment around it. This is based
 on the work by https://github.com/velentr/buildroot.nix.
 
+## Use as a submodule
+
+To use this repo as a submodule of a superproject, create a new `BR2_EXTERNAL` tree for
+project-specific packages, overlays, and defconfigs:
+
+```text
+superproject/
+	buildroot/                  # upstream Buildroot source
+	externals/
+		dbl-buildroot/          # this repo as submodule
+		project-external/       # your project-specific BR2_EXTERNAL
+```
+
+```bash
+BR2_EXTERNAL="$PWD/externals/dbl-buildroot:$PWD/externals/project-external"
+```
+
+Super-project defconfigs can reference this board layer via
+`$(BR2_EXTERNAL_MYD_YF135_PATH)`. Standalone behavior is unchanged when
+building from this repository directly.
+
 # Setup
 
 ## Prerequisites
@@ -76,13 +97,27 @@ direnv allow
 ## Build
 
 ```bash
-make myd_yf135_defconfig   # apply defconfig (output/.config)
-make                       # full build: toolchain + firmware + kernel + rootfs
+make                # release image (default)
 ```
 
-All output goes to `output/`. Sources cached in `dl/` to survive clean builds.
+### Release and Debug Variants
 
-Useful incremental targets:
+Debug configurations can be build by setting `MODE=debug`:
+```bash
+MODE=debug make     # debug symbols + verbose firmware
+```
+`make release` and `make debug` are available as aliases. Defconfigs can also
+be applied directly: `make myd_yf135_defconfig` or `make myd_yf135_debug_defconfig`.
+See [docs/debug.md](docs/debug.md) for variant details, cache setup, and host-tool reuse behavior.
+
+All output goes to `output/release` or `output/debug` and linked to `output/latest`.
+Sources are cached in `dl/` for common use and to persist on clean builds.
+
+### Incremental Targets
+
+Buildroot's Makefile does not generally rebuild targets that may change due to dependencies. In this
+case an incremental rebuild is required. A common example of this is `uboot-rebuild` will not re-pack
+into the programmed .fip without an additional `arm-trustfed-firmware-rebuild`.
 
 ```bash
 make linux-extract                 # download and unpack kernel source only
@@ -301,4 +336,3 @@ Neither ST nor upstream ships a `stm32mp135_defconfig`. This repo uses `multi_v7
 ### Flashlayout: spi-nand0 not nand0
 
 `nand0` is the IP name for raw FMC-attached NAND on STM32MP15x boards. SPI-NAND via QSPI registers as `spi-nand0` in U-Boot. `flashlayout.tsv` uses `spi-nand0` accordingly; other community configs targeting FMC NAND may have the wrong IP name.
-
