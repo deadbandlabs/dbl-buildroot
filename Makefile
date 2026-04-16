@@ -64,7 +64,7 @@ endif
 
 .DEFAULT_GOAL := all
 
-.PHONY: help all release debug regen-debug-defconfig prepare-debug-host-reuse host-toolchain
+.PHONY: help all release debug regen-debug-defconfig prepare-debug-host-reuse host-toolchain toolchain
 
 help:
 	@echo "Common targets:"
@@ -85,7 +85,7 @@ prepare-debug-host-reuse:
 	@$(SHARE_HOST_SCRIPT) "$(CURDIR)" "$(RELEASE_O)" "$(O)" "$(SHARE_HOST_FOR_DEBUG)" "$(MAKE)"
 
 all: $(_VARIANT_PREP)
-	@mkdir -p $(LOG_DIR) $(CCACHE_DIR)
+	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
 	$(_APPLY_DEFCONFIG)
 	$(BR2_MAKE) 2>&1 | tee $(LOG); exit $${PIPESTATUS[0]}
 	@ln -sfn $(MODE) $(CURDIR)/output/latest
@@ -98,7 +98,7 @@ debug:
 	$(MAKE) MODE=debug all
 
 host-toolchain:
-	$(MAKE) MODE=release host-final
+	$(MAKE) MODE=release toolchain
 
 myd_yf135_debug_defconfig: regen-debug-defconfig
 	$(BR2_MAKE) BR2_DEFCONFIG=$(DEBUG_DEFCONFIG) defconfig

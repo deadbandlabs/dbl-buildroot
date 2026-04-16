@@ -53,7 +53,7 @@ name: Build
           fi
 
   image:
-    name: Build release image
+    name: Build release image (nix)
     needs: lockfile
     runs-on: ubuntu-latest
     steps:
@@ -99,4 +99,45 @@ name: Build
         with:
           name: myd-yf135-sdk
           path: artifacts/sdk/
+          if-no-files-found: error
+
+  debug:
+    name: Build debug image (make)
+    needs: lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Allow user namespaces for buildFHSEnv
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+        continue-on-error: true  # not available with act
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            build-users-group =
+            sandbox = false
+            max-jobs = auto
+
+      - uses: cachix/cachix-action@v14
+        with:
+          name: deadbandlabs
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+      - name: Restore download cache
+        uses: actions/cache@v5
+        with:
+          path: dl/
+          key: br-dl-${{ hashFiles('buildroot.lock') }}
+          restore-keys: br-dl-
+
+      - name: Build debug image
+        run: nix develop .#ci --command make SHARE_HOST_FOR_DEBUG=0 debug
+
+      - name: Upload debug artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: myd-yf135-debug-images
+          path: output/debug/images/
           if-no-files-found: error
