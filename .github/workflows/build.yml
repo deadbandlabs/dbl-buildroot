@@ -132,6 +132,28 @@ name: Build
           key: br-dl-${{ hashFiles('buildroot.lock') }}
           restore-keys: br-dl-
 
+      - name: Restore host toolchain cache
+        uses: actions/cache@v5
+        with:
+          path: output/debug/build/host-*/
+          key: br-host-${{ hashFiles('buildroot.lock', 'configs/myd_yf135_defconfig', 'configs/myd_yf135_debug.fragment') }}
+          restore-keys: br-host-
+
+      - name: Restore ccache
+        uses: actions/cache@v5
+        with:
+          path: output/ccache/
+          key: >-
+            br-ccache-${{ hashFiles(
+              'configs/myd_yf135_defconfig',
+              'configs/myd_yf135_debug.fragment',
+              'board/myd-yf135/linux.config',
+              'board/myd-yf135/linux-debug.fragment',
+              'board/myd-yf135/uboot.config',
+              'board/myd-yf135/uboot-debug.fragment'
+            ) }}
+          restore-keys: br-ccache-
+
       - name: Build debug image
         run: nix develop .#ci --command make SHARE_HOST_FOR_DEBUG=0 debug
 
