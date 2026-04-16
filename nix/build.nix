@@ -114,13 +114,13 @@ let
     '';
 
     installPhase = ''
-      mkdir -p $out $sdk
+      mkdir -p $out/images $sdk
 
-      cp -r output/images $out/
+      cp -r output/images/. $out/images/
+      rm -f $out/images/*_sdk-buildroot.tar.gz
       sed 's|../../output/latest/images/|./|g' ${buildExternalSrc}/board/myd-yf135/flashlayout.tsv > $out/images/flashlayout.tsv
 
-      cp -r output/host/* $sdk/
-      sh $sdk/relocate-sdk.sh
+      cp output/images/*_sdk-buildroot.tar.gz $sdk/sdk.tar.gz
     '';
 
     hardeningDisable = [ "format" ];
