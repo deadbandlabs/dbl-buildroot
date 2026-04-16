@@ -11,6 +11,10 @@
 let
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
+    # Nix wget has no system CA bundle; point it at the Nix-provided one
+    export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+    export GIT_SSL_CAINFO="$SSL_CERT_FILE"
+    export CURL_CA_BUNDLE="$SSL_CERT_FILE"
   '';
 
   # Packages required to run Buildroot builds
@@ -57,6 +61,9 @@ let
 
     # Device tree tooling
     dtc
+
+    # CA certificates for wget/curl/git HTTPS (Nix wget has no system bundle)
+    cacert
 
     # Source management
     git
