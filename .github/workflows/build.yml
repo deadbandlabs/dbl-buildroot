@@ -135,9 +135,16 @@ name: Build
       - name: Restore host toolchain cache
         uses: actions/cache@v5
         with:
-          path: output/debug/build/host-*/
+          path: |
+            output/debug/host/
+            output/debug/build/host-*/
           key: br-host-${{ hashFiles('buildroot.lock', 'configs/myd_yf135_defconfig', 'configs/myd_yf135_debug.fragment') }}
           restore-keys: br-host-
+
+      # Cached host .la files make libtool hand host x86-64 .so files to the
+      # target ld ("file format not recognized"). Remove for direct -l<name>.
+      - name: Clean host cache
+        run: find output/debug/host -name '*.la' -delete 2>/dev/null || true
 
       - name: Restore ccache
         uses: actions/cache@v5
