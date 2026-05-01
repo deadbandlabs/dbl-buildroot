@@ -7,6 +7,8 @@
   buildroot,
   cmake-compat,
   stm32cubeprog,
+  # Downstream-injected packages added to the default shell
+  extraPackages ? [ ],
 }:
 let
   brShellHook = ''
@@ -108,18 +110,21 @@ in
     brShellArgs
     // {
       name = "dbl-buildroot";
-      packages = brShellArgs.packages ++ [
-        # STM32CubeProgrammer CLI for USB DFU flashing of STM32MP1
-        # Requires manual download due to license; see pkgs/stm32cubeprog.nix
-        stm32cubeprog
+      packages =
+        brShellArgs.packages
+        ++ [
+          # STM32CubeProgrammer CLI for USB DFU flashing of STM32MP1
+          # Requires manual download due to license; see pkgs/stm32cubeprog.nix
+          stm32cubeprog
 
-        # act: run GitHub Actions workflows locally (via podman rootless)
-        pkgs.act
-        pkgs.podman
+          # act: run GitHub Actions workflows locally (via podman rootless)
+          pkgs.act
+          pkgs.podman
 
-        # cachix: push cached nix build results (pulls are automatic)
-        pkgs.cachix
-      ];
+          # cachix: push cached nix build results (pulls are automatic)
+          pkgs.cachix
+        ]
+        ++ extraPackages;
       shellHook = brShellArgs.shellHook + ''
         echo "DBL buildroot development shell"
         echo "  Buildroot: 2025.02 LTS"

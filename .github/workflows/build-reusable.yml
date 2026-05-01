@@ -1,0 +1,157 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Reusable build workflow. Called by downstream repos at a pinned SHA:
+#
+#   uses: deadbandlabs/dbl-buildroot/.github/workflows/build-reusable.yml@<sha>
+#
+# All repo-specific paths are passed as inputs. The caller computes cache keys
+# with hashFiles() against its own repo tree.
+#
+# Two build modes:
+#   shell (default): `nix develop ...#ci --command <build-command>`
+#   nix-build:       `nix build` (fully hermetic, no dl/ccache/host caches)
+---
+name: Build (reusable)
+
+"on":
+  workflow_call:
+    inputs:
+      checkout-submodules:
+        description: "Checkout submodules"
+        type: boolean
+        default: true
+      nix-flake:
+        description: "Path to nix flake for dev shell (ignored in nix-build mode)"
+        type: string
+        default: "."
+      build-mode:
+        description: "'shell' for nix develop + make, 'nix-build' for hermetic nix build"
+        type: string
+        default: "shell"
+      build-command:
+        description: "Build command to run inside nix shell (ignored in nix-build mode)"
+        type: string
+        default: "make"
+      artifact-name:
+        description: "Name for uploaded artifacts"
+        type: string
+        required: true
+      images-path:
+        description: "Path to built images for upload"
+        type: string
+        required: true
+      dl-cache-key:
+        description: "Download cache key (ignored in nix-build mode)"
+        type: string
+        default: ""
+      dl-cache-path:
+        description: "Download cache path (ignored in nix-build mode)"
+        type: string
+        default: "dl/"
+      ccache-key:
+        description: "Ccache key (ignored in nix-build mode)"
+        type: string
+        default: ""
+      ccache-path:
+        description: "Ccache path (ignored in nix-build mode)"
+        type: string
+        default: "output/ccache/"
+      host-cache-key:
+        description: "Host toolchain cache key (empty = skip host caching)"
+        type: string
+        default: ""
+      host-cache-paths:
+        description: "Host toolchain cache paths (newline-separated)"
+        type: string
+        default: ""
+    secrets:
+      cachix-auth-token:
+        description: "Cachix auth token"
+        required: false
+
+"jobs":
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+
+      - name: Allow user namespaces for buildFHSEnv
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+        continue-on-error: true
+
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v34
+        with:
+          nix_conf: |
+            build-users-group =
+            sandbox = false
+            max-jobs = auto
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v14
+        with:
+          name: deadbandlabs
+          authToken: ${{ secrets.cachix-auth-token }}
+
+      # --- Shell-mode caches (skipped in nix-build mode) ---
+
+      - name: Cache downloads
+        if: ${{ inputs.build-mode == 'shell' }}
+        uses: actions/cache@v5
+        with:
+          path: ${{ inputs.dl-cache-path }}
+          key: ${{ inputs.dl-cache-key }}
+          restore-keys: br-dl-
+
+      - name: Cache host toolchain
+        if: ${{ inputs.build-mode == 'shell' && inputs.host-cache-key != '' }}
+        uses: actions/cache@v5
+        with:
+          path: ${{ inputs.host-cache-paths }}
+          key: ${{ inputs.host-cache-key }}
+          restore-keys: br-host-
+
+      - name: Clean host cache
+        if: ${{ inputs.build-mode == 'shell' && inputs.host-cache-key != '' }}
+        run: |
+          for dir in ${{ inputs.host-cache-paths }}; do
+            find "$dir" -name '*.la' -delete 2>/dev/null || true
+          done
+
+      - name: Cache ccache
+        if: ${{ inputs.build-mode == 'shell' }}
+        uses: actions/cache@v5
+        with:
+          path: ${{ inputs.ccache-path }}
+          key: ${{ inputs.ccache-key }}
+          restore-keys: br-cc-
+
+      # --- Build ---
+
+      - name: Build (shell mode)
+        if: ${{ inputs.build-mode == 'shell' }}
+        # Note: nix-flake: will contain ? (e.g. ".?submodules=1") and must be quoted
+        run: nix develop '${{ inputs.nix-flake }}#ci' --command ${{ inputs.build-command }}
+
+      - name: Build (hermetic nix)
+        if: ${{ inputs.build-mode == 'nix-build' }}
+        run: nix build '${{ inputs.nix-flake }}' --print-build-logs
+
+      # --- Output ---
+
+      - name: Copy nix build output
+        if: ${{ inputs.build-mode == 'nix-build' }}
+        run: |
+          mkdir -p images
+          cp -r result/images/. images/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.build-mode == 'nix-build' && 'images/' || inputs.images-path }}
+          if-no-files-found: error

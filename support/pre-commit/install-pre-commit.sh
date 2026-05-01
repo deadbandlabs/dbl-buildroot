@@ -45,6 +45,6 @@ EOF
 
 chmod +x .githooks/pre-push
 
-nix develop .#pre-commit -c pre-commit install-hooks
+nix develop --option warn-dirty false "${DBL_BUILDROOT_DIR:-.}#pre-commit" -c pre-commit install-hooks
 
 echo "Installed pre-commit + commit-msg launchers in .githooks using flake shell .#pre-commit"

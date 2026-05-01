@@ -1,0 +1,106 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# All-in-one CI for downstream parent repos consuming dbl-buildroot.
+#
+# Runs three jobs:
+#   1. check:   submodule SHA + flake-input drift gate (fail-fast)
+#   2. release: hermetic `nix build` of the parent flake
+#   3. debug:   shell-mode `make debug` with caching
+#
+# Caller invocation (in parent's .github/workflows/build.yml):
+#
+#   jobs:
+#     build:
+#       uses: deadbandlabs/dbl-buildroot/.github/workflows/downstream.yml@<sha>
+#       with:
+#         project-name: syncro-os
+#         dl-cache-key: br-dl-${{ hashFiles('modules/dbl-buildroot/buildroot.lock') }}
+#         ccache-key: br-cc-${{ hashFiles('overlay/syncro-os.fragment') }}
+#         host-cache-key: br-host-${{ hashFiles('modules/dbl-buildroot/buildroot.lock', 'overlay/syncro-os.fragment') }}
+#       secrets: inherit
+#
+# Skip a job by setting `skip-release: true` or `skip-debug: true`.
+---
+name: Downstream build (reusable)
+
+"on":
+  workflow_call:
+    inputs:
+      project-name:
+        description: "Project name (used in artifact names)"
+        type: string
+        required: true
+      dl-cache-key:
+        description: "Download cache key (caller computes with hashFiles)"
+        type: string
+        required: true
+      ccache-key:
+        description: "Ccache key (caller computes with hashFiles)"
+        type: string
+        required: true
+      host-cache-key:
+        description: "Host toolchain cache key (caller computes with hashFiles; empty = skip)"
+        type: string
+        default: ""
+      skip-release:
+        description: "Skip the hermetic nix-build job"
+        type: boolean
+        default: false
+      skip-debug:
+        description: "Skip the shell-mode debug build"
+        type: boolean
+        default: false
+    secrets:
+      cachix-auth-token:
+        description: "Cachix auth token"
+        required: false
+
+"jobs":
+  check:
+    name: Submodule consistency check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: make check-dbl-buildroot
+
+  release:
+    name: Release build
+    needs: check
+    if: ${{ !inputs.skip-release }}
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      checkout-submodules: true
+      build-mode: nix-build
+      nix-flake: .?submodules=1
+      artifact-name: ${{ inputs.project-name }}-images
+      images-path: images/
+    secrets:
+      cachix-auth-token: ${{ secrets.cachix-auth-token }}
+
+  debug:
+    name: Debug build
+    needs: check
+    if: ${{ !inputs.skip-debug }}
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      build-mode: shell
+      nix-flake: .?submodules=1
+      build-command: make debug
+      artifact-name: ${{ inputs.project-name }}-debug-images
+      images-path: modules/dbl-buildroot/output/debug/images/
+      dl-cache-path: dl/
+      dl-cache-key: ${{ inputs.dl-cache-key }}
+      ccache-path: modules/dbl-buildroot/output/ccache/
+      ccache-key: ${{ inputs.ccache-key }}
+      host-cache-key: ${{ inputs.host-cache-key }}
+      host-cache-paths: |
+        modules/dbl-buildroot/output/debug/host/
+        modules/dbl-buildroot/output/debug/build/host-*/
+    secrets:
+      cachix-auth-token: ${{ secrets.cachix-auth-token }}

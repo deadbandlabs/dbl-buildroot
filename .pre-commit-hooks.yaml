@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# Pre-commit hook manifest for downstream repos.
+#
+# Usage in downstream .pre-commit-config.yaml:
+#   repos:
+#     - repo: https://github.com/deadbandlabs/dbl-buildroot
+#       rev: <tag-or-sha>
+#       hooks:
+#         - id: shellcheck
+#         - id: shfmt
+#         - id: yamllint    # needs .yamllint in downstream repo root
+#         - id: nixfmt
+#         - id: no-tabs
+#         - id: dts-checkpatch
+#         - id: mdformat
+#         - id: commitizen-check
+#         - id: reuse-lint  # needs REUSE.toml in downstream repo root
+---
+# Standard linters (language: system): tools must be in $PATH, usually via nix shell
+- id: shellcheck
+  name: shellcheck
+  entry: shellcheck -x
+  language: system
+  types: [shell]
+  stages: [pre-commit]
+
+- id: shfmt
+  name: shfmt
+  entry: shfmt -w -i 2 -ci
+  language: system
+  types: [shell]
+  stages: [pre-commit]
+
+- id: yamllint
+  name: yamllint
+  entry: yamllint -s
+  language: system
+  files: \.(ya?ml)$
+  stages: [pre-commit]
+
+- id: nixfmt
+  name: nixfmt
+  entry: nixfmt
+  language: system
+  files: \.nix$
+  stages: [pre-commit]
+
+- id: mdformat
+  name: mdformat
+  entry: mdformat
+  language: system
+  files: \.md$
+  stages: [pre-commit]
+
+- id: reuse-lint
+  name: reuse lint
+  entry: reuse lint
+  language: system
+  stages: [pre-commit]
+  pass_filenames: false
+
+# Custom scripts (language: script: run from this repo, cwd = caller's repo root)
+- id: no-tabs
+  name: no tabs in repo text files
+  entry: support/pre-commit/no-tabs.sh
+  language: script
+  files: (\.envrc|\.gitignore|\.pre-commit-config\.yaml|external\.desc|\.ya?ml|\.nix|\.sh|\.toml|\.cfg|\.conf|\.fragment|\.defconfig)$
+  exclude: (^|/)Makefile$|\.patch$
+  stages: [pre-commit]
+
+- id: dts-checkpatch
+  name: dts checkpatch
+  entry: support/pre-commit/checkpatch-dts.sh
+  language: script
+  files: \.dtsi?$
+  stages: [pre-commit]
+
+- id: commitizen-check
+  name: commitizen check
+  entry: support/pre-commit/commitizen-check-push.sh
+  language: script
+  stages: [pre-push, manual]
+  pass_filenames: false
+  always_run: true
+
+# Parent-repo consistency hooks
+# Catch drift between the submodule's expected inputs/SHA pins and the parent
+# Note: no effect when run directly in the module
+- id: dbl-buildroot-sync-inputs
+  name: dbl-buildroot sync flake inputs (autofix)
+  entry: support/parent/sync-flake-inputs.sh
+  language: script
+  files: ^(flake\.nix|modules/dbl-buildroot/(flake|inputs)\.nix)$
+  pass_filenames: false
+  stages: [pre-commit]
+
+- id: dbl-buildroot-pinned-shas
+  name: dbl-buildroot SHA pins consistent
+  entry: support/parent/check-pinned-shas.sh
+  language: script
+  files: ^(\.pre-commit-config\.yaml|\.github/workflows/.*\.ya?ml|\.gitmodules)$
+  pass_filenames: false
+  stages: [pre-commit]

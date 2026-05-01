@@ -17,9 +17,17 @@ fi
 
 # When run directly (not via pre-commit hook or CI), re-exec inside the
 # pre-commit nix shell so cz is available.
+# Auto-detect DBL_BUILDROOT_DIR: check caller's repo for submodule, then cwd.
 if [ -z "${CI:-}" ] && ! command -v cz >/dev/null 2>&1; then
   repo_root="$(git rev-parse --show-toplevel)"
-  exec nix develop --option warn-dirty false "${repo_root}#pre-commit" -c "$0" "$@"
+  if [ -z "${DBL_BUILDROOT_DIR:-}" ]; then
+    if [ -d "${repo_root}/modules/dbl-buildroot" ]; then
+      DBL_BUILDROOT_DIR="${repo_root}/modules/dbl-buildroot"
+    else
+      DBL_BUILDROOT_DIR="."
+    fi
+  fi
+  exec nix develop --option warn-dirty false "${DBL_BUILDROOT_DIR}#pre-commit" -c "$0" "$@"
 fi
 
 check_commit() {

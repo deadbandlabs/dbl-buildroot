@@ -30,6 +30,12 @@ ifneq ($(strip $(BR2_EXTERNAL_EXTRA)),)
 BR2_EXTERNAL := $(BR2_EXTERNAL):$(BR2_EXTERNAL_EXTRA)
 endif
 
+# (Optional) merge downstream defconfig fragment. When set, the
+# variant's base defconfig is merged before applying. Super-projects use this to
+# extend the base image with project-specific packages/config.
+CONFIG_FRAGMENT ?=
+OVERLAY_DEFCONFIG := $(O)/overlay_defconfig
+
 # Derive the kernel source directory from the version in the defconfig so
 # this stays in sync automatically if the version is ever bumped
 LINUX_VERSION := $(shell grep BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE \
@@ -55,11 +61,21 @@ LOG     ?= $(LOG_DIR)/$(shell date +%Y%m%d-%H%M%S).log
 # release = output/release/   debug = output/debug/
 # Override O directly to use a custom output path.
 ifeq ($(MODE),debug)
+_BASE_DEFCONFIG := $(DEBUG_DEFCONFIG)
+_VARIANT_PREP   := regen-debug-defconfig prepare-debug-host-reuse
+else
+_BASE_DEFCONFIG := $(RELEASE_DEFCONFIG)
+_VARIANT_PREP   :=
+endif
+
+# If CONFIG_FRAGMENT is set, merge it over the variant's base config.
+# Otherwise apply the base config directly.
+ifneq ($(strip $(CONFIG_FRAGMENT)),)
+_APPLY_DEFCONFIG = @$(GEN_DEBUG_SCRIPT) $(_BASE_DEFCONFIG) $(CONFIG_FRAGMENT) $(OVERLAY_DEFCONFIG) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
+else ifeq ($(MODE),debug)
 _APPLY_DEFCONFIG = $(BR2_MAKE) BR2_DEFCONFIG=$(DEBUG_DEFCONFIG) defconfig
-_VARIANT_PREP    := regen-debug-defconfig prepare-debug-host-reuse
 else
 _APPLY_DEFCONFIG = $(BR2_MAKE) myd_yf135_defconfig
-_VARIANT_PREP    :=
 endif
 
 .DEFAULT_GOAL := all
@@ -109,6 +125,7 @@ myd_yf135_debug_defconfig: regen-debug-defconfig
 #   make linux-update-config (writes changes back to board/myd-yf135/linux.config to commit)
 .PHONY: linux-config-init
 linux-config-init:
+	$(_APPLY_DEFCONFIG)
 	$(BR2_MAKE) linux-extract
 	$(MAKE) -C $(LINUX_SRC) ARCH=arm multi_v7_defconfig
 	install -D $(LINUX_SRC)/.config $(LINUX_CONFIG)

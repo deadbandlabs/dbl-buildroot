@@ -13,10 +13,19 @@ set -euo pipefail
 # falls back to git merge-base HEAD origin/main.
 
 # Suppress nix's "Git tree is dirty" warning tree is always dirty when running hooks
-NIX=(nix develop --option warn-dirty false .#pre-commit -c)
+# DBL_BUILDROOT_DIR: path to the dbl-buildroot checkout.
+# Auto-detected from caller's repo, or defaults to current dir.
+DBL_BUILDROOT_DIR="${DBL_BUILDROOT_DIR:-.}"
 
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
+
+# Auto-detect: if run from a downstream repo with the submodule, find it.
+if [ "$DBL_BUILDROOT_DIR" = "." ] && [ -d "${repo_root}/modules/dbl-buildroot" ] && [ -f "${repo_root}/modules/dbl-buildroot/flake.nix" ]; then
+  DBL_BUILDROOT_DIR="${repo_root}/modules/dbl-buildroot"
+fi
+
+NIX=(nix develop --option warn-dirty false "${DBL_BUILDROOT_DIR}#pre-commit" -c)
 
 if [ "$#" -gt 0 ]; then
   exec "${NIX[@]}" pre-commit "$@"
