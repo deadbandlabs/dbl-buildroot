@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
+# @@PROJECT_NAME@@ defconfig overlay.
+# Merged over the base MYD-YF135 defconfig at build time.
+# Add BR2_PACKAGE_* and other options here.

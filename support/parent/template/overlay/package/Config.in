@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Add `source "$BR2_EXTERNAL_@@PROJECT_NAME_UPPER@@_PATH/package/foo/Config.in"`
+# entries here as you add custom packages.

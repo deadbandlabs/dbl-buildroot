@@ -1,0 +1,25 @@
+version = 1
+
+[[annotations]]
+path = [
+  ".envrc",
+  ".gitignore",
+  ".pre-commit-config.yaml",
+  "flake.lock",
+  "flake.nix",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "@@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = [
+  "overlay/@@PROJECT_NAME@@.fragment",
+  "overlay/external.desc",
+  "overlay/external.mk",
+  "overlay/Config.in",
+  "overlay/package/Config.in",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "@@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@"
+SPDX-License-Identifier = "GPL-2.0-or-later"

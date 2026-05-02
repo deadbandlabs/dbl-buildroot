@@ -1,0 +1,2 @@
+name: @@PROJECT_NAME_UPPER@@
+desc: @@PROJECT_NAME@@ overlay for MYD-YF135 base image

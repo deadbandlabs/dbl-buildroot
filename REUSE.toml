@@ -41,6 +41,7 @@ path = [
   "SECURITY.md",
   "docs/debug.md",
   "docs/ci.md",
+  "docs/parent-integration.md",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."

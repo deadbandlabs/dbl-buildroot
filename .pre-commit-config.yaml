@@ -7,6 +7,7 @@ repos:
         entry: shellcheck -x
         language: system
         types: [shell]
+        exclude: ^support/parent/template/
         stages: [pre-commit]
 
       - id: shfmt
@@ -21,6 +22,7 @@ repos:
         entry: yamllint -s -c .yamllint
         language: system
         files: \.(ya?ml)$
+        exclude: ^support/parent/template/
         stages: [pre-commit]
 
       - id: nixfmt
@@ -28,6 +30,7 @@ repos:
         entry: nixfmt
         language: system
         files: \.nix$
+        exclude: ^support/parent/template/
         stages: [pre-commit]
 
       - id: no-tabs

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
+---
+# All hooks come from the dbl-buildroot submodule. SHA bumped automatically by
+# `make update-dbl-buildroot`.
+repos:
+  - repo: https://github.com/deadbandlabs/dbl-buildroot
+    rev: @@SUBMODULE_SHA@@
+    hooks:
+      - id: shellcheck
+      - id: shfmt
+      - id: yamllint
+        args: [-d, '{extends: default, rules: {line-length: disable}}']
+      - id: nixfmt
+      - id: no-tabs
+      - id: dts-checkpatch
+      - id: mdformat
+      - id: commitizen-check
+      - id: reuse-lint
+      - id: dbl-buildroot-sync-inputs
+      - id: dbl-buildroot-pinned-shas

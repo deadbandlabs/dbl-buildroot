@@ -5,16 +5,9 @@ name: Pre-commit checks
 
 "on":
   push:
-    branches:
-      - main
-      - 'release/*'
-      - 'dev/*'
-
+    branches: [main, "release/*", "dev/*"]
   pull_request:
-    branches:
-      - main
-      - 'release/*'
-      - 'dev/*'
+    branches: [main, "release/*", "dev/*"]
 
 "jobs":
   nix-env:

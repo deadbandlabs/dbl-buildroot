@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
+---
+name: Build
+
+"on":
+  push:
+    branches:
+      - main
+      - 'release/*'
+  pull_request:
+    branches:
+      - main
+      - 'release/*'
+  workflow_dispatch:
+
+"jobs":
+  build:
+    uses: deadbandlabs/dbl-buildroot/.github/workflows/downstream.yml@@@SUBMODULE_SHA@@
+    with:
+      project-name: @@PROJECT_NAME@@
+      dl-cache-key: br-dl-${{ hashFiles('modules/dbl-buildroot/buildroot.lock') }}
+      ccache-key: br-cc-${{ hashFiles('overlay/@@PROJECT_NAME@@.fragment') }}
+      host-cache-key: br-host-${{ hashFiles('modules/dbl-buildroot/buildroot.lock', 'overlay/@@PROJECT_NAME@@.fragment') }}
+    secrets: inherit

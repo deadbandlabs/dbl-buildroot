@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Check for working for support/parent/template/.
+#
+# Instantiates the template into a scratch dir, then runs the same checks
+# a downstream parent would run on commit. No real build, eval only.
+# (sync-flake-inputs, check-pinned-shas, nix flake eval)
+#
+# Specifically check for drift in:
+#   - template files and the placeholder set understood by init.sh
+#   - template's .pre-commit-config.yaml hooks and .pre-commit-hooks.yaml
+#   - template flake structure and lib.nix mkProject signature
+---
+name: Template project is valid
+
+"on":
+  push:
+    branches: [main, "release/*", "dev/*"]
+    paths:
+      - "support/parent/**"
+      - "lib.nix"
+      - "inputs.nix"
+      - "nix/**"
+      - ".pre-commit-hooks.yaml"
+  pull_request:
+    paths:
+      - "support/parent/**"
+      - "lib.nix"
+      - "inputs.nix"
+      - "nix/**"
+      - ".pre-commit-hooks.yaml"
+  workflow_dispatch:
+
+"jobs":
+  template-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: ./support/parent/test-template.sh
+        timeout-minutes: 10

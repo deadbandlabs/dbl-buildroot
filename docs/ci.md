@@ -28,6 +28,21 @@ Jobs:
 
   Uses Cachix to cache Nix store paths across runs. Uploads images and SDK as separate artifacts.
 
+### `template-test.yml` Template project validation
+
+Runs on push and pull requests to `main` when files under `support/parent/`, `lib.nix`, `inputs.nix`, `nix/`, or `.pre-commit-hooks.yaml` change. Also available via manual dispatch.
+
+Instantiates the parent template into a scratch directory and runs the same checks a downstream parent would run on commit. No build occurs; evaluation only.
+
+Jobs:
+
+- **`template-test`**: Copies the submodule into a temp directory as regular files (not a git submodule — Nix can't resolve relative local submodule URLs), runs `init.sh` to generate the template, then validates:
+  - All expected template files are created
+  - No leftover `@@PLACEHOLDER@@` tokens
+  - Hook IDs in `.pre-commit-config.yaml` match `.pre-commit-hooks.yaml`
+  - `sync-flake-inputs.sh` passes
+  - `nix flake check --no-build` succeeds (evaluates all derivations without building)
+
 #### Commit message checks
 
 Commit messages are validated against [Conventional Commits](https://www.conventionalcommits.org/) at push time (via the `pre-push` git hook) and in CI. They are intentionally not checked on every local commit to allow rebasing and fixups without friction.

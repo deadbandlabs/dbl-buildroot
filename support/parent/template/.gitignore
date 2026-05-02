@@ -1,0 +1,14 @@
+# Build outputs
+output/
+dl/
+
+# Nix
+result
+result-*
+.direnv/
+.cache/
+
+# Misc
+*.swp
+*.swo
+*~
