@@ -3,20 +3,23 @@
 # Copyright 2026 Deadband Inc.
 #
 # Bump the dbl-buildroot submodule and propagate the new SHA to every pin
-# site in the parent repo. Run from the parent repo root.
+# site in the parent repo. Run from the parent repo root
 #
 # Usage:
-#   support/parent/update.sh         # advance to origin/main
-#   support/parent/update.sh <ref>   # advance to <ref> (sha, tag, branch)
+#   support/parent/update.sh                 # advance to origin/main
+#   support/parent/update.sh <ref>           # advance to <ref> (sha, tag, branch)
+#   support/parent/update.sh --force <ref>   # skip the unpushed-commit guard
 #
 # Pin sites updated:
 #   - modules/dbl-buildroot               (git submodule pointer)
 #   - .pre-commit-config.yaml             (rev: under repo: dbl-buildroot)
 #   - .github/workflows/*.yml             (uses: deadbandlabs/dbl-buildroot/...@<sha>)
-#   - flake.lock                          (nix flake update)
 #
-# Also runs check-flake-inputs.sh + check-pinned-shas.sh at the end, so a
-# successful run = a fully-consistent state ready to stage.
+# This script aborts if the submodule's current HEAD is not reachable from any
+# remote ref, use --force to override.
+#
+# Also runs check-pinned-shas.sh at the end, so a successful run = a
+# fully-consistent state ready to stage
 #
 # Does NOT git-add or git-commit anything; staging is the caller's call.
 
@@ -25,6 +28,11 @@ set -euo pipefail
 SUBMODULE_PATH="modules/dbl-buildroot"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+FORCE=0
+if [[ "${1:-}" == "--force" ]]; then
+  FORCE=1
+  shift
+fi
 REF="${1:-origin/main}"
 
 if [[ ! -d "$SUBMODULE_PATH" ]]; then
@@ -32,8 +40,28 @@ if [[ ! -d "$SUBMODULE_PATH" ]]; then
   exit 2
 fi
 
-echo "==> fetching submodule and checking out $REF"
+echo "==> fetching submodule"
 git -C "$SUBMODULE_PATH" fetch origin --tags
+
+# Guard: refuse to move off a SHA that's not reachable from any remote ref,
+# to avoid orphaning submodule commits
+# The gitlink in the parent's working tree is selected instead
+gitlink_sha="$(git ls-files -s "$SUBMODULE_PATH" | awk '{print $2}')"
+working_sha="$(git -C "$SUBMODULE_PATH" rev-parse HEAD)"
+for sha in "$gitlink_sha" "$working_sha"; do
+  [[ -z "$sha" ]] && continue
+  if ! git -C "$SUBMODULE_PATH" branch -r --contains "$sha" 2>/dev/null | grep -q .; then
+    if [[ $FORCE -eq 1 ]]; then
+      echo "warning: $sha is not on any remote branch (--force given, continuing)" >&2
+    else
+      echo "error: submodule SHA $sha is not reachable from any remote ref" >&2
+      echo "       updating would orphan this commit. Push it first, or rerun with --force." >&2
+      exit 1
+    fi
+  fi
+done
+
+echo "==> checking out $REF"
 git -C "$SUBMODULE_PATH" checkout "$REF"
 new_sha="$(git -C "$SUBMODULE_PATH" rev-parse HEAD)"
 echo "    new SHA: $new_sha"
@@ -65,14 +93,7 @@ for wf in .github/workflows/*.yml .github/workflows/*.yaml; do
   fi
 done
 
-# flake.lock: run only if expectedInputs changed
-if [[ -f flake.nix ]]; then
-  echo "==> refreshing flake.lock"
-  nix flake update 2>&1 | sed 's/^/    /'
-fi
-
 echo "==> verifying consistency"
-"$SCRIPT_DIR/sync-flake-inputs.sh" || true # autofix; non-zero just means it rewrote
 "$SCRIPT_DIR/check-pinned-shas.sh" || {
   # check-pinned-shas reads from `git ls-tree HEAD` (committed pointer), so it
   # will fail until the caller stages the submodule. Soften the message.
@@ -83,4 +104,4 @@ echo "==> verifying consistency"
 
 echo ""
 echo "==> done. Stage with:"
-echo "    git add $SUBMODULE_PATH .pre-commit-config.yaml .github/workflows/*.yml flake.lock"
+echo "    git add $SUBMODULE_PATH .pre-commit-config.yaml .github/workflows/*.yml"

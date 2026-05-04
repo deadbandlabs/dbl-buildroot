@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 #
-# Check for working for support/parent/template/.
+# Check for working for support/parent/template/
 #
 # Instantiates the template into a scratch dir, then runs the same checks
-# a downstream parent would run on commit. No real build, eval only.
-# (sync-flake-inputs, check-pinned-shas, nix flake eval)
+# a downstream parent would run on commit. No real build, eval only
+# (check-pinned-shas, nix flake eval)
 #
 # Specifically check for drift in:
 #   - template files and the placeholder set understood by init.sh

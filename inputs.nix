@@ -1,21 +1,19 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 #
-# Canonical flake-inputs declaration for both the submodule's own flake.nix
-# and any downstream parent flake.
+# Canonical, rev-pinned input URLs
 #
-# To update nixpkgs, buildroot, buildroot-nix, edit this file and run
-# `support/parent/sync-flake-inputs.sh` to propagate changes
-# (or commit and let the pre-commit hook do it)
+# `lib.nix` self-fetches these via `builtins.getFlake` / `builtins.fetchTree`,
+# so parent flakes do NOT need to redeclare these inputs. Bump a pin = edit
+# this file, commit, bump submodule pointer in parent
 {
-  nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
-  buildroot-nix = {
-    url = "github:velentr/buildroot.nix/master";
-    inputs.nixpkgs.follows = "nixpkgs";
-    inputs.buildroot.follows = "buildroot";
-  };
+  nixpkgs.url = "github:NixOS/nixpkgs/7e495b747b51f95ae15e74377c5ce1fe69c1765f";
+  buildroot-nix.url = "github:velentr/buildroot.nix/a9090cd64ce2b595a68b2acf2f13463b75673d80";
+  # Non-flake inputs: lib.nix uses builtins.fetchGit, which requires
+  # a full-SHA rev to be allowed in pure eval mode
   buildroot = {
-    url = "gitlab:buildroot.org/buildroot/2025.02.12";
+    url = "https://gitlab.com/buildroot.org/buildroot.git";
+    rev = "137a566bf5353831d97c068a4c22e6df5b4d07a0";
     flake = false;
   };
 }

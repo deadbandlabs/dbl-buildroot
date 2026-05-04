@@ -18,8 +18,8 @@
 #   --name=NAME              project name (used in flake, fragment filename, etc.)
 #
 # Optional:
-#   --defconfig=NAME         buildroot defconfig (default: myd_yf135_defconfig)
-#   --flash-layout=PATH      flashlayout (default: board/myd-yf135/flashlayout.tsv)
+#   --board=NAME             board name (drives defconfig + flashlayout convention,
+#                            default: myd-yf135)
 #   --copyright="YEAR HOLDER"  default: current year + "Deadband Inc."
 #   --target-dir=DIR         default: cwd
 #   --force                  overwrite existing files
@@ -30,8 +30,7 @@
 set -euo pipefail
 
 NAME=""
-DEFCONFIG="myd_yf135_defconfig"
-FLASH_LAYOUT="board/myd-yf135/flashlayout.tsv"
+BOARD="myd-yf135"
 COPYRIGHT_YEAR="$(date +%Y)"
 COPYRIGHT_HOLDER="Deadband Inc."
 TARGET_DIR="."
@@ -45,8 +44,7 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name=*) NAME="${1#*=}" ;;
-    --defconfig=*) DEFCONFIG="${1#*=}" ;;
-    --flash-layout=*) FLASH_LAYOUT="${1#*=}" ;;
+    --board=*) BOARD="${1#*=}" ;;
     --copyright=*)
       cp_value="${1#*=}"
       COPYRIGHT_YEAR="${cp_value%% *}"
@@ -95,8 +93,7 @@ SUBMODULE_SHA="$(git -C "$SUBMODULE_PATH" rev-parse HEAD)"
 
 echo "==> initializing project from template"
 echo "    name:          $NAME"
-echo "    defconfig:     $DEFCONFIG"
-echo "    flash layout:  $FLASH_LAYOUT"
+echo "    board:         $BOARD"
 echo "    copyright:     $COPYRIGHT_YEAR $COPYRIGHT_HOLDER"
 echo "    target:        $TARGET_DIR"
 echo "    submodule SHA: $SUBMODULE_SHA"
@@ -106,8 +103,7 @@ substitute() {
   sed \
     -e "s|@@PROJECT_NAME@@|$NAME|g" \
     -e "s|@@PROJECT_NAME_UPPER@@|$NAME_UPPER|g" \
-    -e "s|@@DEFCONFIG@@|$DEFCONFIG|g" \
-    -e "s|@@FLASH_LAYOUT@@|$FLASH_LAYOUT|g" \
+    -e "s|@@BOARD@@|$BOARD|g" \
     -e "s|@@COPYRIGHT_YEAR@@|$COPYRIGHT_YEAR|g" \
     -e "s|@@COPYRIGHT_HOLDER@@|$COPYRIGHT_HOLDER|g" \
     -e "s|@@SUBMODULE_SHA@@|$SUBMODULE_SHA|g"
@@ -132,10 +128,6 @@ while IFS= read -r src; do
   if [[ -x "$src" ]]; then chmod +x "$dst"; fi
   echo "created: $rel_subst"
 done < <(find "$TEMPLATE_DIR" -mindepth 1 -type f)
-
-echo ""
-echo "==> populating flake inputs from submodule canonical inputs.nix"
-"$SUBMODULE_ROOT/support/parent/sync-flake-inputs.sh" "$TARGET_DIR/flake.nix" || true
 
 echo ""
 echo "Init complete! Typical next steps:"

@@ -85,16 +85,8 @@
   always_run: true
 
 # Parent-repo consistency hooks
-# Catch drift between the submodule's expected inputs/SHA pins and the parent
+# Catch drift between the submodule's SHA pins and the parent
 # Note: no effect when run directly in the module
-- id: dbl-buildroot-sync-inputs
-  name: dbl-buildroot sync flake inputs (autofix)
-  entry: support/parent/sync-flake-inputs.sh
-  language: script
-  files: ^(flake\.nix|modules/dbl-buildroot/(flake|inputs)\.nix)$
-  pass_filenames: false
-  stages: [pre-commit]
-
 - id: dbl-buildroot-pinned-shas
   name: dbl-buildroot SHA pins consistent
   entry: support/parent/check-pinned-shas.sh

@@ -3,40 +3,44 @@
 #
 # Plain-nix entry point for downstream consumers
 #
-# This file is imported directly (not as a flake input) so that downstream
-# repos consuming the submodule via `import ./modules/dbl-buildroot/lib.nix`
-# get a single-pin (submodule SHA) integration with no flake-input duplication
+# Imported directly so downstream repos consuming the submodule via
+# `import ./modules/dbl-buildroot/lib.nix` get a single integration point
 #
-# Two exports:
+# Inputs are self-fetched from ./inputs.nix so parent flakes do NOT need to
+# redeclare nixpkgs/buildroot/buildroot-nix. Override args remain on
+# `mkProject` if a parent ever needs to override a pinned rev
 #
-#   expectedInputs : { name = url-or-attrset; ... }
-#     The flake inputs the submodule expects the parent to declare.
-#     `support/parent/check-flake-inputs.sh` diffs this against the parent's
-#     `flake.nix` and fails on drift
+# Single export:
 #
-#   mkProject : { nixpkgs, buildroot, buildroot-nix
-#               , name, defconfig, flashLayout
-#               , extraExternalSrcs ? [], configFragment ? null
-#               , system ? "x86_64-linux"
-#               , extraDevShellPackages ? []
-#               } -> flake-output-attrset
+#   mkProject :: { name, board, ... } -> flake-output-attrset
 #     Returns `{ packages.${system}; devShells.${system}; }` for the parent
 #     flake to splat into its own outputs
+let
+  pins = import ./inputs.nix;
+  loadInput =
+    p:
+    if p.flake or true then
+      builtins.getFlake p.url
+    else
+      # Non-flake input: fetchGit with a full-SHA rev is treated as locked
+      # in pure eval mode, no narHash needed
+      builtins.fetchGit {
+        inherit (p) url rev;
+      };
+  defaultPins = builtins.mapAttrs (_: loadInput) pins;
+in
 {
-  # Canonical inputs declaration exported here so downstream consumers
-  # can introspect via lib.expectedInputs without an extra import
-  expectedInputs = import ./inputs.nix;
-
   mkProject =
     {
-      nixpkgs,
-      buildroot,
-      buildroot-nix,
       name,
-      defconfig,
-      flashLayout,
-      extraExternalSrcs ? [ ],
+      board,
+      nixpkgs ? defaultPins.nixpkgs,
+      buildroot ? defaultPins.buildroot,
+      buildroot-nix ? defaultPins.buildroot-nix,
+      defconfig ? "${builtins.replaceStrings [ "-" ] [ "_" ] board}_defconfig",
+      flashLayout ? "board/${board}/flashlayout.tsv",
       configFragment ? null,
+      extraExternalSrcs ? [ ],
       system ? "x86_64-linux",
       extraDevShellPackages ? [ ],
     }:
@@ -59,7 +63,6 @@
           extraExternalSrcs
           configFragment
           ;
-        # Path to the submodule root for buildExternalSrc + configs/
         self = ./.;
         projectName = name;
         defconfigName = defconfig;

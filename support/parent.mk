@@ -15,7 +15,7 @@
 #   make develop                      # nix develop
 #   make update-dbl-buildroot         # bump submodule + propagate SHA
 #   make update-dbl-buildroot REF=... # bump to a specific ref
-#   make check-dbl-buildroot          # drift check (sync inputs + SHA pins)
+#   make check-dbl-buildroot          # SHA pin drift check
 #   make <anything-else>              # forwards to submodule Makefile with
 #                                       BR2_EXTERNAL_EXTRA + CONFIG_FRAGMENT
 
@@ -47,7 +47,6 @@ update-dbl-buildroot:
 	$(DBL_BR_HELPERS)/update.sh $(REF)
 
 check-dbl-buildroot:
-	$(DBL_BR_HELPERS)/sync-flake-inputs.sh
 	$(DBL_BR_HELPERS)/check-pinned-shas.sh
 
 # --- Submodule Makefile forwarder ---

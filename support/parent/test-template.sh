@@ -8,7 +8,6 @@
 # Tests:
 #   - template files missing required placeholders (or extras)
 #   - init.sh substitution bugs
-#   - sync-flake-inputs.sh failing on a freshly-generated flake
 #   - generated flake failing `nix flake check`
 #   - hooks added to template but missing from .pre-commit-hooks.yaml
 #
@@ -90,10 +89,6 @@ for id in $listed_ids; do
     exit 1
   fi
 done
-
-# Drift gates.
-echo "==> sync-flake-inputs"
-"$WORK/parent/modules/dbl-buildroot/support/parent/sync-flake-inputs.sh"
 
 # Hermetic flake-eval check.
 echo "==> nix flake check"

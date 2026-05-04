@@ -10,7 +10,7 @@ packages, config overlays, and CI on top of the base build system.
 parent-repo/                    (superproject)
 ├── modules/dbl-buildroot/      (submodule)
 │   ├── lib.nix                 mkProject entry point
-│   ├── inputs.nix              canonical flake-input URLs
+│   ├── inputs.nix              canonical input URLs for target revs
 │   ├── nix/build.nix           hermetic build derivation
 │   └── support/parent/         integration scripts
 ├── overlay/                    (BR2_EXTERNAL tree)
@@ -25,12 +25,11 @@ parent-repo/                    (superproject)
 The submodule provides:
 
 - `lib.mkProject`: builds `packages + devShells` from a single call
-- `inputs.nix`: canonical input URLs (single source of truth)
+- `inputs.nix`: rev-pinned input URLs (fetched by `lib.nix` to be inherited by parent flakes)
 - `support/parent.mk`: Makefile fragment with `make build`, `make develop`,
   `make update-dbl-buildroot`, `make check-dbl-buildroot`
 - `support/parent/update.sh`: one-shot bumper (submodule + all SHA pins)
 - `support/parent/check-pinned-shas.sh`: drift gate
-- `support/parent/sync-flake-inputs.sh`: pre-commit autofix for inputs block
 - `.github/workflows/downstream.yml`: Runs all build CI (checks release + debug)
 - `.pre-commit-hooks.yaml`: exported hooks for downstream repos
 
@@ -42,8 +41,7 @@ git submodule add git@github.com:deadbandlabs/dbl-buildroot.git \
     modules/dbl-buildroot
 modules/dbl-buildroot/support/parent/init.sh \
     --name=my-project \
-    --defconfig=myd_yf135_defconfig \
-    --flash-layout=board/myd-yf135/flashlayout.tsv
+    --board=myd-yf135
 ```
 
 This generates everything from the template in `support/parent/template/`:
@@ -67,7 +65,7 @@ make check-dbl-buildroot  # drift gates pass
 make build                # hermetic nix build
 ```
 
-Run `init.sh --help` for all options (copyright, defconfig override, etc.).
+Run `init.sh --help` for all options (copyright, board, etc.).
 
 ## Updating the submodule
 
@@ -80,37 +78,40 @@ This runs `support/parent/update.sh` which:
 
 1. Fetches and checks out the target ref in the submodule
 1. Propagates the new SHA to `.pre-commit-config.yaml` and all workflow `uses:` refs
-1. Refreshes `flake.lock`
 1. Runs consistency checks
 
 Stage everything it reports at the end:
 
 ```bash
-git add modules/dbl-buildroot .pre-commit-config.yaml .github/workflows/ flake.lock
+git add modules/dbl-buildroot .pre-commit-config.yaml .github/workflows/
 ```
 
 ## Drift detection
 
-Two pre-commit hooks catch drift of submodule references (SHAs) before it reaches CI:
+One pre-commit hook catches drift of submodule references (SHAs) before it reaches CI:
 
 | Hook | Script | What it checks |
 |------|--------|---------------|
-| `dbl-buildroot-sync-inputs` | `support/parent/sync-flake-inputs.sh` | `inputs.nix` vs. `flake.nix` inputs block |
 | `dbl-buildroot-pinned-shas` | `support/parent/check-pinned-shas.sh` | Submodule SHA vs. `rev:` in pre-commit config + `uses:@<sha>` in workflows |
 
-These are registered as no-op when running inside the submodule itself
-(repos without a `modules/dbl-buildroot/` directory).
+This is a no-op when running inside the submodule itself (repos without a
+`modules/dbl-buildroot/` directory).
+
+Bumping the buildroot/nixpkgs/buildroot-nix pins themselves is done by editing
+`modules/dbl-buildroot/inputs.nix` upstream and bumping the submodule pointer
+in the parent. There is no parent-side input to keep in sync.
 
 ## mkProject parameters
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `nixpkgs` | yes | - | nixpkgs flake input |
-| `buildroot` | yes | - | Buildroot source (non-flake) |
-| `buildroot-nix` | yes | - | buildroot.nix flake input |
 | `name` | yes | - | Project name (derivation name) |
-| `defconfig` | yes | - | Buildroot defconfig to apply |
-| `flashLayout` | yes | - | Path to flash layout TSV |
+| `board` | yes | - | Board name; drives `defconfig` + `flashLayout` defaults |
+| `nixpkgs` | no | self-fetched from `inputs.nix` | Override nixpkgs source |
+| `buildroot` | no | self-fetched from `inputs.nix` | Override Buildroot source |
+| `buildroot-nix` | no | self-fetched from `inputs.nix` | Override buildroot.nix |
+| `defconfig` | no | `<board-with-underscores>_defconfig` | Override defconfig name |
+| `flashLayout` | no | `board/<board>/flashlayout.tsv` | Override flash layout path |
 | `extraExternalSrcs` | no | `[]` | Additional BR2_EXTERNAL trees |
 | `configFragment` | no | `null` | Defconfig fragment to merge over base |
 | `system` | no | `"x86_64-linux"` | Target system |

@@ -27,9 +27,8 @@ if [[ ! -d "$SUBMODULE_PATH/.git" && ! -f "$SUBMODULE_PATH/.git" ]]; then
   exit 2
 fi
 
-# Canonical SHA = the commit the parent's HEAD index points to for the
-# submodule. (Not the submodule's working-tree HEAD; that may be ahead/behind.)
-# If HEAD does not exist (first commit), read from the index via ls-files.
+# Canonical SHA = the commit the parent's HEAD index points to for the submodule
+# If HEAD does not exist (initial commit), read from the index via ls-files
 if git rev-parse HEAD >/dev/null 2>&1; then
   canonical="$(git ls-tree HEAD "$SUBMODULE_PATH" | awk '{print $3}')"
 else

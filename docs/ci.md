@@ -40,7 +40,6 @@ Jobs:
   - All expected template files are created
   - No leftover `@@PLACEHOLDER@@` tokens
   - Hook IDs in `.pre-commit-config.yaml` match `.pre-commit-hooks.yaml`
-  - `sync-flake-inputs.sh` passes
   - `nix flake check --no-build` succeeds (evaluates all derivations without building)
 
 #### Commit message checks

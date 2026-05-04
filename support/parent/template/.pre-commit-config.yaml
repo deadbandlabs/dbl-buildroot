@@ -17,5 +17,4 @@ repos:
       - id: mdformat
       - id: commitizen-check
       - id: reuse-lint
-      - id: dbl-buildroot-sync-inputs
       - id: dbl-buildroot-pinned-shas
