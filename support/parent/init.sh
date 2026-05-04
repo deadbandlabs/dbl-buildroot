@@ -138,7 +138,8 @@ echo "==> populating flake inputs from submodule canonical inputs.nix"
 "$SUBMODULE_ROOT/support/parent/sync-flake-inputs.sh" "$TARGET_DIR/flake.nix" || true
 
 echo ""
-echo "Init complete. Next:"
+echo "Init complete! Typical next steps:"
 echo "  cd $TARGET_DIR"
 echo "  git add -A && git commit -m 'feat: bootstrap from dbl-buildroot template'"
 echo "  make build    # smoke-test the hermetic build"
+echo "  ./modules/dbl-buildroot/support/pre-commit/install-pre-commit.sh"

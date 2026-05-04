@@ -25,7 +25,7 @@ if [ "$DBL_BUILDROOT_DIR" = "." ]; then
   PRE_COMMIT_SCRIPT="support/pre-commit.sh"
 else
   # Relative path from repo root (e.g. modules/dbl-buildroot/support/pre-commit.sh)
-  PRE_COMMIT_SCRIPT="${DBL_BUILDROOT_DIR#${repo_root}/}/support/pre-commit.sh"
+  PRE_COMMIT_SCRIPT="${DBL_BUILDROOT_DIR#"${repo_root}"/}/support/pre-commit.sh"
 fi
 
 git config core.hooksPath .githooks

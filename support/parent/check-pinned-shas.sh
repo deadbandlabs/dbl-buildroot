@@ -29,7 +29,12 @@ fi
 
 # Canonical SHA = the commit the parent's HEAD index points to for the
 # submodule. (Not the submodule's working-tree HEAD; that may be ahead/behind.)
-canonical="$(git ls-tree HEAD "$SUBMODULE_PATH" | awk '{print $3}')"
+# If HEAD does not exist (first commit), read from the index via ls-files.
+if git rev-parse HEAD >/dev/null 2>&1; then
+  canonical="$(git ls-tree HEAD "$SUBMODULE_PATH" | awk '{print $3}')"
+else
+  canonical="$(git ls-files -s "$SUBMODULE_PATH" | awk '{print $2}')"
+fi
 if [[ -z "$canonical" ]]; then
   echo "error: could not read submodule SHA from git index" >&2
   exit 2
