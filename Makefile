@@ -2,19 +2,24 @@
 # Copyright 2026 Deadband Inc.
 BUILDROOT_SRC ?= $(shell echo $$BUILDROOT_SRC)
 
-# Build/output paths
+# Build/output paths.
+# OUTPUT_BASE anchors all build artefacts (output/, dl/). When this Makefile
+# is invoked directly (developing the submodule), it defaults to the submodule
+# root. When invoked via parent.mk from a superproject, parent.mk overrides
+# OUTPUT_BASE so artefacts land in the parent repo, not inside the submodule.
+OUTPUT_BASE   ?= $(CURDIR)
 MODE          ?= release
-O             ?= $(CURDIR)/output/$(MODE)
-RELEASE_O     ?= $(CURDIR)/output/release
-CCACHE_DIR    ?= $(CURDIR)/output/ccache
+O             ?= $(OUTPUT_BASE)/output/$(MODE)
+RELEASE_O     ?= $(OUTPUT_BASE)/output/release
+CCACHE_DIR    ?= $(OUTPUT_BASE)/output/ccache
 
 # Debug builds reuse release host tools by default through output/debug/host symlink.
 # Set SHARE_HOST_FOR_DEBUG=0 to disable and keep separate host trees.
 SHARE_HOST_FOR_DEBUG ?= 1
 
-# Download cache kept at the project root so it survives cleaning output dir
+# Download cache kept at the output base so it survives cleaning output dir
 # Override with BR2_DL_DIR=/path/to/shared/cache to share across projects
-BR2_DL_DIR    ?= $(CURDIR)/dl
+BR2_DL_DIR    ?= $(OUTPUT_BASE)/dl
 
 # Variant config/script paths
 RELEASE_DEFCONFIG := $(CURDIR)/configs/myd_yf135_defconfig
@@ -43,13 +48,11 @@ LINUX_VERSION := $(shell grep BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE \
 LINUX_SRC     := $(O)/build/linux-$(LINUX_VERSION)
 LINUX_CONFIG  := $(CURDIR)/board/myd-yf135/linux.config
 
-# Host tools (including host ccache) depend on shared libs in $(O)/host/lib{,64}.
-# In some environments (e.g. Nix), those paths are not in the dynamic linker
-# default search path, so explicitly prepend them.
-HOST_LIB_PATHS = $(O)/host/lib:$(O)/host/lib64
-BR2_ENV = LD_LIBRARY_PATH="$(HOST_LIB_PATHS):$$LD_LIBRARY_PATH"
+# Host tools self-resolve libs via RUNPATH=$ORIGIN/../lib (via HOSTLDFLAGS),
+# Avoid setting LD_LIBRARY_PATH to prevent leaking into target cross-linked libs
+# when -rpath-link is absent, picking up host x86 libs (libcrypt.so) and failing with "file format not recognized".
 BR2_ARGS = -C $(BUILDROOT_SRC) O=$(O) BR2_EXTERNAL=$(BR2_EXTERNAL) BR2_DL_DIR=$(BR2_DL_DIR) BR2_CCACHE_DIR=$(CCACHE_DIR)
-BR2_MAKE = $(BR2_ENV) $(MAKE) $(BR2_ARGS)
+BR2_MAKE = $(MAKE) $(BR2_ARGS)
 
 # Build logs:
 # One timestamped file per invocation, stored in output/logs/ sorted chronologically by filename
@@ -80,7 +83,7 @@ endif
 
 .DEFAULT_GOAL := all
 
-.PHONY: help all release debug regen-debug-defconfig prepare-debug-host-reuse host-toolchain toolchain
+.PHONY: help all release debug regen-debug-defconfig prepare-debug-host-reuse host-toolchain _toolchain-only toolchain
 
 help:
 	@echo "Common targets:"
@@ -104,8 +107,8 @@ all: $(_VARIANT_PREP)
 	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
 	$(_APPLY_DEFCONFIG)
 	$(BR2_MAKE) 2>&1 | tee $(LOG); exit $${PIPESTATUS[0]}
-	@ln -sfn $(MODE) $(CURDIR)/output/latest
-	@echo "INFO: output/latest -> $(MODE)"
+	@ln -sfn $(MODE) $(OUTPUT_BASE)/output/latest
+	@echo "INFO: $(OUTPUT_BASE)/output/latest -> $(MODE)"
 
 release:
 	$(MAKE) MODE=release all
@@ -114,7 +117,12 @@ debug:
 	$(MAKE) MODE=debug all
 
 host-toolchain:
-	$(MAKE) MODE=release toolchain
+	$(MAKE) MODE=release _toolchain-only
+
+_toolchain-only:
+	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
+	$(_APPLY_DEFCONFIG)
+	$(BR2_MAKE) toolchain
 
 myd_yf135_debug_defconfig: regen-debug-defconfig
 	$(BR2_MAKE) BR2_DEFCONFIG=$(DEBUG_DEFCONFIG) defconfig

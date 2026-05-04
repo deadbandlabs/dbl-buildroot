@@ -53,7 +53,10 @@ check-dbl-buildroot:
 # Any target not defined above forwards to the submodule's Makefile, with
 # the parent's overlay + fragment injected. Empty DBL_BR_OVERLAY/_FRAGMENT
 # disable the corresponding flag (so consumers without an overlay still work).
-DBL_BR_FORWARD_FLAGS :=
+#
+# OUTPUT_BASE points the submodule's output/dl/ccache trees at the parent
+# repo root, so build artefacts live in the parent (not inside the submodule).
+DBL_BR_FORWARD_FLAGS := OUTPUT_BASE=$(REPO_ROOT)
 ifneq ($(strip $(DBL_BR_OVERLAY)),)
 DBL_BR_FORWARD_FLAGS += BR2_EXTERNAL_EXTRA=$(REPO_ROOT)/$(DBL_BR_OVERLAY)
 endif
