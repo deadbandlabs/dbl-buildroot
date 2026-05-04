@@ -114,7 +114,7 @@ in
         brShellArgs.packages
         ++ [
           # STM32CubeProgrammer CLI for USB DFU flashing of STM32MP1
-          # Requires manual download due to license; see pkgs/stm32cubeprog.nix
+          # Requires manual download due to license; see nix/stm32cubeprog.nix
           stm32cubeprog
 
           # act: run GitHub Actions workflows locally (via podman rootless)

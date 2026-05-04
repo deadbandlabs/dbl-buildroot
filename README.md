@@ -202,7 +202,7 @@ Use the Nix + Cachix path for reproducible full builds:
 
 Uses STM32CubeProgrammer via DFU (USB-C in download mode). `flashlayout.tsv`
 targets `spi-nand0` (SPI-NAND via QSPI). Programmer is packaged in
-`pkgs/stm32cubeprog.nix` and available in the devshell as `STM32_Programmer_CLI`.
+`nix/stm32cubeprog.nix` and available in the devshell as `STM32_Programmer_CLI`.
 
 Current `flashlayout.tsv` is a **bring-up profile**: it programs only `fsbl1`,
 `fsbl2`, `fip-a1`, and `UBI`. Reserved slots (`metadata*`, `fip-a2`, `fip-b*`)

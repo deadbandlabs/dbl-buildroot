@@ -47,7 +47,7 @@
         config.allowUnfreePredicate = pkg: pkg.pname == "stm32cubeprog";
       };
 
-      stm32cubeprog = pkgs.callPackage ./pkgs/stm32cubeprog.nix { };
+      stm32cubeprog = pkgs.callPackage ./nix/stm32cubeprog.nix { };
       cmake-compat = pkgs.callPackage ./nix/cmake-compat.nix { };
 
       buildPkgs = import ./nix/build.nix {
