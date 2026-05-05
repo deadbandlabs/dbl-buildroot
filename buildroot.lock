@@ -160,13 +160,13 @@
       "https://sources.buildroot.net/dtc-1.7.2.tar.xz"
     ]
   },
-  "expat-2.7.4.tar.xz": {
+  "expat-2.7.5.tar.xz": {
     "algo": "sha256",
-    "checksum": "9e9cabb457c1e09de91db2706d8365645792638eb3be1f94dbb2149301086ac0",
+    "checksum": "1032dfef4ff17f70464827daa28369b20f6584d108bc36f17ab1676e1edd2f91",
     "uris": [
-      "https://github.com/libexpat/libexpat/releases/download/R_2_7_4/expat-2.7.4.tar.xz",
-      "https://sources.buildroot.net/expat/expat-2.7.4.tar.xz",
-      "https://sources.buildroot.net/expat-2.7.4.tar.xz"
+      "https://github.com/libexpat/libexpat/releases/download/R_2_7_5/expat-2.7.5.tar.xz",
+      "https://sources.buildroot.net/expat/expat-2.7.5.tar.xz",
+      "https://sources.buildroot.net/expat-2.7.5.tar.xz"
     ]
   },
   "fakeroot_1.36.orig.tar.gz": {
@@ -348,13 +348,13 @@
       "https://sources.buildroot.net/libxcrypt-4.4.38.tar.xz"
     ]
   },
-  "linux-6.12.73.tar.xz": {
+  "linux-6.12.81.tar.xz": {
     "algo": "sha256",
-    "checksum": "4059d394cbf8e9548df36d37e0b8a80c4409ac4e14ecc5019a72a770ef7b41ba",
+    "checksum": "c2b09c3643946a7097c5371e1dcb123c66505ea30fafd0b0a22dc1d5f0228847",
     "uris": [
-      "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.73.tar.xz",
-      "https://sources.buildroot.net/linux/linux-6.12.73.tar.xz",
-      "https://sources.buildroot.net/linux-6.12.73.tar.xz"
+      "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.81.tar.xz",
+      "https://sources.buildroot.net/linux/linux-6.12.81.tar.xz",
+      "https://sources.buildroot.net/linux-6.12.81.tar.xz"
     ]
   },
   "lzo-2.10.tar.gz": {
@@ -429,13 +429,13 @@
       "https://sources.buildroot.net/ninja-1.11.1.g95dee.kitware.jobserver-1.tar.gz"
     ]
   },
-  "openssl-3.4.4.tar.gz": {
+  "openssl-3.5.6.tar.gz": {
     "algo": "sha256",
-    "checksum": "7bdf55ac20f2779e99e5eca306f824fad2b37dee5a06cc35ed5a8b85a6060010",
+    "checksum": "deae7c80cba99c4b4f940ecadb3c3338b13cb77418409238e57d7f31f2a3b736",
     "uris": [
-      "https://github.com/openssl/openssl/releases/download/openssl-3.4.4/openssl-3.4.4.tar.gz",
-      "https://sources.buildroot.net/libopenssl/openssl-3.4.4.tar.gz",
-      "https://sources.buildroot.net/openssl-3.4.4.tar.gz"
+      "https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz",
+      "https://sources.buildroot.net/libopenssl/openssl-3.5.6.tar.gz",
+      "https://sources.buildroot.net/openssl-3.5.6.tar.gz"
     ]
   },
   "optee-client-4.3.0.tar.gz": {

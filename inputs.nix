@@ -13,7 +13,7 @@
   # a full-SHA rev to be allowed in pure eval mode
   buildroot = {
     url = "https://gitlab.com/buildroot.org/buildroot.git";
-    rev = "137a566bf5353831d97c068a4c22e6df5b4d07a0";
+    rev = "cb24a5a52303abfcb050a160934d25d9042480d8"; # 2025.02.13
     flake = false;
   };
 }
