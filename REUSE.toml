@@ -19,7 +19,7 @@ SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
 path = [
-  "board/myd-yf135/patches/uboot/0003-stm32mp13-add-spi-nand-ubi-boot-support.patch",
+  "board/myd-yf135/patches/uboot/0001-configs-stm32mp13-add-SPI-NAND-UBI-boot-support.patch",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = [

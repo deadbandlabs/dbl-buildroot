@@ -35,6 +35,10 @@ let
     inherit pkgs;
     src = buildroot;
     externalSrc = buildExternalSrc;
+    extraSha256Hashes = {
+      "uboot-e08877916e24cf97d3afc67aee65ed2204790f48-git4.tar.gz" =
+        "10098214f7ae9302a005b1c0a9c17353b7cd98a5bf08c0f84c3c86355fecd76a";
+    };
     defconfig = defconfigName;
     lockfile = self + "/buildroot.lock";
     nativeBuildInputs = [

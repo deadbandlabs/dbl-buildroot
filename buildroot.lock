@@ -661,13 +661,12 @@
       "https://sources.buildroot.net/u-boot-2021.07.tar.bz2"
     ]
   },
-  "u-boot-2025.01.tar.bz2": {
+  "uboot-e08877916e24cf97d3afc67aee65ed2204790f48-git4.tar.gz": {
     "algo": "sha256",
-    "checksum": "cdef7d507c93f1bbd9f015ea9bc21fa074268481405501945abc6f854d5b686f",
+    "checksum": "10098214f7ae9302a005b1c0a9c17353b7cd98a5bf08c0f84c3c86355fecd76a",
     "uris": [
-      "https://ftp.denx.de/pub/u-boot/u-boot-2025.01.tar.bz2",
-      "https://sources.buildroot.net/uboot/u-boot-2025.01.tar.bz2",
-      "https://sources.buildroot.net/u-boot-2025.01.tar.bz2"
+      "https://sources.buildroot.net/uboot/uboot-e08877916e24cf97d3afc67aee65ed2204790f48-git4.tar.gz",
+      "https://sources.buildroot.net/uboot-e08877916e24cf97d3afc67aee65ed2204790f48-git4.tar.gz"
     ]
   },
   "util-linux-2.40.2.tar.xz": {
