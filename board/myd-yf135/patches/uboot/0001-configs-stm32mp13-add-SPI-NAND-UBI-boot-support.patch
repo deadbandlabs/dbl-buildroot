@@ -1,26 +1,30 @@
-From 21f1a6085a51d84c3cf12a8726e91b25fbdfa7f1 Mon Sep 17 00:00:00 2001
-From: Austin Shirley <ausshir@gmail.com>
-Date: Thu, 9 Apr 2026 17:33:31 -0600
-Subject: [PATCH] stm32mp13: add SPI-NAND UBI boot support
+From 72c5242e201d44075aa18b1a0b1b293c0dc19663 Mon Sep 17 00:00:00 2001
+From: Austin Shirley <austin@deadband.dev>
+Date: Wed, 6 May 2026 15:24:33 -0600
+Subject: [PATCH] configs: stm32mp13: add SPI-NAND UBI boot support
 
 The STM32MP13 default environment only handles MMC and serial/USB boot.
 When TF-A reports BOOT_FLASH_SPINAND the boot_device variable is set to
-"spi-nand" but bootcmd_stm32mp never redirects boot_targets to ubifs0,
+'spi-nand' but bootcmd_stm32mp never redirects boot_targets to ubifs0,
 so distro_bootcmd falls through to MMC/USB.
 
 This change mirrors the STM32MP15 logic:
  - Add a BOOT_TARGET_UBIFS entry to BOOT_TARGET_DEVICES so that
-   bootcmd_ubifs0 is defined (ubi part UBI; ubifsmount ubi0:rootfs).
- - Add the "spi-nand" / "nand" clause to bootcmd_stm32mp so that
-   boot_targets is set to "ubifs0" when booting from NAND.
+   bootcmd_ubifs0 is defined (ubi part UBI; ubifsmount ubi0:boot).
+ - Add the 'spi-nand' / 'nand' clause to bootcmd_stm32mp so that
+   boot_targets is set to 'ubifs0' when booting from NAND.
 
-Signed-off-by: Austin Shirley <ausshir@gmail.com>
+Signed-off-by: Austin Shirley <austin@deadband.dev>
+Cc: Patrick Delaunay <patrick.delaunay@foss.st.com>
+Cc: Patrice Chotard <patrice.chotard@foss.st.com>
+Cc: Tom Rini <trini@konsulko.com>
+Cc: uboot-stm32@st-md-mailman.stormreply.com
 ---
  include/configs/stm32mp13_common.h | 13 ++++++++++++-
  1 file changed, 12 insertions(+), 1 deletion(-)
 
 diff --git a/include/configs/stm32mp13_common.h b/include/configs/stm32mp13_common.h
-index 3e3f49abae0..f5a31deb6ee 100644
+index 3e3f49abae0..e707b146f90 100644
 --- a/include/configs/stm32mp13_common.h
 +++ b/include/configs/stm32mp13_common.h
 @@ -33,6 +33,12 @@
@@ -28,7 +32,7 @@ index 3e3f49abae0..f5a31deb6ee 100644
  #endif
  
 +#ifdef CONFIG_CMD_UBIFS
-+#define BOOT_TARGET_UBIFS(func)	func(UBIFS, ubifs, 0, UBI, rootfs)
++#define BOOT_TARGET_UBIFS(func)	func(UBIFS, ubifs, 0, UBI, boot)
 +#else
 +#define BOOT_TARGET_UBIFS(func)
 +#endif
@@ -64,5 +68,5 @@ index 3e3f49abae0..f5a31deb6ee 100644
  	"fi;\0"
  
 -- 
-2.53.0
+2.54.0
 
