@@ -210,8 +210,12 @@
 				reg = <0xe00000 0x400000>; /* 4 MB (FIP bank B copy 2) */
 			};
 			partition@1200000 {
+				label = "env";
+				reg = <0x1200000 0x080000>; /* 512 KB (U-Boot env) */
+			};
+			partition@1280000 {
 				label = "UBI";
-				reg = <0x1200000 0xee00000>; /* remaining ~238 MB (rootfs + data) */
+				reg = <0x1280000 0xed80000>; /* 237.5 MB to end of NAND (1900 PEBs); UBI: rootfs A/B/factory + overlay + optee_ss + slotinfo */
 			};
 		};
 	};

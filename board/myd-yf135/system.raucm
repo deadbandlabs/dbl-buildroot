@@ -1,0 +1,28 @@
+{
+  "manifest": {
+    "created": "2026-05-08T00:00:00Z",
+    "filename": "system.raucm",
+    "description": "DBL MYD-YF135 full system update",
+    "bundle": {
+      "format": "plain"
+    }
+  },
+  "metadata": {},
+  "updates": [
+    {
+      "slotclass": "rootfs",
+      "version": "1",
+      "hooks": {
+        "pre-install": "/usr/bin/rauc-wipe-overlay.sh",
+        "post-install": "/usr/bin/rauc-update-fip.sh"
+      },
+      "files": [
+        {
+          "filename": "rootfs.ubi",
+          "install-to": "/dev/ubi0_0"
+        }
+      ]
+    }
+  ],
+  "artifacts": {}
+}

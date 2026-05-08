@@ -6,7 +6,7 @@ include $(sort $(wildcard $(BR2_EXTERNAL_MYD_YF135_PATH)/package/*/*.mk))
 # hook and append the dtb to the ST Makefile at build time:
 #
 # CUSTOM_DTS_PATH would normally be used, but copies to arch/arm/boot/dts/, but
-# Linux 6.12+ refactored STM32MP device trees to arch/arm/boot/dts/st/, which is 
+# Linux 6.12+ refactored STM32MP device trees to arch/arm/boot/dts/st/, which is
 # incompatible with this standard method
 define LINUX_MYD_YF135_COPY_DTS
 	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/stm32mp135d-myd-yf135.dts \
@@ -16,3 +16,41 @@ define LINUX_MYD_YF135_COPY_DTS
 			>> $(@D)/arch/arm/boot/dts/st/Makefile
 endef
 LINUX_POST_PATCH_HOOKS += LINUX_MYD_YF135_COPY_DTS
+
+# Companion UBI volume images. Built as direct make rules wired into
+# rootfs.ubi's prerequisites, so make ensures they exist before ubinize
+# packs the .ubi file. Sizes and names must match ubinize.cfg (single
+# source of truth: ubinize_check.py).
+#
+# overlay.ubifs   empty UBIFS, mounted as overlayfs upper at runtime
+# optee_ss.ubifs  empty UBIFS, populated by OP-TEE on first use
+# slotinfo.bin    zeroed placeholder, RAUC writes via /dev/ubi0_5 at runtime
+
+# Empty source tree for mkfs.ubifs -r (creates an empty filesystem image).
+$(BUILD_DIR)/.empty:
+	mkdir -p $@
+
+$(BINARIES_DIR)/overlay.ubifs: $(BUILD_DIR)/.empty | host-mtd
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 561 -r $< -o $@
+
+$(BINARIES_DIR)/optee_ss.ubifs: $(BUILD_DIR)/.empty | host-mtd
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -r $< -o $@
+
+$(BINARIES_DIR)/slotinfo.bin:
+	dd if=/dev/zero of=$@ bs=634880 count=1 status=none
+
+# U-Boot env binary, redundant variant. BR2_TARGET_UBOOT_ENVIMAGE does not
+# pass -r to mkenvimage; CONFIG_SYS_REDUNDAND_ENVIRONMENT requires the flag
+# byte -r emits, otherwise U-Boot CRC fails. Single image is flashed to
+# both env-a and env-b via flashlayout.tsv (both start ACTIVE, U-Boot
+# picks the primary, first saveenv flips the secondary).
+$(BINARIES_DIR)/uboot.env: $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/default-env.env | host-uboot-tools
+	$(HOST_DIR)/bin/mkenvimage -s 0x20000 -r -o $@ $<
+
+# Wire companion images into rootfs.ubi's prereqs so make builds them
+# before ubinize. Recipe stays in fs/ubi/ubi.mk; we only add deps here.
+$(BINARIES_DIR)/rootfs.ubi: \
+	$(BINARIES_DIR)/overlay.ubifs \
+	$(BINARIES_DIR)/optee_ss.ubifs \
+	$(BINARIES_DIR)/slotinfo.bin \
+	$(BINARIES_DIR)/uboot.env

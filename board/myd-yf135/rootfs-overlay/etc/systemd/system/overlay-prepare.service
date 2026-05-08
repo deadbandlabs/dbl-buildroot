@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+
+[Unit]
+Description=Create overlayfs upper/work skeleton on /mnt/overlay
+DefaultDependencies=no
+After=mnt-overlay.mount
+Requires=mnt-overlay.mount
+Before=local-fs.target etc.mount var.mount
+ConditionPathIsMountPoint=/mnt/overlay
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mkdir -p /mnt/overlay/upper/etc /mnt/overlay/work/etc /mnt/overlay/upper/var /mnt/overlay/work/var
+
+[Install]
+WantedBy=local-fs.target

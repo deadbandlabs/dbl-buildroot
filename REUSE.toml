@@ -36,6 +36,7 @@ path = [
   "configs/myd_yf135_debug.fragment",
   "board/myd-yf135/linux.config",
   "board/myd-yf135/rootfs-overlay/boot/extlinux/extlinux.conf",
+  "board/myd-yf135/system.raucm",
   "README.md",
   "CONTRIBUTING.md",
   "SECURITY.md",

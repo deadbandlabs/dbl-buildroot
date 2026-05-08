@@ -17,4 +17,6 @@ P	0x08	fip-a1	FIP	spi-nand0	0x200000	../../output/latest/images/fip.bin
 -	0x09	fip-a2	FIP	spi-nand0	0x600000	../../output/latest/images/fip.bin
 -	0x0A	fip-b1	FIP	spi-nand0	0xa00000	../../output/latest/images/fip.bin
 -	0x0B	fip-b2	FIP	spi-nand0	0xe00000	../../output/latest/images/fip.bin
-P	0x0C	UBI	System	spi-nand0	0x1200000	../../output/latest/images/rootfs.ubi
+P	0x0C	env-a	Binary	spi-nand0	0x1200000	../../output/latest/images/uboot.env
+P	0x0E	env-b	Binary	spi-nand0	0x1240000	../../output/latest/images/uboot.env
+P	0x0D	UBI	System	spi-nand0	0x1280000	../../output/latest/images/rootfs.ubi
