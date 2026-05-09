@@ -41,11 +41,12 @@ $(BINARIES_DIR)/slotinfo.bin:
 
 # U-Boot env binary, redundant variant. BR2_TARGET_UBOOT_ENVIMAGE does not
 # pass -r to mkenvimage; CONFIG_SYS_REDUNDAND_ENVIRONMENT requires the flag
-# byte -r emits, otherwise U-Boot CRC fails. Single image is flashed to
-# both env-a and env-b via flashlayout.tsv (both start ACTIVE, U-Boot
-# picks the primary, first saveenv flips the secondary).
+# byte -r emits, otherwise U-Boot CRC fails. Same image goes into UBI
+# volumes env-a and env-b at flash time (see ubinize.cfg); both start
+# ACTIVE, U-Boot picks the primary, first saveenv flips the secondary.
+# Size must match CONFIG_ENV_SIZE in uboot.config.
 $(BINARIES_DIR)/uboot.env: $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/default-env.env | host-uboot-tools
-	$(HOST_DIR)/bin/mkenvimage -s 0x20000 -r -o $@ $<
+	$(HOST_DIR)/bin/mkenvimage -s 0x4000 -r -o $@ $<
 
 # Wire companion images into rootfs.ubi's prereqs so make builds them
 # before ubinize. Recipe stays in fs/ubi/ubi.mk; we only add deps here.

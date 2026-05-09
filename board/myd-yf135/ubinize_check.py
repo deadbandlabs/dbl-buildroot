@@ -19,8 +19,8 @@ from typing import Optional
 
 # NAND geometry (Micron MT29F2G01ABAGDWB) and partition layout (DTS)
 NAND_SIZE = 0x10000000  # 256 MB
-UBI_OFFSET = 0x1280000  # start of UBI partition (DTS)
-UBI_SIZE = NAND_SIZE - UBI_OFFSET  # 0xed80000 = 237.5 MB; matches DTS
+UBI_OFFSET = 0x1200000  # start of UBI partition (DTS)
+UBI_SIZE = NAND_SIZE - UBI_OFFSET  # 0xee00000 = 238 MB; matches DTS
 
 PEB_SIZE = 128 * 1024  # 131072 B (NAND erase block)
 PAGE_SIZE = 2 * 1024  # 2048 B (NAND page; no sub-pages)
@@ -52,7 +52,7 @@ class Vol:
     name: str
     vol_id: int
     size: Optional[int]  # bytes; None = consume remaining usable space
-    image: str  # ubinize image= token (literal filename or BR2_ var)
+    image: Optional[str]  # ubinize image= token; None = create empty volume
     desc: str
 
 
@@ -75,6 +75,11 @@ VOLUMES = [
     ),
     Vol("optee_ss", 4, 4 * MB, "optee_ss.ubifs", "OP-TEE secure storage"),
     Vol("slotinfo", 5, 512 * KB, "slotinfo.bin", "RAUC slot state"),
+    # U-Boot env volumes. ENV_SIZE=0x4000 (16 KB) fits in 1 LEB (~124 KB).
+    # Pre-populated with mkenvimage(-r) output so default-env (try_boot,
+    # BOOT_ORDER, ...) is present on first boot.
+    Vol("env-a", 6, LEB_SIZE, "uboot.env", "U-Boot env primary"),
+    Vol("env-b", 7, LEB_SIZE, "uboot.env", "U-Boot env redundant"),
 ]
 
 
@@ -165,15 +170,28 @@ CFG_HEADER = """\
 {vol_map}
 """
 
-VOL_BLOCK = """
-[{name}]
-mode=ubi
-image={image}
-vol_id={vol_id}
-vol_type=dynamic
-vol_name={name}
-vol_size={size}
-"""
+
+def vol_block(v: Vol, size: int) -> str:
+    # image=None produces an empty volume (no payload). ubinize creates the
+    # volume header at LEB 0 and stops; flashing the resulting UBI image
+    # writes only that header for the volume, not size bytes of payload.
+    lines = [
+        f"\n[{v.name}]",
+        "mode=ubi",
+    ]
+    if v.image is not None:
+        token = (
+            v.image if v.image == "BR2_ROOTFS_UBIFS_PATH" else f"BINARIES_DIR/{v.image}"
+        )
+        lines.append(f"image={token}")
+    lines += [
+        f"vol_id={v.vol_id}",
+        "vol_type=dynamic",
+        f"vol_name={v.name}",
+        f"vol_size={size}",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def emit_cfg(s, path):
@@ -195,24 +213,37 @@ def emit_cfg(s, path):
         usable=s["usable"],
         vol_map=vol_map,
     )
-    body = "".join(
-        VOL_BLOCK.format(
-            name=v.name,
-            image=f"BINARIES_DIR/{v.image}" if v.image != "BR2_ROOTFS_UBIFS_PATH" else v.image,
-            vol_id=v.vol_id,
-            size=aligned,
-        )
-        for v, _, aligned in s["sized"]
-    )
+    body = "".join(vol_block(v, aligned) for v, _, aligned in s["sized"])
     with open(path, "w") as f:
         f.write(header + body)
     print(f"\nWrote {path}")
 
 
+def apply_minimal(volumes):
+    # Debug iteration: skip writing rootfs_b and rootfs_factory payloads.
+    # Volume slots and sizes stay identical so vol_id assignments, RAUC,
+    # and overlay scripts behave the same; only the image= line is dropped.
+    # try_boot still tries B/factory on A failure; ubifsmount on the empty
+    # volumes fails fast and falls through to the U-Boot prompt.
+    skip = {"rootfs_b", "rootfs_factory"}
+    return [
+        Vol(v.name, v.vol_id, v.size, None if v.name in skip else v.image, v.desc)
+        for v in volumes
+    ]
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--write", metavar="PATH", help="emit ubinize.cfg to PATH")
+    p.add_argument("--write", metavar="PATH", help="emit ubinize cfg to PATH")
+    p.add_argument(
+        "--minimal",
+        action="store_true",
+        help="emit debug variant: rootfs_b and rootfs_factory as empty volumes",
+    )
     args = p.parse_args()
+    if args.minimal:
+        global VOLUMES
+        VOLUMES = apply_minimal(VOLUMES)
     s = compute()
     print_summary(s)
     if args.write:
