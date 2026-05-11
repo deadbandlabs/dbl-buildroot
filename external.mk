@@ -2,12 +2,16 @@
 # Copyright 2026 Deadband Inc.
 include $(sort $(wildcard $(BR2_EXTERNAL_MYD_YF135_PATH)/package/*/*.mk))
 
-# Copy the board DTS into the kernel source tree after patching as a post-patch
-# hook and append the dtb to the ST Makefile at build time:
+# Copy the board DTS into the kernel source tree before each build, and append
+# the dtb to the ST Makefile at first extraction.
 #
-# CUSTOM_DTS_PATH would normally be used, but copies to arch/arm/boot/dts/, but
-# Linux 6.12+ refactored STM32MP device trees to arch/arm/boot/dts/st/, which is
-# incompatible with this standard method
+# CUSTOM_DTS_PATH would normally be used, but copies to arch/arm/boot/dts/.
+# Linux 6.12+ refactored STM32MP device trees to arch/arm/boot/dts/st/, which
+# is incompatible with that standard method.
+#
+# PRE_BUILD (not POST_PATCH) so DTS edits propagate to the kernel build dir on
+# every `make` without needing linux-dirclean. Mainline 6.12 already ships its
+# own stm32mp135d-myd-yf135.dts upstream; this overwrites it with our copy.
 define LINUX_MYD_YF135_COPY_DTS
 	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/stm32mp135d-myd-yf135.dts \
 		$(@D)/arch/arm/boot/dts/st/stm32mp135d-myd-yf135.dts
@@ -15,7 +19,7 @@ define LINUX_MYD_YF135_COPY_DTS
 		printf '\ndtb-$$(CONFIG_ARCH_STM32) += stm32mp135d-myd-yf135.dtb\n' \
 			>> $(@D)/arch/arm/boot/dts/st/Makefile
 endef
-LINUX_POST_PATCH_HOOKS += LINUX_MYD_YF135_COPY_DTS
+LINUX_PRE_BUILD_HOOKS += LINUX_MYD_YF135_COPY_DTS
 
 # Companion UBI volume images. Built as direct make rules wired into
 # rootfs.ubi's prerequisites, so make ensures they exist before ubinize
