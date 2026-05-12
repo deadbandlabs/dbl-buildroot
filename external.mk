@@ -28,20 +28,16 @@ LINUX_PRE_BUILD_HOOKS += LINUX_MYD_YF135_COPY_DTS
 #
 # overlay.ubifs   empty UBIFS, mounted as overlayfs upper at runtime
 # optee_ss.ubifs  empty UBIFS, populated by OP-TEE on first use
-# slotinfo.bin    zeroed placeholder, RAUC writes via /dev/ubi0_5 at runtime
 
 # Empty source tree for mkfs.ubifs -r (creates an empty filesystem image).
 $(BUILD_DIR)/.empty:
 	mkdir -p $@
 
 $(BINARIES_DIR)/overlay.ubifs: $(BUILD_DIR)/.empty | host-mtd
-	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 561 -r $< -o $@
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 566 -r $< -o $@
 
 $(BINARIES_DIR)/optee_ss.ubifs: $(BUILD_DIR)/.empty | host-mtd
 	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -r $< -o $@
-
-$(BINARIES_DIR)/slotinfo.bin:
-	dd if=/dev/zero of=$@ bs=634880 count=1 status=none
 
 # U-Boot env binary, redundant variant. BR2_TARGET_UBOOT_ENVIMAGE does not
 # pass -r to mkenvimage; CONFIG_SYS_REDUNDAND_ENVIRONMENT requires the flag
@@ -57,5 +53,4 @@ $(BINARIES_DIR)/uboot.env: $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/defaul
 $(BINARIES_DIR)/rootfs.ubi: \
 	$(BINARIES_DIR)/overlay.ubifs \
 	$(BINARIES_DIR)/optee_ss.ubifs \
-	$(BINARIES_DIR)/slotinfo.bin \
 	$(BINARIES_DIR)/uboot.env

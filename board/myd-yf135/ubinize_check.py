@@ -74,12 +74,11 @@ VOLUMES = [
         "Writable overlayfs upper (wiped on update)",
     ),
     Vol("optee_ss", 4, 4 * MB, "optee_ss.ubifs", "OP-TEE secure storage"),
-    Vol("slotinfo", 5, 512 * KB, "slotinfo.bin", "RAUC slot state"),
     # U-Boot env volumes. ENV_SIZE=0x4000 (16 KB) fits in 1 LEB (~124 KB).
     # Pre-populated with mkenvimage(-r) output so default-env (try_boot,
     # BOOT_ORDER, ...) is present on first boot.
-    Vol("env-a", 6, LEB_SIZE, "uboot.env", "U-Boot env primary"),
-    Vol("env-b", 7, LEB_SIZE, "uboot.env", "U-Boot env redundant"),
+    Vol("env-a", 5, LEB_SIZE, "uboot.env", "U-Boot env primary"),
+    Vol("env-b", 6, LEB_SIZE, "uboot.env", "U-Boot env redundant"),
 ]
 
 

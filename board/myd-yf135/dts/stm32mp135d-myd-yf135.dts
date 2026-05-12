@@ -211,7 +211,7 @@
 			};
 			partition@1200000 {
 				label = "UBI";
-				reg = <0x1200000 0xee00000>; /* To end of NAND (238 MB): UBI: env A/B + rootfs A/B/factory + overlay + optee_ss + slotinfo */
+				reg = <0x1200000 0xee00000>; /* To end of NAND (238 MB): UBI: env A/B + rootfs A/B/factory + overlay + optee_ss */
 			};
 		};
 	};
