@@ -23,10 +23,12 @@ Jobs:
 
 - **`image`**: Hermetic `nix build` of the release image and SDK:
 
-  - **Image** (`nix build`): full Buildroot run with toolchain, packages, and images in one derivation.
+  - **Image** (`nix build`): full Buildroot run with toolchain, packages, images and programmer in one derivation. The emitted `flashlayout.tsv` references arifacts for use with `STM32_Programmer_CLI`.
   - **SDK** (`nix build .#sdk`): relocatable cross-compiler SDK; built as a second output of the same derivation, uses cache once the image is built.
 
   Uses Cachix to cache Nix store paths across runs. Uploads images and SDK as separate artifacts.
+
+- **`debug`**: `make debug` build with the debug fragment. Uses ccache and a host-toolchain cache for incremental reuse across runs.
 
 ### `template-test.yml` Template project validation
 
@@ -36,7 +38,7 @@ Instantiates the parent template into a scratch directory and runs the same chec
 
 Jobs:
 
-- **`template-test`**: Copies the submodule into a temp directory as regular files (not a git submodule — Nix can't resolve relative local submodule URLs), runs `init.sh` to generate the template, then validates:
+- **`template-test`**: Copies the submodule into a temp directory as regular files, runs `init.sh` to generate the template, then validates:
   - All expected template files are created
   - No leftover `@@PLACEHOLDER@@` tokens
   - Hook IDs in `.pre-commit-config.yaml` match `.pre-commit-hooks.yaml`

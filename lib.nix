@@ -40,6 +40,12 @@ in
       defconfig ? "${builtins.replaceStrings [ "-" ] [ "_" ] board}_defconfig",
       flashLayout ? "board/${board}/flashlayout.tsv",
       configFragment ? null,
+      # Path (relative to the build's external source) to a programmer-variant
+      # defconfig fragment. Defaults to the submodule's MYD-YF135 fragment so
+      # downstream consumers get a working USB DFU loader bundled into their
+      # images by default. Override with a project-specific fragment path, or
+      # set to null to disable the programmer build entirely.
+      programmerFragment ? "configs/myd_yf135_programmer.fragment",
       extraExternalSrcs ? [ ],
       system ? "x86_64-linux",
       extraDevShellPackages ? [ ],
@@ -62,6 +68,7 @@ in
           cmake-compat
           extraExternalSrcs
           configFragment
+          programmerFragment
           ;
         self = ./.;
         projectName = name;

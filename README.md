@@ -215,12 +215,25 @@ Set BOOT pins before flashing ([switch settings reference](https://docs.u-boot.o
 | USB DFU (recovery / flashing) | `0 0 0` |
 | SPI-NAND (normal boot) | `1 1 1` |
 
+`make release`, `make debug` and `nix build` chain a programmer build
+(USB DFU loader) and bundle its `tf-a-programmer.stm32` / `fip-programmer.bin`
+into the variant's `images/` directory, along with a rewritten `flashlayout.tsv`
+whose paths resolve relative to that directory. Flash from the bundled output:
+
 ```bash
 # list detected DFU devices to confirm port name
 STM32_Programmer_CLI -l usb
 
-STM32_Programmer_CLI -c port=usb1 -w board/myd-yf135/flashlayout.tsv
+# from a nix build
+STM32_Programmer_CLI -c port=usb1 -w result/images/flashlayout.tsv
+
+# from a make build
+STM32_Programmer_CLI -c port=usb1 -w output/latest/images/flashlayout.tsv
 ```
+
+To opt out of the chained programmer build (e.g. faster iteration when DTS is unchanged),
+use `BUILD_PROGRAMMER=0`. The original `board/myd-yf135/flashlayout.tsv` references
+`output/programmer/images/` and `output/latest/images/` directly.
 
 ## Serial console
 

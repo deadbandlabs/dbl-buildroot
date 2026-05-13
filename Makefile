@@ -29,6 +29,8 @@ PROGRAMMER_DEFCONFIG := $(O)/myd_yf135_programmer_defconfig
 PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myd_yf135_programmer.fragment
 GEN_DEBUG_SCRIPT     := $(CURDIR)/support/build/gen-debug-defconfig.sh
 SHARE_HOST_SCRIPT    := $(CURDIR)/support/build/share-host-artifacts.sh
+BUNDLE_IMAGES_SCRIPT := $(CURDIR)/support/build/bundle-images.sh
+FLASHLAYOUT_SRC      := $(CURDIR)/board/myd-yf135/flashlayout.tsv
 
 # BR2_EXTERNAL is a ':' separated list. Default to this repository.
 # Downstream/super-projects can append with BR2_EXTERNAL_EXTRA or override BR2_EXTERNAL entirely.
@@ -68,6 +70,10 @@ LOG     ?= $(LOG_DIR)/$(shell date +%Y%m%d-%H%M%S).log
 # programmer = output/programmer/ USB DFU loader (ENV_IS_NOWHERE), used as
 #                                 fsbl-boot/fip-boot in flashlayout.tsv
 # Override O directly to use a custom output path.
+#
+# release/debug builds chain a programmer build in output/programmer/
+# Set BUILD_PROGRAMMER=0 to opt out
+BUILD_PROGRAMMER ?= 1
 ifeq ($(MODE),debug)
 _BASE_DEFCONFIG := $(DEBUG_DEFCONFIG)
 _VARIANT_PREP   := regen-debug-defconfig prepare-variant-host-reuse
@@ -138,6 +144,18 @@ all: $(_VARIANT_PREP)
 		ln -sfn $(MODE) $(OUTPUT_BASE)/output/latest; \
 		echo "INFO: $(OUTPUT_BASE)/output/latest -> $(MODE)"; \
 	fi
+ifneq ($(MODE),programmer)
+ifeq ($(BUILD_PROGRAMMER),1)
+	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
+	@if [ -f $(FLASHLAYOUT_SRC) ]; then \
+		$(BUNDLE_IMAGES_SCRIPT) \
+			$(O)/images \
+			$(OUTPUT_BASE)/output/programmer/images \
+			$(FLASHLAYOUT_SRC); \
+		echo "INFO: Generated $(O)/images/flashlayout.tsv"; \
+	fi
+endif
+endif
 
 release:
 	$(MAKE) MODE=release all
