@@ -19,8 +19,8 @@ from typing import Optional
 
 # NAND geometry (Micron MT29F2G01ABAGDWB) and partition layout (DTS)
 NAND_SIZE = 0x10000000  # 256 MB
-UBI_OFFSET = 0x1200000  # start of UBI partition (DTS)
-UBI_SIZE = NAND_SIZE - UBI_OFFSET  # 0xee00000 = 238 MB; matches DTS
+UBI_OFFSET = 0xa00000  # start of UBI partition (DTS)
+UBI_SIZE = NAND_SIZE - UBI_OFFSET  # 0xf600000 = 246 MB; matches DTS
 
 PEB_SIZE = 128 * 1024  # 131072 B (NAND erase block)
 PAGE_SIZE = 2 * 1024  # 2048 B (NAND page; no sub-pages)

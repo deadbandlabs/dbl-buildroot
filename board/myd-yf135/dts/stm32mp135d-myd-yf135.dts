@@ -194,24 +194,16 @@
 				reg = <0x180000 0x080000>; /* 512 KB (FWU metadata B) */
 			};
 			partition@200000 {
-				label = "fip-a1";
-				reg = <0x200000 0x400000>; /* 4 MB (FIP bank A copy 1) */
+				label = "fip-a";
+				reg = <0x200000 0x400000>; /* 4 MB (FIP bank A) */
 			};
 			partition@600000 {
-				label = "fip-a2";
-				reg = <0x600000 0x400000>; /* 4 MB (FIP bank A copy 2) */
+				label = "fip-b";
+				reg = <0x600000 0x400000>; /* 4 MB (FIP bank B) */
 			};
 			partition@a00000 {
-				label = "fip-b1";
-				reg = <0xa00000 0x400000>; /* 4 MB (FIP bank B copy 1) */
-			};
-			partition@e00000 {
-				label = "fip-b2";
-				reg = <0xe00000 0x400000>; /* 4 MB (FIP bank B copy 2) */
-			};
-			partition@1200000 {
 				label = "UBI";
-				reg = <0x1200000 0xee00000>; /* To end of NAND (238 MB): UBI: env A/B + rootfs A/B/factory + overlay + optee_ss */
+				reg = <0xa00000 0xf600000>; /* To end of NAND (246 MB): UBI: env A/B + rootfs A/B/factory + overlay + optee_ss */
 			};
 		};
 	};

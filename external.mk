@@ -34,7 +34,7 @@ $(BUILD_DIR)/.empty:
 	mkdir -p $@
 
 $(BINARIES_DIR)/overlay.ubifs: $(BUILD_DIR)/.empty | host-mtd
-	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 566 -r $< -o $@
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 620 -r $< -o $@
 
 $(BINARIES_DIR)/optee_ss.ubifs: $(BUILD_DIR)/.empty | host-mtd
 	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -r $< -o $@
