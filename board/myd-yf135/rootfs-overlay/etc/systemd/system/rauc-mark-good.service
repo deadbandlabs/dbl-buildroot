@@ -1,14 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
-# Reset the booted slot's BOOT_<slot>_LEFT counter once userspace reaches
-# multi-user.target. Placeholder health check; tighten to an app-readiness
-# target later (e.g. After=app-healthy.target).
+# Reset the booted slot's BOOT_<slot>_LEFT counter at multi-user.target
 
 [Unit]
 Description=Mark currently booted RAUC slot as good
-# Run late in multi-user activation: after logins are enabled.
-# WantedBy=multi-user.target implies Before=multi-user.target, so use
-# a unit ordered earlier in the same target rather than the target itself.
 After=systemd-user-sessions.service
 
 [Service]

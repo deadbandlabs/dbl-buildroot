@@ -20,7 +20,7 @@ variant_images=$1
 programmer_images=$2
 src_tsv=$3
 
-prog_stm32=$(find "$programmer_images" -maxdepth 1 -name 'tf-a-*.stm32' 2>/dev/null)
+prog_stm32=$(find "$programmer_images" -maxdepth 1 -name 'tf-a-*.stm32' -print -quit 2>/dev/null)
 if [ -z "$prog_stm32" ]; then
   echo "bundle-images: no tf-a-*.stm32 in $programmer_images" >&2
   exit 1

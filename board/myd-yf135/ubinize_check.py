@@ -19,32 +19,22 @@ from typing import Optional
 
 # NAND geometry (Micron MT29F2G01ABAGDWB) and partition layout (DTS)
 NAND_SIZE = 0x10000000  # 256 MB
-UBI_OFFSET = 0xa00000  # start of UBI partition (DTS)
+UBI_OFFSET = 0xA00000  # start of UBI partition (DTS)
 UBI_SIZE = NAND_SIZE - UBI_OFFSET  # 0xf600000 = 246 MB; matches DTS
 
 PEB_SIZE = 128 * 1024  # 131072 B (NAND erase block)
 PAGE_SIZE = 2 * 1024  # 2048 B (NAND page; no sub-pages)
 LEB_SIZE = PEB_SIZE - 2 * PAGE_SIZE  # 126976 B (PEB minus EC + VID headers)
 
-# Reserve budgets (engineering choices, NOT UBI minimums)
-#
-# UBI_RESERVE_PCT: PEBs subtracted from total before sizing volumes, modeling
-# bad-eraseblock retirement over the device lifetime. Must be >= UBI's actual
-# internal reserve at attach time (else volume table over-allocates). For 1900
-# PEBs UBI's internal reserve is ~40 PEBs (~2%): 2 layout + 1 WL + ~37 BEB
-# (kernel default mtd_max_beb_per1024=20 -> ceil(20*1900/1024)). 4.5% pads
-# above that for MT29F2G01 vendor lifetime BB rate (spec: <=2%).
-#
-# FREE_POOL_PCT: PEBs left unallocated to volumes, becoming UBI's runtime
-# working pool. Used for wear-leveling moves, runtime BB replacement beyond
-# the static reserve, atomic LEB updates (write-new-then-erase-old needs a
-# spare PEB), and volume resize headroom. UBI's hard minimum is a handful
-# of PEBs; 10% is generous margin for a write-heavy overlay volume
+# Reserve budgets
+# Allow for bad-eraseblock retirement over the device lifetime
 UBI_RESERVE_PCT = 4.5
+# PEBs left unallocated to volumes, becoming UBI's runtime working pool
+# This is larger than typical, intended for a write-heavy use-case for overlayfs
 FREE_POOL_PCT = 10.0
 
 KB = 1024
-MB = 1024 * 1024
+MB = KB * 1024
 
 
 @dataclass
@@ -74,9 +64,7 @@ VOLUMES = [
         "Writable overlayfs upper (wiped on update)",
     ),
     Vol("optee_ss", 4, 4 * MB, "optee_ss.ubifs", "OP-TEE secure storage"),
-    # U-Boot env volumes. ENV_SIZE=0x4000 (16 KB) fits in 1 LEB (~124 KB).
-    # Pre-populated with mkenvimage(-r) output so default-env (try_boot,
-    # BOOT_ORDER, ...) is present on first boot.
+    # U-Boot env volumes
     Vol("env-a", 5, LEB_SIZE, "uboot.env", "U-Boot env primary"),
     Vol("env-b", 6, LEB_SIZE, "uboot.env", "U-Boot env redundant"),
 ]

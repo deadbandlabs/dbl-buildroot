@@ -1,7 +1,7 @@
 [update]
 compatible=myd-yf135
 version=0.1-test
-description=DBL MYD-YF135 smoketest bundle (rootfs only)
+description=DBL MYD-YF135 rootfs bundle for update verification
 
 [bundle]
 format=plain
