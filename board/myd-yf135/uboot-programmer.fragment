@@ -1,0 +1,9 @@
+# U-Boot programmer fragment layered on top of board/myd-yf135/uboot.config
+# Built into the dedicated programmer FIP referenced by flashlayout.tsv as
+# fsbl-boot / fip-boot. Only used for loading to RAM
+#
+# Using env NOWHERE so env_relocate() never calls ubi_part() on
+# new or partially programmed SPI-NAND
+
+# CONFIG_ENV_IS_IN_UBI is not set
+CONFIG_ENV_IS_NOWHERE=y

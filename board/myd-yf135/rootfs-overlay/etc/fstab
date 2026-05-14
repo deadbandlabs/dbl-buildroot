@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# Layout:
+#   /             ubi0:rootfs_a/b/factory
+#   /mnt/overlay  ubi0:overlay
+#   /etc /var     overlayfs (lower=ro rootfs, upper=/mnt/overlay/upper/<name>)
+#   /tmp /run     tmpfs (provided by systemd defaults)
+#
+# upper/ and work/ subdirs are (re)created on each boot by overlay-prepare.service
+
+ubi0:overlay  /mnt/overlay  ubifs    defaults                                                                                                                          0 0
+
+overlay  /etc  overlay  lowerdir=/etc,upperdir=/mnt/overlay/upper/etc,workdir=/mnt/overlay/work/etc,x-systemd.requires=/mnt/overlay,x-systemd.after=overlay-prepare.service  0 0
+overlay  /var  overlay  lowerdir=/var,upperdir=/mnt/overlay/upper/var,workdir=/mnt/overlay/work/var,x-systemd.requires=/mnt/overlay,x-systemd.after=overlay-prepare.service  0 0

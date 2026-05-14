@@ -26,6 +26,9 @@
   # Optional defconfig fragment to merge over the base defconfig.
   # Uses the same AWK-based merge as gen-debug-defconfig.sh.
   configFragment ? null,
+  # Optional programmer (USB DFU loader TF-A + FIP) defconfig fragment.
+  # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
+  programmerFragment ? null,
 }:
 let
   ## Lockfile generation (via upstream buildroot.nix)
@@ -98,6 +101,9 @@ let
   # Buildroot uses colon-separated list for multiple external trees.
   allExternalSrcs = [ buildExternalSrc ] ++ extraExternalSrcs;
   brExternalValue = pkgs.lib.concatStringsSep ":" allExternalSrcs;
+
+  # bundle-images.sh imported as its own store path to prevent including all support/ scripts
+  bundleImagesScript = self + "/support/build/bundle-images.sh";
 
   # AWK-based defconfig fragment merger (same logic as gen-debug-defconfig.sh).
   # When configFragment is set, we merge it over the base defconfig before
@@ -181,14 +187,57 @@ let
         BR2_JLEVEL=$NIX_BUILD_CORES \
         BR2_EXTERNAL=${brExternalValue} \
         sdk
-    '';
+    ''
+    + pkgs.lib.optionalString (programmerFragment != null) (
+      # When configFragment is also set, merge it first so downstream
+      # overrides survive into the programmer build; programmerFragment is
+      # applied last and takes priority on conflicting keys
+      (
+        if configFragment != null then
+          mergeConfigFragment baseDefconfig configFragment "programmer_base_defconfig"
+          + mergeConfigFragment "programmer_base_defconfig" (
+            buildExternalSrc + "/${programmerFragment}"
+          ) "programmer_defconfig"
+        else
+          mergeConfigFragment baseDefconfig (
+            buildExternalSrc + "/${programmerFragment}"
+          ) "programmer_defconfig"
+      )
+      + ''
+        ${makeFHSEnv}/bin/make-with-fhs-env \
+          O=$PWD/output-programmer \
+          BR2_EXTERNAL=${brExternalValue} \
+          BR2_DEFCONFIG=$PWD/programmer_defconfig defconfig
+        ${makeFHSEnv}/bin/make-with-fhs-env \
+          O=$PWD/output-programmer \
+          BR2_JLEVEL=$NIX_BUILD_CORES \
+          BR2_EXTERNAL=${brExternalValue} \
+          arm-trusted-firmware
+      ''
+    );
 
     installPhase = ''
       mkdir -p $out/images $sdk
 
       cp -r output/images/. $out/images/
       rm -f $out/images/*_sdk-buildroot.tar.gz
-      sed 's|../../output/latest/images/|./|g' ${buildExternalSrc}/${flashLayoutPath} > $out/images/flashlayout.tsv
+    ''
+    + (
+      if programmerFragment != null then
+        # When programmer is used, run the bundleImagesScript to produce a flashlayout.tsv
+        # This replaces a previous sed inplace replacement to unify with Makefile builds
+        ''
+          ${pkgs.bash}/bin/bash ${bundleImagesScript} \
+            $out/images \
+            $PWD/output-programmer/images \
+            ${buildExternalSrc}/${flashLayoutPath}
+        ''
+      else
+        ''
+          sed 's|../../output/latest/images/|./|g' ${buildExternalSrc}/${flashLayoutPath} > $out/images/flashlayout.tsv
+        ''
+    )
+    + ''
 
       cp output/images/*_sdk-buildroot.tar.gz $sdk/sdk.tar.gz
     '';

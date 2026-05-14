@@ -205,8 +205,8 @@ targets `spi-nand0` (SPI-NAND via QSPI). Programmer is packaged in
 `nix/stm32cubeprog.nix` and available in the devshell as `STM32_Programmer_CLI`.
 
 Current `flashlayout.tsv` is a **bring-up profile**: it programs only `fsbl1`,
-`fsbl2`, `fip-a1`, and `UBI`. Reserved slots (`metadata*`, `fip-a2`, `fip-b*`)
-remain for upcoming RAUC + secure-boot/A-B update work.
+`fsbl2`, `fip-a`, and `UBI`. Reserved slots (`metadata*`, `fip-b`) remain for
+upcoming RAUC + secure-boot/A-B update work.
 
 Set BOOT pins before flashing ([switch settings reference](https://docs.u-boot.org/en/latest/board/st/stm32mp1.html#switch-setting-for-boot-mode)):
 
@@ -215,12 +215,25 @@ Set BOOT pins before flashing ([switch settings reference](https://docs.u-boot.o
 | USB DFU (recovery / flashing) | `0 0 0` |
 | SPI-NAND (normal boot) | `1 1 1` |
 
+`make release`, `make debug` and `nix build` chain a programmer build
+(USB DFU loader) and bundle its `tf-a-programmer.stm32` / `fip-programmer.bin`
+into the variant's `images/` directory, along with a rewritten `flashlayout.tsv`
+whose paths resolve relative to that directory. Flash from the bundled output:
+
 ```bash
 # list detected DFU devices to confirm port name
 STM32_Programmer_CLI -l usb
 
-STM32_Programmer_CLI -c port=usb1 -w board/myd-yf135/flashlayout.tsv
+# from a nix build
+STM32_Programmer_CLI -c port=usb1 -w result/images/flashlayout.tsv
+
+# from a make build
+STM32_Programmer_CLI -c port=usb1 -w output/latest/images/flashlayout.tsv
 ```
+
+To opt out of the chained programmer build (e.g. faster iteration when DTS is unchanged),
+use `BUILD_PROGRAMMER=0`. The original `board/myd-yf135/flashlayout.tsv` references
+`output/programmer/images/` and `output/latest/images/` directly.
 
 ## Serial console
 
@@ -273,7 +286,7 @@ ROM -> TF-A BL2 (fsbl1/fsbl2) -> FIP -> OP-TEE (BL32) -> U-Boot (BL33) -> Linux 
 TF-A produces:
 
 - `*.stm32`: raw BL2, written to `fsbl1` / `fsbl2`
-- `fip.bin`: FIP (BL32 + BL33), written to `fip-a*` / `fip-b*`
+- `fip.bin`: FIP (BL32 + BL33), written to `fip-a` / `fip-b`
 
 ## Memory map
 
@@ -291,11 +304,9 @@ TF-A produces:
 | `fsbl2` | `0x080000` | 512 KB | TF-A BL2 copy 2 |
 | `metadata1` | `0x100000` | 512 KB | FWU metadata A |
 | `metadata2` | `0x180000` | 512 KB | FWU metadata B |
-| `fip-a1` | `0x200000` | 4 MB | FIP bank A copy 1 |
-| `fip-a2` | `0x600000` | 4 MB | FIP bank A copy 2 |
-| `fip-b1` | `0xa00000` | 4 MB | FIP bank B copy 1 |
-| `fip-b2` | `0xe00000` | 4 MB | FIP bank B copy 2 |
-| `UBI` | `0x1200000` | ~238 MB | Root filesystem + data |
+| `fip-a` | `0x200000` | 4 MB | FIP bank A |
+| `fip-b` | `0x600000` | 4 MB | FIP bank B |
+| `UBI` | `0xa00000` | ~246 MB | Root filesystem + data |
 
 ## NAND parameters and OTP
 

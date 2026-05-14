@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# Reset the booted slot's BOOT_<slot>_LEFT counter at multi-user.target
+
+[Unit]
+Description=Mark currently booted RAUC slot as good
+After=systemd-user-sessions.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/rauc status mark-good
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
