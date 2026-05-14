@@ -24,8 +24,11 @@
   # Each entry is a path containing external.desc, external.mk, Config.in, etc.
   extraExternalSrcs ? [ ],
   # Optional defconfig fragment to merge over the base defconfig.
-  # Uses the same AWK-based merge as gen-debug-defconfig.sh.
+  # Merged via support/build/merge-defconfig.py.
   configFragment ? null,
+  # Note: The nix flake currently only builds the release variant today, so CONFIG_FRAGMENT_DEBUG is unused
+  # Wired through lib.nix so a future debug derivation can consume it
+  configFragmentDebug ? null,
   # Optional programmer (USB DFU loader TF-A + FIP) defconfig fragment.
   # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
   programmerFragment ? null,
@@ -105,40 +108,20 @@ let
   # bundle-images.sh imported as its own store path to prevent including all support/ scripts
   bundleImagesScript = self + "/support/build/bundle-images.sh";
 
-  # AWK-based defconfig fragment merger (same logic as gen-debug-defconfig.sh).
-  # When configFragment is set, we merge it over the base defconfig before
-  # applying. This lets downstream repos extend the base image with
-  # project-specific packages/config.
-  mergeConfigFragment = base: fragment: output: ''
-    awk '
-    function cfg_key(line, m) {
-      if (match(line, /^([A-Z0-9_]+)=/, m)) return m[1]
-      if (match(line, /^# ([A-Z0-9_]+) is not set$/, m)) return m[1]
-      return ""
-    }
-    FNR == NR {
-      if ($0 ~ /^[[:space:]]*$/) next
-      if ($0 ~ /^[[:space:]]*#/) next
-      k = cfg_key($0)
-      if (k != "") { overrides[k] = $0; order[++n] = k }
-      next
-    }
-    {
-      k = cfg_key($0)
-      if (k != "" && (k in overrides)) {
-        if (!(k in emitted)) { print overrides[k]; emitted[k] = 1 }
-        next
-      }
-      print $0
-    }
-    END {
-      for (i = 1; i <= n; i++) {
-        k = order[i]
-        if (!(k in emitted)) print overrides[k]
-      }
-    }
-    ' ${fragment} ${base} > ${output}
-  '';
+  # Shared defconfig merger also used by Makefile build
+  mergeDefconfigScript = self + "/support/build/merge-defconfig.py";
+
+  # Returns a shell snippet that merges `base + deltas` into `output`
+  # `deltas` is a list of store paths; null entries are filtered out
+  mergeFragments =
+    output: base: deltas:
+    let
+      nonEmpty = builtins.filter (d: d != null) deltas;
+      argv = pkgs.lib.concatMapStringsSep " " (d: toString d) nonEmpty;
+    in
+    ''
+      ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} ${output} ${base} ${argv}
+    '';
 
   ## Build
 
@@ -160,18 +143,24 @@ let
           package/util-linux/util-linux.mk
     '';
 
-    configurePhase = ''
-      mkdir -p output/images
-    ''
-    + pkgs.lib.optionalString (configFragment != null) (
-      mergeConfigFragment baseDefconfig configFragment "merged_defconfig"
-      + ''
-        ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
+    configurePhase =
+      let
+        releaseDeltas = pkgs.lib.optional (configFragment != null) configFragment;
+      in
       ''
-    )
-    + pkgs.lib.optionalString (configFragment == null) ''
-      ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} ${defconfigName}
-    '';
+        mkdir -p output/images
+      ''
+      + (
+        if releaseDeltas != [ ] then
+          mergeFragments "merged_defconfig" baseDefconfig releaseDeltas
+          + ''
+            ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
+          ''
+        else
+          ''
+            ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} ${defconfigName}
+          ''
+      );
 
     buildPhase = ''
       export BR2_DL_DIR="$PWD/dl"
@@ -189,20 +178,12 @@ let
         sdk
     ''
     + pkgs.lib.optionalString (programmerFragment != null) (
-      # When configFragment is also set, merge it first so downstream
-      # overrides survive into the programmer build; programmerFragment is
-      # applied last and takes priority on conflicting keys
-      (
-        if configFragment != null then
-          mergeConfigFragment baseDefconfig configFragment "programmer_base_defconfig"
-          + mergeConfigFragment "programmer_base_defconfig" (
-            buildExternalSrc + "/${programmerFragment}"
-          ) "programmer_defconfig"
-        else
-          mergeConfigFragment baseDefconfig (
-            buildExternalSrc + "/${programmerFragment}"
-          ) "programmer_defconfig"
-      )
+      # Programmer merge chain: base + parent CONFIG_FRAGMENT + programmer fragment
+      let
+        progFragmentPath = buildExternalSrc + "/${programmerFragment}";
+        deltas = (pkgs.lib.optional (configFragment != null) configFragment) ++ [ progFragmentPath ];
+      in
+      mergeFragments "programmer_defconfig" baseDefconfig deltas
       + ''
         ${makeFHSEnv}/bin/make-with-fhs-env \
           O=$PWD/output-programmer \

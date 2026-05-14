@@ -27,7 +27,8 @@ DEBUG_DEFCONFIG      := $(O)/myd_yf135_debug_defconfig
 DEBUG_FRAGMENT       := $(CURDIR)/configs/myd_yf135_debug.fragment
 PROGRAMMER_DEFCONFIG := $(O)/myd_yf135_programmer_defconfig
 PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myd_yf135_programmer.fragment
-GEN_DEBUG_SCRIPT     := $(CURDIR)/support/build/gen-debug-defconfig.sh
+MERGE_DEFCONFIG      := $(CURDIR)/support/build/merge-defconfig.py
+CONFIG_FRAGMENT_DEBUG ?=
 SHARE_HOST_SCRIPT    := $(CURDIR)/support/build/share-host-artifacts.sh
 BUNDLE_IMAGES_SCRIPT := $(CURDIR)/support/build/bundle-images.sh
 FLASHLAYOUT_SRC      := $(CURDIR)/board/myd-yf135/flashlayout.tsv
@@ -75,33 +76,38 @@ LOG     ?= $(LOG_DIR)/$(shell date +%Y%m%d-%H%M%S).log
 # Set BUILD_PROGRAMMER=0 to opt out
 BUILD_PROGRAMMER ?= 1
 ifeq ($(MODE),debug)
-_BASE_DEFCONFIG := $(DEBUG_DEFCONFIG)
-_VARIANT_PREP   := regen-debug-defconfig prepare-variant-host-reuse
+_VARIANT_PREP   := prepare-variant-host-reuse
 _BUILD_TARGETS  :=
 _UPDATE_LATEST  := true
 else ifeq ($(MODE),programmer)
-_BASE_DEFCONFIG := $(PROGRAMMER_DEFCONFIG)
-_VARIANT_PREP   := regen-programmer-defconfig prepare-variant-host-reuse
-# Programmer only needs the loader stack: TF-A pulls in U-Boot and OP-TEE
-# via package deps and packs them into fip.bin. Skip kernel/rootfs.
+_VARIANT_PREP   := prepare-variant-host-reuse
 _BUILD_TARGETS  := arm-trusted-firmware
-# Programmer is a fragment, not a usable image set; don't repoint `latest`.
 _UPDATE_LATEST  := false
 else
-_BASE_DEFCONFIG := $(RELEASE_DEFCONFIG)
 _VARIANT_PREP   :=
 _BUILD_TARGETS  :=
 _UPDATE_LATEST  := true
 endif
 
-# If CONFIG_FRAGMENT is set, merge it over the variant's base config.
-# Otherwise apply the base config directly.
-ifneq ($(strip $(CONFIG_FRAGMENT)),)
-_APPLY_DEFCONFIG = @$(GEN_DEBUG_SCRIPT) $(_BASE_DEFCONFIG) $(CONFIG_FRAGMENT) $(OVERLAY_DEFCONFIG) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
-else ifeq ($(MODE),debug)
-_APPLY_DEFCONFIG = $(BR2_MAKE) BR2_DEFCONFIG=$(DEBUG_DEFCONFIG) defconfig
+# Compose the merge chain for this mode:
+#   release    = RELEASE_DEFCONFIG + CONFIG_FRAGMENT
+#   debug      = RELEASE_DEFCONFIG + CONFIG_FRAGMENT + DEBUG_FRAGMENT + CONFIG_FRAGMENT_DEBUG
+#   programmer = RELEASE_DEFCONFIG + PROGRAMMER_FRAGMENT
+# Empty/unset slots are filtered out. With no deltas, fall back to a plain `defconfig` call.
+_MERGE_DELTAS :=
+ifeq ($(MODE),debug)
+  _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
+  _MERGE_DELTAS += $(DEBUG_FRAGMENT)
+  _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT_DEBUG))
 else ifeq ($(MODE),programmer)
-_APPLY_DEFCONFIG = $(BR2_MAKE) BR2_DEFCONFIG=$(PROGRAMMER_DEFCONFIG) defconfig
+  _MERGE_DELTAS += $(PROGRAMMER_FRAGMENT)
+else
+  _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
+endif
+_MERGE_DELTAS := $(strip $(_MERGE_DELTAS))
+
+ifneq ($(_MERGE_DELTAS),)
+_APPLY_DEFCONFIG = @$(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
 else
 _APPLY_DEFCONFIG = $(BR2_MAKE) myd_yf135_defconfig
 endif
@@ -127,11 +133,11 @@ help:
 # build time.
 regen-debug-defconfig:
 	@mkdir -p $(O)
-	$(GEN_DEBUG_SCRIPT) $(RELEASE_DEFCONFIG) $(DEBUG_FRAGMENT) $(DEBUG_DEFCONFIG)
+	$(MERGE_DEFCONFIG) $(DEBUG_DEFCONFIG) $(RELEASE_DEFCONFIG) $(strip $(CONFIG_FRAGMENT)) $(DEBUG_FRAGMENT) $(strip $(CONFIG_FRAGMENT_DEBUG))
 
 regen-programmer-defconfig:
 	@mkdir -p $(O)
-	$(GEN_DEBUG_SCRIPT) $(RELEASE_DEFCONFIG) $(PROGRAMMER_FRAGMENT) $(PROGRAMMER_DEFCONFIG)
+	$(MERGE_DEFCONFIG) $(PROGRAMMER_DEFCONFIG) $(RELEASE_DEFCONFIG) $(PROGRAMMER_FRAGMENT)
 
 prepare-variant-host-reuse:
 	@$(SHARE_HOST_SCRIPT) "$(CURDIR)" "$(RELEASE_O)" "$(O)" "$(SHARE_HOST_FOR_DEBUG)" "$(MAKE)"

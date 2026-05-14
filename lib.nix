@@ -40,6 +40,9 @@ in
       defconfig ? "${builtins.replaceStrings [ "-" ] [ "_" ] board}_defconfig",
       flashLayout ? "board/${board}/flashlayout.tsv",
       configFragment ? null,
+      # Optional debug-only defconfig fragment, applied LAST in the debug merge chain
+      # Forwarded to build.nix to match Makefile CONFIG_FRAGMENT_DEBUG.
+      configFragmentDebug ? null,
       # Path (relative to the build's external source) to a programmer-variant
       # defconfig fragment. Defaults to the submodule's MYD-YF135 fragment so
       # downstream consumers get a working USB DFU loader bundled into their
@@ -68,6 +71,7 @@ in
           cmake-compat
           extraExternalSrcs
           configFragment
+          configFragmentDebug
           programmerFragment
           ;
         self = ./.;

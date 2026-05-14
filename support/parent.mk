@@ -22,7 +22,8 @@
 DBL_BR_DIR      ?= modules/dbl-buildroot
 DBL_BR_HELPERS  := $(DBL_BR_DIR)/support/parent
 DBL_BR_OVERLAY  ?=
-DBL_BR_FRAGMENT ?=
+DBL_BR_FRAGMENT       ?=
+DBL_BR_FRAGMENT_DEBUG :=
 # Resolve to absolute paths so the submodule's Makefile (running with
 # cwd = $DBL_BR_DIR) sees correct locations.
 REPO_ROOT       := $(CURDIR)
@@ -62,6 +63,9 @@ DBL_BR_FORWARD_FLAGS += BR2_EXTERNAL_EXTRA=$(REPO_ROOT)/$(DBL_BR_OVERLAY)
 endif
 ifneq ($(strip $(DBL_BR_FRAGMENT)),)
 DBL_BR_FORWARD_FLAGS += CONFIG_FRAGMENT=$(REPO_ROOT)/$(DBL_BR_FRAGMENT)
+endif
+ifneq ($(strip $(DBL_BR_FRAGMENT_DEBUG)),)
+DBL_BR_FORWARD_FLAGS += CONFIG_FRAGMENT_DEBUG=$(REPO_ROOT)/$(DBL_BR_FRAGMENT_DEBUG)
 endif
 
 %:
