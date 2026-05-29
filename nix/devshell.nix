@@ -17,6 +17,7 @@ let
     export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
     export GIT_SSL_CAINFO="$SSL_CERT_FILE"
     export CURL_CA_BUNDLE="$SSL_CERT_FILE"
+
   '';
 
   # Packages required to run Buildroot builds
@@ -112,10 +113,8 @@ in
       name = "dbl-buildroot";
       packages =
         brShellArgs.packages
+        ++ pkgs.lib.optional (stm32cubeprog != null) stm32cubeprog
         ++ [
-          # STM32CubeProgrammer CLI for USB DFU flashing of STM32MP1
-          # Requires manual download due to license; see nix/stm32cubeprog.nix
-          stm32cubeprog
 
           # act: run GitHub Actions workflows locally (via podman rootless)
           pkgs.act

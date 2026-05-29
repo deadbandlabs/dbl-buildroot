@@ -103,6 +103,25 @@ nix-channel --update
 
 (See https://wiki.archlinux.org/title/Nix for more details)
 
+### NixOS hosts `make` workflow requirements
+
+The `make` devshell path runs directly on the host and requires two additions for NixOS:
+
+**`programs.nix-ld.enable = true`**: Buildroot downloads a prebuilt host Rust toolchain (`host-rust-bin`).
+NixOS cannot run these without a dynamic linker shim at the standard FHS path.
+
+**FHS compat symlinks**: Some Buildroot scripts assume POSIX utils paths that do not exist on NixOS.
+
+```nix
+systemd.tmpfiles.rules = [
+  "L+ /bin/bash     - - - - /run/current-system/sw/bin/bash"
+  "L+ /bin/true     - - - - /run/current-system/sw/bin/true"
+  "L+ /usr/bin/file - - - - /run/current-system/sw/bin/file"
+];
+```
+
+These changes are not required for the hermetic build (`nix build`) detailed below.
+
 ### Direnv
 
 It is recommended to use [direnv](https://direnv.net) and [nix-direnv](https://github.com/nix-community/nix-direnv). The dev shell provides all host tools automatically via direnv once enabled:
@@ -110,6 +129,8 @@ It is recommended to use [direnv](https://direnv.net) and [nix-direnv](https://g
 ```bash
 direnv allow
 ```
+
+Local system additions or variables such as `OUTPUT_BASE` may be added in `.envrc.local`.
 
 ### Pre-commit Environment
 
