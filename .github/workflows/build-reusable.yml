@@ -169,9 +169,9 @@ name: Build (reusable)
       - name: Clean host cache
         if: ${{ inputs.build-mode == 'shell' && steps.keys.outputs.host != '' }}
         run: |
-          for dir in ${{ inputs.host-cache-paths }}; do
-            find "$dir" -name '*.la' -delete 2>/dev/null || true
-          done
+          while IFS= read -r dir; do
+            [ -n "$dir" ] && find "$dir" -name '*.la' -delete 2>/dev/null || true
+          done <<< "${{ inputs.host-cache-paths }}"
 
       - name: Cache ccache
         if: ${{ inputs.build-mode == 'shell' }}
