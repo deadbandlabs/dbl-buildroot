@@ -6,10 +6,11 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-tarball="$(find dl/linux -maxdepth 1 -type f \( -name 'linux-*.tar' -o -name 'linux-*.tar.*' \) | sort | tail -n1)"
+dl_dir="${OUTPUT_BASE:-$repo_root}/dl"
+tarball="$(find "$dl_dir/linux" -maxdepth 1 -type f \( -name 'linux-*.tar' -o -name 'linux-*.tar.*' \) | sort | tail -n1)"
 
 if [ -z "$tarball" ]; then
-  echo "error: no linux source tarball found under dl/linux" >&2
+  echo "error: no linux source tarball found under $dl_dir/linux" >&2
   echo "hint: build or fetch kernel sources first using 'make linux-source'" >&2
   exit 1
 fi

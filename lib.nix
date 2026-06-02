@@ -50,13 +50,17 @@ in
       # set to null to disable the programmer build entirely.
       programmerFragment ? "configs/myd_yf135_programmer.fragment",
       extraExternalSrcs ? [ ],
-      systems ? [ "x86_64-linux" "aarch64-linux" ],
+      systems ? [
+        "x86_64-linux"
+        "aarch64-linux"
+      ],
       extraDevShellPackages ? [ ],
     }:
     let
       lib = nixpkgs.lib;
 
-      mkForSystem = system:
+      mkForSystem =
+        system:
         let
           pkgs = import nixpkgs {
             inherit system;
@@ -64,7 +68,8 @@ in
             config.allowUnfreePredicate = pkg: pkg.pname == "stm32cubeprog";
           };
 
-          stm32cubeprog = if pkgs.stdenv.hostPlatform.isx86_64 then pkgs.callPackage ./nix/stm32cubeprog.nix { } else null;
+          stm32cubeprog =
+            if pkgs.stdenv.hostPlatform.isx86_64 then pkgs.callPackage ./nix/stm32cubeprog.nix { } else null;
           cmake-compat = pkgs.callPackage ./nix/cmake-compat.nix { };
 
           buildPkgs = import ./nix/build.nix {
@@ -95,9 +100,10 @@ in
           };
         in
         {
-          packages.${system} =
-            { inherit (buildPkgs) default sdk lockfile; }
-            // lib.optionalAttrs (stm32cubeprog != null) { inherit stm32cubeprog; };
+          packages.${system} = {
+            inherit (buildPkgs) default sdk lockfile;
+          }
+          // lib.optionalAttrs (stm32cubeprog != null) { inherit stm32cubeprog; };
           devShells.${system} = shells;
         };
     in

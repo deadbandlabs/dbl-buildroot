@@ -160,7 +160,7 @@ in
     ];
 
     shellHook = ''
-      export PRE_COMMIT_HOME="$PWD/.cache/pre-commit"
+      export PRE_COMMIT_HOME="''${OUTPUT_BASE:-$PWD}/.cache/pre-commit"
       echo "DBL pre-commit shell"
       echo "  Cache: $PRE_COMMIT_HOME"
     '';
