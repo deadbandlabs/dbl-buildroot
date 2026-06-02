@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Reusable submodule-consistency gate for downstream parents.
+#
+# Runs in the caller's repo context, with `make check-dbl-buildroot` to
+# verify the parent's SHA pins (see update.sh, check-pinned-shas.sh):
+#
+#   check:
+#     uses: deadbandlabs/dbl-buildroot/.github/workflows/check-reusable.yml@<sha>
+---
+name: Submodule check (reusable)
+
+"on":
+  workflow_call:
+
+"jobs":
+  check:
+    name: Submodule consistency check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: cachix/install-nix-action@v30
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - run: make check-dbl-buildroot

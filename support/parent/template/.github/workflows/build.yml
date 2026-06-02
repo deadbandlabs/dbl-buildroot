@@ -1,5 +1,19 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
+#
+# Calls dbl-buildroot's reusable workflows directly (pinned to the submodule SHA
+# by `make update-dbl-buildroot`. Parent-layout cache paths are defaults but
+# defaults but can be updated.
+#
+# Cachix pulls from the public `deadbandlabs` Nix cache by default (no secret),
+# useful mainly for downloading the build shell environment dependencies.
+#
+# To push your own builds to your own Cachix account, set a CACHIX_AUTH_TOKEN
+# repo secret and add:
+#     secrets:
+#       cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+#
+# To disable cachix entirely, pass `cachix-cache: ""` in `with:`.
 ---
 name: Build
 
@@ -15,11 +29,22 @@ name: Build
   workflow_dispatch:
 
 "jobs":
-  build:
-    uses: deadbandlabs/dbl-buildroot/.github/workflows/downstream.yml@@@SUBMODULE_SHA@@
+  check:
+    uses: deadbandlabs/dbl-buildroot/.github/workflows/check-reusable.yml@@@SUBMODULE_SHA@@
+
+  release:
+    needs: check
+    uses: deadbandlabs/dbl-buildroot/.github/workflows/build-reusable.yml@@@SUBMODULE_SHA@@
     with:
+      build-mode: nix-build
       project-name: @@PROJECT_NAME@@
-      dl-cache-key: br-dl-${{ hashFiles('modules/dbl-buildroot/buildroot.lock') }}
-      ccache-key: br-cc-${{ hashFiles('overlay/@@PROJECT_NAME@@.fragment') }}
-      host-cache-key: br-host-${{ hashFiles('modules/dbl-buildroot/buildroot.lock', 'overlay/@@PROJECT_NAME@@.fragment') }}
-    secrets: inherit
+      artifact-name: @@PROJECT_NAME@@-images
+
+  debug:
+    needs: check
+    uses: deadbandlabs/dbl-buildroot/.github/workflows/build-reusable.yml@@@SUBMODULE_SHA@@
+    with:
+      build-mode: shell
+      build-command: make debug
+      project-name: @@PROJECT_NAME@@
+      artifact-name: @@PROJECT_NAME@@-debug-images

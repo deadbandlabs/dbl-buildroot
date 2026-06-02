@@ -8,6 +8,8 @@
 # Tests:
 #   - template files missing required placeholders (or extras)
 #   - init.sh substitution bugs
+#   - generated workflow that fails yamllint or whose reusable refs are not
+#     pinned to the submodule SHA
 #   - generated flake failing `nix flake check`
 #   - hooks added to template but missing from .pre-commit-hooks.yaml
 #
@@ -50,6 +52,9 @@ cd "$WORK/parent"
   --name=template-test \
   --copyright="2026 Test Inc."
 
+# Capture the SHA init.sh uses, before the submodule .git is stripped for the test
+TEMPLATE_SHA="$(git -C "$WORK/parent/modules/dbl-buildroot" rev-parse HEAD)"
+
 # Remove/clean git context for test
 rm -rf "$WORK/parent/modules/dbl-buildroot/.git"
 git -C "$WORK/parent" add -A
@@ -76,6 +81,30 @@ if grep -rE '@@[A-Z_]+@@' "$WORK/parent" \
     --exclude-dir=modules --exclude-dir=.git >&2
   exit 1
 fi
+
+# Valid generated CI workflow and every dbl-buildroot ref to pinned the submodule SHA
+echo "==> validating generated workflow"
+wf="$WORK/parent/.github/workflows/build.yml"
+
+nix develop "$SUBMODULE_ROOT#pre-commit" --command yamllint -d relaxed "$wf" ||
+  {
+    echo "FAIL: generated build.yml failed yamllint" >&2
+    exit 1
+  }
+
+ref_count="$(grep -cE 'uses:[[:space:]]+deadbandlabs/dbl-buildroot/' "$wf" || true)"
+if [[ "$ref_count" -lt 1 ]]; then
+  echo "FAIL: generated build.yml has no dbl-buildroot reusable refs" >&2
+  exit 1
+fi
+while IFS= read -r ref_sha; do
+  if [[ "$ref_sha" != "$TEMPLATE_SHA" ]]; then
+    echo "FAIL: workflow ref pinned to '$ref_sha', expected submodule SHA '$TEMPLATE_SHA'" >&2
+    exit 1
+  fi
+done < <(grep -oE 'uses:[[:space:]]+deadbandlabs/dbl-buildroot/[^@]+@[A-Za-z0-9._-]+' \
+  "$wf" | sed 's/.*@//')
+echo "    $ref_count refs pinned to $TEMPLATE_SHA"
 
 # Every hook ID in template's .pre-commit-config.yaml must exist in
 # the submodule's .pre-commit-hooks.yaml.

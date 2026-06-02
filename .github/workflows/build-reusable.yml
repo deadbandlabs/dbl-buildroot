@@ -1,15 +1,22 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 #
-# Reusable build workflow. Called by downstream repos at a pinned SHA:
+# Reusable build engine used by both:
+#   - this repo's own CI (uses: ./.github/workflows/build-reusable.yml)
+#   - downstream parents, called directly with a pinned cross-repo ref
+#     (uses: deadbandlabs/dbl-buildroot/.github/workflows/build-reusable.yml@<sha>)
 #
-#   uses: deadbandlabs/dbl-buildroot/.github/workflows/build-reusable.yml@<sha>
+# Defaults are provided for the PARENT project (dbl-buildroot as submodule) layout:
+# parent.mk forwards OUTPUT_BASE=<parent root>, so output/, dl/, ccache exist at the
+# parent root, and the lockfile/defconfig live under modules/dbl-buildroot/.
+# The base repo overrides its own root-anchored layout.
 #
-# All repo-specific paths are passed as inputs. The caller computes cache keys
-# with hashFiles() against its own repo tree.
+# Cache keys are computed in a runtime `run:` step, not a caller `with:` block:
+# Forgejo exposes no functions (incl. hashFiles) in the reusable-call `with:`
+# context, so keys must be derived after checkout.
 #
 # Two build modes:
-#   shell (default): `nix develop ...#ci --command <build-command>`
+#   shell (default): `nix develop ...#ci --command <build-command>` (uses caches)
 #   nix-build:       `nix build` (fully hermetic, no dl/ccache/host caches)
 ---
 name: Build (reusable)
@@ -17,20 +24,24 @@ name: Build (reusable)
 "on":
   workflow_call:
     inputs:
+      project-name:
+        description: "Name used to namespace cache keys and build outputs"
+        type: string
+        required: true
       checkout-submodules:
         description: "Checkout submodules"
         type: boolean
         default: true
       nix-flake:
-        description: "Path to nix flake for dev shell (ignored in nix-build mode)"
+        description: "Path to nix flake (parent uses .?submodules=1)"
         type: string
-        default: "."
+        default: ".?submodules=1"
       build-mode:
         description: "'shell' for nix develop + make, 'nix-build' for hermetic nix build"
         type: string
         default: "shell"
       build-command:
-        description: "Build command to run inside nix shell (ignored in nix-build mode)"
+        description: "Build command run inside nix shell (ignored in nix-build mode)"
         type: string
         default: "make"
       artifact-name:
@@ -40,34 +51,44 @@ name: Build (reusable)
       images-path:
         description: "Path to built images for upload"
         type: string
-        required: true
-      dl-cache-key:
-        description: "Download cache key (ignored in nix-build mode)"
-        type: string
-        default: ""
+        default: "output/debug/images/"
       dl-cache-path:
-        description: "Download cache path (ignored in nix-build mode)"
+        description: "Download cache storage path"
         type: string
         default: "dl/"
-      ccache-key:
-        description: "Ccache key (ignored in nix-build mode)"
+      dl-key-files:
+        description: "Space-separated paths/globs to hash for the download cache key"
         type: string
-        default: ""
+        default: "modules/dbl-buildroot/buildroot.lock"
       ccache-path:
-        description: "Ccache path (ignored in nix-build mode)"
+        description: "Ccache storage path (parent default)"
         type: string
         default: "output/ccache/"
-      host-cache-key:
-        description: "Host toolchain cache key (empty = skip host caching)"
+      ccache-key-files:
+        description: "Space-separated paths/globs to hash for the ccache key"
         type: string
-        default: ""
+        default: >-
+          modules/dbl-buildroot/buildroot.lock
+          overlay/*.fragment
       host-cache-paths:
-        description: "Host toolchain cache paths (newline-separated)"
+        description: "Host toolchain cache storage paths (newline-separated). May be empty."
         type: string
-        default: ""
+        default: |
+          output/debug/host/
+          output/debug/build/host-*/
+      host-key-files:
+        description: "Space-separated paths/globs to hash for the host cache key. Empty = skip."
+        type: string
+        default: >-
+          modules/dbl-buildroot/buildroot.lock
+          overlay/*.fragment
+      cachix-cache:
+        description: "Cachix cache to pull/push. Empty = disable. No auth token = pull-only."
+        type: string
+        default: "deadbandlabs"
     secrets:
       cachix-auth-token:
-        description: "Cachix auth token"
+        description: "Cachix auth token (omit for pull-only)"
         required: false
 
 "jobs":
@@ -78,6 +99,35 @@ name: Build (reusable)
       - uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.checkout-submodules }}
+
+      - name: Compute cache keys
+        id: keys
+        if: ${{ inputs.build-mode == 'shell' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          # Hash the concatenation of every file matched by the given
+          # space-separated path/glob list.
+          hash_of() {
+            # shellcheck disable=SC2206  # intentional word-split + glob
+            local files=( $1 )
+            if [ ${#files[@]} -eq 0 ]; then
+              echo "::error::no files matched cache-key list: '$1'" >&2
+              exit 1
+            fi
+            cat -- "${files[@]}" | sha256sum | cut -d' ' -f1
+          }
+          PFX='${{ inputs.project-name }}'
+          {
+            echo "dl=br-dl-${PFX}-$(hash_of '${{ inputs.dl-key-files }}')"
+            echo "cc=br-cc-${PFX}-$(hash_of '${{ inputs.ccache-key-files }}')"
+            if [ -n '${{ inputs.host-key-files }}' ]; then
+              echo "host=br-host-${PFX}-$(hash_of '${{ inputs.host-key-files }}')"
+            else
+              echo "host="
+            fi
+          } >> "$GITHUB_OUTPUT"
 
       - name: Allow user namespaces for buildFHSEnv
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -92,9 +142,10 @@ name: Build (reusable)
             max-jobs = auto
 
       - name: Setup Cachix
+        if: ${{ inputs.cachix-cache != '' }}
         uses: cachix/cachix-action@v14
         with:
-          name: deadbandlabs
+          name: ${{ inputs.cachix-cache }}
           authToken: ${{ secrets.cachix-auth-token }}
 
       # --- Shell-mode caches (skipped in nix-build mode) ---
@@ -104,19 +155,19 @@ name: Build (reusable)
         uses: actions/cache@v5
         with:
           path: ${{ inputs.dl-cache-path }}
-          key: ${{ inputs.dl-cache-key }}
-          restore-keys: br-dl-
+          key: ${{ steps.keys.outputs.dl }}
+          restore-keys: br-dl-${{ inputs.project-name }}-
 
       - name: Cache host toolchain
-        if: ${{ inputs.build-mode == 'shell' && inputs.host-cache-key != '' }}
+        if: ${{ inputs.build-mode == 'shell' && steps.keys.outputs.host != '' }}
         uses: actions/cache@v5
         with:
           path: ${{ inputs.host-cache-paths }}
-          key: ${{ inputs.host-cache-key }}
-          restore-keys: br-host-
+          key: ${{ steps.keys.outputs.host }}
+          restore-keys: br-host-${{ inputs.project-name }}-
 
       - name: Clean host cache
-        if: ${{ inputs.build-mode == 'shell' && inputs.host-cache-key != '' }}
+        if: ${{ inputs.build-mode == 'shell' && steps.keys.outputs.host != '' }}
         run: |
           for dir in ${{ inputs.host-cache-paths }}; do
             find "$dir" -name '*.la' -delete 2>/dev/null || true
@@ -127,14 +178,13 @@ name: Build (reusable)
         uses: actions/cache@v5
         with:
           path: ${{ inputs.ccache-path }}
-          key: ${{ inputs.ccache-key }}
-          restore-keys: br-cc-
+          key: ${{ steps.keys.outputs.cc }}
+          restore-keys: br-cc-${{ inputs.project-name }}-
 
       # --- Build ---
 
       - name: Build (shell mode)
         if: ${{ inputs.build-mode == 'shell' }}
-        # Note: nix-flake: will contain ? (e.g. ".?submodules=1") and must be quoted
         run: nix develop '${{ inputs.nix-flake }}#ci' --command ${{ inputs.build-command }}
 
       - name: Build (hermetic nix)
