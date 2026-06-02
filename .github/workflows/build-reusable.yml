@@ -183,11 +183,11 @@ name: Build (reusable)
 
       # --- Build ---
 
-      - name: Build (shell mode)
+      - name: Makefile build  # (build-mode = shell)
         if: ${{ inputs.build-mode == 'shell' }}
         run: nix develop '${{ inputs.nix-flake }}#ci' --command ${{ inputs.build-command }}
 
-      - name: Build (hermetic nix)
+      - name: Nix build  # (build-mode = nix-build)
         if: ${{ inputs.build-mode == 'nix-build' }}
         run: nix build '${{ inputs.nix-flake }}' --print-build-logs
 
