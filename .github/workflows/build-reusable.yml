@@ -21,77 +21,80 @@
 ---
 name: Build (reusable)
 
-"on":
+'on':
   workflow_call:
     inputs:
       project-name:
-        description: "Name used to namespace cache keys and build outputs"
+        description: 'Name used to namespace cache keys and build outputs'
         type: string
         required: true
       checkout-submodules:
-        description: "Checkout submodules"
+        description: 'Checkout submodules'
         type: boolean
         default: true
       nix-flake:
-        description: "Path to nix flake (parent uses .?submodules=1)"
+        description: 'Path to nix flake (parent uses .?submodules=1)'
         type: string
-        default: ".?submodules=1"
+        default: '.?submodules=1'
       build-mode:
         description: "'shell' for nix develop + make, 'nix-build' for hermetic nix build"
         type: string
-        default: "shell"
+        default: 'shell'
       build-command:
-        description: "Build command run inside nix shell (ignored in nix-build mode)"
+        description: 'Build command run inside nix shell (ignored in nix-build mode)'
         type: string
-        default: "make"
+        default: 'make'
       artifact-name:
-        description: "Name for uploaded artifacts"
+        description: 'Name for uploaded artifacts'
         type: string
         required: true
       images-path:
-        description: "Path to built images for upload"
+        description: 'Path to built images for upload'
         type: string
-        default: "output/debug/images/"
+        default: 'output/debug/images/'
       dl-cache-path:
-        description: "Download cache storage path"
+        description: 'Download cache storage path'
         type: string
-        default: "dl/"
+        default: 'dl/'
       dl-key-files:
-        description: "Space-separated paths/globs to hash for the download cache key"
+        description: 'Space-separated paths/globs to hash for the download cache key'
         type: string
-        default: "modules/dbl-buildroot/buildroot.lock"
+        default: 'modules/dbl-buildroot/buildroot.lock'
       ccache-path:
-        description: "Ccache storage path (parent default)"
+        description: 'Ccache storage path (parent default)'
         type: string
-        default: "output/ccache/"
+        default: 'output/ccache/'
       ccache-key-files:
-        description: "Space-separated paths/globs to hash for the ccache key"
+        description: 'Space-separated paths/globs to hash for the ccache key'
         type: string
         default: >-
           modules/dbl-buildroot/buildroot.lock
           overlay/*.fragment
       host-cache-paths:
-        description: "Host toolchain cache storage paths (newline-separated). May be empty."
+        description: 'Host toolchain cache storage paths (newline-separated). May be empty.'
         type: string
         default: |
           output/debug/host/
           output/debug/build/host-*/
       host-key-files:
-        description: "Space-separated paths/globs to hash for the host cache key. Empty = skip."
+        description: 'Space-separated paths/globs to hash for the host cache key. Empty = skip.'
         type: string
         default: >-
           modules/dbl-buildroot/buildroot.lock
           overlay/*.fragment
       cachix-cache:
-        description: "Cachix cache to pull/push. Empty = disable. No auth token = pull-only."
+        description: 'Cachix cache to pull/push. Empty = disable. No auth token = pull-only.'
         type: string
-        default: "deadbandlabs"
+        default: 'deadbandlabs'
     secrets:
       cachix-auth-token:
-        description: "Cachix auth token (omit for pull-only)"
+        description: 'Cachix auth token for storing build cache (optional)'
+        required: false
+      github-external-token:
+        description: 'github.com PAT for Nix flake fetches outside GH (optional)'
         required: false
 
-"jobs":
+'jobs':
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -99,6 +102,13 @@ name: Build (reusable)
       - uses: actions/checkout@v6
         with:
           submodules: ${{ inputs.checkout-submodules }}
+
+      - name: Strip checkout credentials outside Github
+        if: ${{ !contains(github.server_url, 'github.com') }}
+        run: |
+          git config --local --unset-all http.https://github.com/.extraheader || true
+          git config --global --unset-all http.https://github.com/.extraheader || true
+          git config --global --unset-all url.https://github.com/.insteadOf || true
 
       - name: Compute cache keys
         id: keys
@@ -136,6 +146,8 @@ name: Build (reusable)
       - name: Install Nix
         uses: nixbuild/nix-quick-install-action@v34
         with:
+          # Set empty github.token or github-external-token used for Nix flake fetch in CI runs outside of github.com
+          github_access_token: ${{ contains(github.server_url, 'github.com') && github.token || secrets.github-external-token }}
           nix_conf: |
             build-users-group =
             sandbox = false
