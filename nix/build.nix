@@ -117,7 +117,7 @@ let
     output: base: deltas:
     let
       nonEmpty = builtins.filter (d: d != null) deltas;
-      argv = pkgs.lib.concatMapStringsSep " " (d: toString d) nonEmpty;
+      argv = pkgs.lib.concatMapStringsSep " " (d: "${d}") nonEmpty;
     in
     ''
       ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} ${output} ${base} ${argv}

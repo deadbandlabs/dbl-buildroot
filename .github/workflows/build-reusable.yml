@@ -151,7 +151,26 @@ name: Build (reusable)
           nix_conf: |
             build-users-group =
             sandbox = false
-            max-jobs = auto
+            cores = 0
+            # Build up-to 4 parallel derivations, matched to build users below
+            max-jobs = 4
+
+      # Selfhosted runners (including act) may run the job as root
+      # Provision unprivileged nixbld users to match Github runner (no-op when non-root)
+      - name: Use unprivileged build user
+        shell: bash
+        run: |
+          if [ "$(id -u)" -eq 0 ]; then
+            groupadd -r nixbld 2>/dev/null || true
+            for i in $(seq 1 8); do
+              id "nixbld$i" >/dev/null 2>&1 || \
+                useradd -r -g nixbld -G nixbld -d /var/empty \
+                  -s "$(command -v nologin || echo /bin/false)" "nixbld$i"
+            done
+            # NIX_CONFIG has highest precedence and overrides the empty
+            # build-users-group set at install time; forward it to later steps.
+            echo 'NIX_CONFIG=build-users-group = nixbld' >> "$GITHUB_ENV"
+          fi
 
       - name: Setup Cachix
         if: ${{ inputs.cachix-cache != '' }}
