@@ -7,17 +7,14 @@
   buildroot,
   cmake-compat,
   stm32cubeprog,
+  certEnv ? "",
   # Downstream-injected packages added to the default shell
   extraPackages ? [ ],
 }:
 let
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
-    # Nix wget has no system CA bundle; point it at the Nix-provided one
-    export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-    export GIT_SSL_CAINFO="$SSL_CERT_FILE"
-    export CURL_CA_BUNDLE="$SSL_CERT_FILE"
-
+    ${certEnv}
   '';
 
   # Packages required to run Buildroot builds

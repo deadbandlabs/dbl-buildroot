@@ -72,12 +72,24 @@ in
             if pkgs.stdenv.hostPlatform.isx86_64 then pkgs.callPackage ./nix/stm32cubeprog.nix { } else null;
           cmake-compat = pkgs.callPackage ./nix/cmake-compat.nix { };
 
+          # Shared CA cert env for Nix-provided wget/curl/git (no system CA bundle)
+          wgetrc = pkgs.writeText "wgetrc" ''
+            ca_certificate = ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt
+          '';
+          certEnv = ''
+            export SSL_CERT_FILE="${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+            export GIT_SSL_CAINFO="$SSL_CERT_FILE"
+            export CURL_CA_BUNDLE="$SSL_CERT_FILE"
+            export WGETRC="${wgetrc}"
+          '';
+
           buildPkgs = import ./nix/build.nix {
             inherit
               pkgs
               buildroot
               buildroot-nix
               cmake-compat
+              certEnv
               extraExternalSrcs
               configFragment
               configFragmentDebug
@@ -94,6 +106,7 @@ in
               pkgs
               cmake-compat
               stm32cubeprog
+              certEnv
               ;
             inherit buildroot;
             extraPackages = extraDevShellPackages;
