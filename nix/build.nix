@@ -33,6 +33,8 @@
   # Optional programmer (USB DFU loader TF-A + FIP) defconfig fragment.
   # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
   programmerFragment ? null,
+  # Lockfile path used for source prefetch + lock generation
+  lockfilePath ? (self + "/buildroot.lock"),
 }:
 let
   ## Lockfile generation (via upstream buildroot.nix)
@@ -41,9 +43,11 @@ let
     name = projectName;
     inherit pkgs;
     src = buildroot;
-    externalSrc = buildExternalSrc;
-    defconfig = defconfigName;
-    lockfile = self + "/buildroot.lock";
+    # Feed locks generation the same externals + defconfig of the the real build
+    # Allows overlay-selected packages to be enumerated and locked offline
+    externalSrc = brExternalValue;
+    defconfig = lockDefconfig;
+    lockfile = lockfilePath;
     nativeBuildInputs = [
       cmake-compat
       pkgs.git
@@ -132,6 +136,20 @@ let
   # When no fragment: use the built-in defconfig target directly.
   # When fragment: generate merged defconfig and apply it.
   baseDefconfig = self + "/configs/${defconfigName}";
+
+  # defconfig passed to mkBuildroot for lock generation
+  # merged-config derivations of fragments take the full make-arg string
+  # otherwise, defconfig paths are passed directly
+  lockDefconfig =
+    if configFragment != null then
+      let
+        merged = pkgs.runCommand "lock-defconfig" { } ''
+          ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} $out ${baseDefconfig} ${configFragment}
+        '';
+      in
+      "defconfig BR2_DEFCONFIG=${merged}"
+    else
+      baseDefconfig;
 
   build = pkgs.stdenv.mkDerivation {
     name = projectName;

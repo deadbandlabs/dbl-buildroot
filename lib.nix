@@ -50,6 +50,9 @@ in
       # set to null to disable the programmer build entirely.
       programmerFragment ? "configs/myd_yf135_programmer.fragment",
       extraExternalSrcs ? [ ],
+      # Buildroot package lockfile. Defaults to local
+      # Downstream repos with overlay packages can provide e.g. `lockfile = ./buildroot.lock;`
+      lockfile ? (./. + "/buildroot.lock"),
       systems ? [
         "x86_64-linux"
         "aarch64-linux"
@@ -99,6 +102,7 @@ in
             projectName = name;
             defconfigName = defconfig;
             flashLayoutPath = flashLayout;
+            lockfilePath = lockfile;
           };
 
           shells = import ./nix/devshell.nix {
