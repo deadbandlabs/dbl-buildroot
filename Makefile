@@ -77,12 +77,21 @@ LOG     ?= $(LOG_DIR)/$(shell date +%Y%m%d-%H%M%S).log
 # release/debug builds chain a programmer build in output/programmer/
 # Set BUILD_PROGRAMMER=0 to opt out
 BUILD_PROGRAMMER ?= 1
+
+# Set host toolchain to reuse (via symlink) instead of rebuilding:
+#   debug -> release (see SHARE_HOST_FOR_DEBUG=0)
+#   programmer -> chained parent $(O) via PROGRAMMER_HOST_SRC or release if standalone
+PROGRAMMER_HOST_SRC ?= $(RELEASE_O)
 ifeq ($(MODE),debug)
 _VARIANT_PREP   := prepare-variant-host-reuse
+_SHARE_SRC      := $(RELEASE_O)
+_SHARE_ENABLE   := $(SHARE_HOST_FOR_DEBUG)
 _BUILD_TARGETS  :=
 _UPDATE_LATEST  := true
 else ifeq ($(MODE),programmer)
 _VARIANT_PREP   := prepare-variant-host-reuse
+_SHARE_SRC      := $(PROGRAMMER_HOST_SRC)
+_SHARE_ENABLE   := 1
 _BUILD_TARGETS  := arm-trusted-firmware
 _UPDATE_LATEST  := false
 else
@@ -142,7 +151,7 @@ regen-programmer-defconfig:
 	$(MERGE_DEFCONFIG) $(PROGRAMMER_DEFCONFIG) $(RELEASE_DEFCONFIG) $(PROGRAMMER_FRAGMENT)
 
 prepare-variant-host-reuse:
-	@$(SHARE_HOST_SCRIPT) "$(CURDIR)" "$(RELEASE_O)" "$(O)" "$(SHARE_HOST_FOR_DEBUG)" "$(MAKE)"
+	@$(SHARE_HOST_SCRIPT) "$(CURDIR)" "$(_SHARE_SRC)" "$(O)" "$(_SHARE_ENABLE)" "$(MAKE)"
 
 all: $(_VARIANT_PREP)
 	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
@@ -154,7 +163,7 @@ all: $(_VARIANT_PREP)
 	fi
 ifneq ($(MODE),programmer)
 ifeq ($(BUILD_PROGRAMMER),1)
-	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
+	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' PROGRAMMER_HOST_SRC=$(O) all
 	@if [ -f $(FLASHLAYOUT_SRC) ]; then \
 		$(BUNDLE_IMAGES_SCRIPT) \
 			$(O)/images \
