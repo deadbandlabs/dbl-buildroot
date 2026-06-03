@@ -18,6 +18,10 @@
 # Two build modes:
 #   shell (default): `nix develop ...#ci --command <build-command>` (uses caches)
 #   nix-build:       `nix build` (fully hermetic, no dl/ccache/host caches)
+#
+# Outputs:
+#   images-dir  - path to images directory (empty if none built)
+#   sdk-dir     - path to SDK directory (empty if SDK not requested)
 ---
 name: Build (reusable)
 
@@ -44,12 +48,12 @@ name: Build (reusable)
         description: 'Build command run inside nix shell (ignored in nix-build mode)'
         type: string
         default: 'make'
-      artifact-name:
-        description: 'Name for uploaded artifacts'
-        type: string
-        required: true
+      build-sdk:
+        description: 'Also build the SDK (nix-build mode only)'
+        type: boolean
+        default: false
       images-path:
-        description: 'Path to built images for upload'
+        description: 'Path to built images (shell mode)'
         type: string
         default: 'output/debug/images/'
       dl-cache-path:
@@ -86,18 +90,28 @@ name: Build (reusable)
         description: 'Cachix cache to pull/push. Empty = disable. No auth token = pull-only.'
         type: string
         default: 'deadbandlabs'
+    outputs:
+      images-dir:
+        description: 'Path to the built images directory'
+        value: ${{ jobs.build.outputs.images-dir }}
+      sdk-dir:
+        description: 'Path to the built SDK directory'
+        value: ${{ jobs.build.outputs.sdk-dir }}
     secrets:
       cachix-auth-token:
         description: 'Cachix auth token for storing build cache (optional)'
         required: false
       github-external-token:
-        description: 'github.com PAT for Nix flake fetches outside GH (optional)'
+        description: 'github.com PAT for Nix flake fetch outside GH (optional)'
         required: false
 
 'jobs':
   build:
     name: Build
     runs-on: ubuntu-latest
+    outputs:
+      images-dir: ${{ steps.pack.outputs.images-dir }}
+      sdk-dir: ${{ steps.pack.outputs.sdk-dir }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -222,17 +236,39 @@ name: Build (reusable)
         if: ${{ inputs.build-mode == 'nix-build' }}
         run: nix build '${{ inputs.nix-flake }}' --print-build-logs
 
-      # --- Output ---
+      - name: Build SDK  # (nix-build mode, opt-in)
+        if: ${{ inputs.build-mode == 'nix-build' && inputs.build-sdk }}
+        run: nix build '${{ inputs.nix-flake }}#sdk' --print-build-logs
 
-      - name: Copy nix build output
-        if: ${{ inputs.build-mode == 'nix-build' }}
+      # --- Locate outputs ---
+
+      - name: Locate build outputs
+        id: pack
+        shell: bash
         run: |
-          mkdir -p images
-          cp -r result/images/. images/
+          set -euo pipefail
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.build-mode == 'nix-build' && 'images/' || inputs.images-path }}
-          if-no-files-found: error
+          resolve() {
+            # shellcheck disable=SC2206  # intentional word-split
+            local candidates=( $1 )
+            for d in "${candidates[@]}"; do
+              [ -d "$d" ] && [ -n "$(ls -A "$d" 2>/dev/null)" ] && { echo "$d"; return; }
+            done
+            echo ""
+          }
+
+          if [ '${{ inputs.build-mode }}' = 'nix-build' ]; then
+            IMG_DIR="$(resolve 'result/images')"
+            SDK_DIR="$(resolve 'result-sdk')"
+          else
+            IMG_DIR="$(resolve '${{ inputs.images-path }}')"
+            SDK_DIR=""
+          fi
+
+          echo "images-dir=${IMG_DIR}" >> "$GITHUB_OUTPUT"
+          echo "sdk-dir=${SDK_DIR}" >> "$GITHUB_OUTPUT"
+
+          # Summary
+          echo '### Build outputs' >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$IMG_DIR" ] && echo "- **Images:** \`$IMG_DIR\`" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$SDK_DIR" ] && echo "- **SDK:** \`$SDK_DIR\`" >> "$GITHUB_STEP_SUMMARY"

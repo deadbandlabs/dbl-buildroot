@@ -55,50 +55,34 @@ name: Build
   image:
     name: Build release image (nix)
     needs: lockfile
+    uses: ./.github/workflows/build-reusable.yml
+    with:
+      build-mode: nix-build
+      nix-flake: .
+      project-name: dbl-buildroot
+      build-sdk: true
+    secrets:
+      cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+  upload:
+    name: Upload release artifacts
+    needs: image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - name: Allow user namespaces for buildFHSEnv
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-        continue-on-error: true  # not available with act
-
-      - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v34
-        with:
-          nix_conf: |
-            build-users-group =
-            sandbox = false
-            max-jobs = auto
-
-      - uses: cachix/cachix-action@v14
-        with:
-          name: deadbandlabs
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-
-      - name: Build image
-        run: nix build --print-build-logs
-
-      - name: Build SDK
-        run: nix build .#sdk --print-build-logs
-
-      - name: Package artifacts
-        run: |
-          mkdir -p artifacts/images artifacts/sdk
-          cp -r result/images/. artifacts/images/
-          cp -r result-sdk/. artifacts/sdk/
-
       - name: Upload image artifacts
+        if: ${{ needs.image.outputs.images-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-images
-          path: artifacts/images/
+          path: ${{ needs.image.outputs.images-dir }}/
           if-no-files-found: error
 
       - name: Upload SDK artifacts
+        if: ${{ needs.image.outputs.sdk-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-sdk
-          path: artifacts/sdk/
+          path: ${{ needs.image.outputs.sdk-dir }}/
           if-no-files-found: error
 
   debug:
@@ -109,7 +93,6 @@ name: Build
       build-mode: shell
       nix-flake: .
       build-command: make SHARE_HOST_FOR_DEBUG=0 debug  # No release build; do not share host toolchain
-      artifact-name: myd-yf135-debug-images
       project-name: dbl-buildroot
       images-path: output/debug/images/
       dl-cache-path: dl/
@@ -131,3 +114,16 @@ name: Build
         configs/myd_yf135_debug.fragment
     secrets:
       cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+  upload-debug:
+    name: Upload debug artifacts
+    needs: debug
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload debug image artifacts
+        if: ${{ needs.debug.outputs.images-dir != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: myd-yf135-debug-images
+          path: ${{ needs.debug.outputs.images-dir }}/
+          if-no-files-found: error
