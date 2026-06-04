@@ -55,75 +55,79 @@ name: Build
   image:
     name: Build release image (nix)
     needs: lockfile
-    uses: ./.github/workflows/build-reusable.yml
-    with:
-      build-mode: nix-build
-      nix-flake: .
-      project-name: dbl-buildroot
-      build-sdk: true
-    secrets:
-      cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-  upload:
-    name: Upload release artifacts
-    needs: image
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Build
+        id: build
+        uses: ./.github/actions/build
+        with:
+          build-mode: nix-build
+          nix-flake: .
+          project-name: dbl-buildroot
+          build-sdk: true
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
       - name: Upload image artifacts
-        if: ${{ needs.image.outputs.images-dir != '' }}
+        if: ${{ steps.build.outputs.images-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-images
-          path: ${{ needs.image.outputs.images-dir }}/
+          path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error
 
       - name: Upload SDK artifacts
-        if: ${{ needs.image.outputs.sdk-dir != '' }}
+        if: ${{ steps.build.outputs.sdk-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-sdk
-          path: ${{ needs.image.outputs.sdk-dir }}/
+          path: ${{ steps.build.outputs.sdk-dir }}/
           if-no-files-found: error
 
   debug:
     name: Build debug image (make)
     needs: lockfile
-    uses: ./.github/workflows/build-reusable.yml
-    with:
-      build-mode: shell
-      nix-flake: .
-      build-command: make SHARE_HOST_FOR_DEBUG=0 debug  # No release build; do not share host toolchain
-      project-name: dbl-buildroot
-      images-path: output/debug/images/
-      dl-cache-path: dl/
-      ccache-path: output/ccache/
-      host-cache-paths: |
-        output/debug/host/
-        output/debug/build/host-*/
-      dl-key-files: buildroot.lock
-      ccache-key-files: >-
-        configs/myd_yf135_defconfig
-        configs/myd_yf135_debug.fragment
-        board/myd-yf135/linux.config
-        board/myd-yf135/linux-debug.fragment
-        board/myd-yf135/uboot.config
-        board/myd-yf135/uboot-debug.fragment
-      host-key-files: >-
-        buildroot.lock
-        configs/myd_yf135_defconfig
-        configs/myd_yf135_debug.fragment
-    secrets:
-      cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-  upload-debug:
-    name: Upload debug artifacts
-    needs: debug
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Build
+        id: build
+        uses: ./.github/actions/build
+        with:
+          build-mode: shell
+          nix-flake: .
+          build-command: make SHARE_HOST_FOR_DEBUG=0 debug  # No release build; do not share host toolchain
+          project-name: dbl-buildroot
+          images-path: output/debug/images/
+          dl-cache-path: dl/
+          ccache-path: output/ccache/
+          host-cache-paths: |
+            output/debug/host/
+            output/debug/build/host-*/
+          dl-key-files: buildroot.lock
+          ccache-key-files: >-
+            configs/myd_yf135_defconfig
+            configs/myd_yf135_debug.fragment
+            board/myd-yf135/linux.config
+            board/myd-yf135/linux-debug.fragment
+            board/myd-yf135/uboot.config
+            board/myd-yf135/uboot-debug.fragment
+          host-key-files: >-
+            buildroot.lock
+            configs/myd_yf135_defconfig
+            configs/myd_yf135_debug.fragment
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
       - name: Upload debug image artifacts
-        if: ${{ needs.debug.outputs.images-dir != '' }}
+        if: ${{ steps.build.outputs.images-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-debug-images
-          path: ${{ needs.debug.outputs.images-dir }}/
+          path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error

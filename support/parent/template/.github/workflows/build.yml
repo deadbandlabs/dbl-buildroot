@@ -1,19 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
 #
-# Calls dbl-buildroot's reusable workflows directly (pinned to the submodule SHA
-# by `make update-dbl-buildroot`. Parent-layout cache paths are defaults but
-# defaults but can be updated.
+# Calls dbl-buildroot's submodule-check and build composite action
+# both pinned to the submodule SHA by `make update-dbl-buildroot`
 #
-# Cachix pulls from the public `deadbandlabs` Nix cache by default (no secret),
-# useful mainly for downloading the build shell environment dependencies.
+# Parent-layout cache paths are defaults but can be overridden in `with:`
 #
-# To push your own builds to your own Cachix account, set a CACHIX_AUTH_TOKEN
-# repo secret and add:
-#     secrets:
-#       cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+# The build runs as a composite action inside these jobs to allow for
+# user-defined artifact uploads or other additional steps
 #
-# To disable cachix entirely, pass `cachix-cache: ""` in `with:`.
+# Cachix pulls from the public `deadbandlabs` Nix cache by default,
+# mainly for downloading the build shell environment dependencies
+# To push your own cache, set a CACHIX_AUTH_TOKEN repo secret or
+# to disable cachix entirely, pass `cachix-cache: ""` in `with:`.
 ---
 name: Build
 
@@ -33,18 +32,82 @@ name: Build
     uses: deadbandlabs/dbl-buildroot/.github/workflows/check-reusable.yml@@@SUBMODULE_SHA@@
 
   release:
+    name: Build release image (nix)
     needs: check
-    uses: deadbandlabs/dbl-buildroot/.github/workflows/build-reusable.yml@@@SUBMODULE_SHA@@
-    with:
-      build-mode: nix-build
-      project-name: @@PROJECT_NAME@@
-      artifact-name: @@PROJECT_NAME@@-images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Build
+        id: build
+        uses: deadbandlabs/dbl-buildroot/.github/actions/build@@@SUBMODULE_SHA@@
+        with:
+          build-mode: nix-build
+          project-name: @@PROJECT_NAME@@
+          build-sdk: true
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Upload images (GitHub)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error
+      - name: Upload images (Forgejo)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url != 'https://github.com' }}
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error
+
+      - name: Upload SDK (GitHub)
+        if: ${{ steps.build.outputs.sdk-dir != '' && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-sdk
+          path: ${{ steps.build.outputs.sdk-dir }}/
+          if-no-files-found: error
+      - name: Upload SDK (Forgejo)
+        if: ${{ steps.build.outputs.sdk-dir != '' && github.server_url != 'https://github.com' }}
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-sdk
+          path: ${{ steps.build.outputs.sdk-dir }}/
+          if-no-files-found: error
 
   debug:
+    name: Build debug image (make)
     needs: check
-    uses: deadbandlabs/dbl-buildroot/.github/workflows/build-reusable.yml@@@SUBMODULE_SHA@@
-    with:
-      build-mode: shell
-      build-command: make debug
-      project-name: @@PROJECT_NAME@@
-      artifact-name: @@PROJECT_NAME@@-debug-images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Build
+        id: build
+        uses: deadbandlabs/dbl-buildroot/.github/actions/build@@@SUBMODULE_SHA@@
+        with:
+          build-mode: shell
+          build-command: make debug
+          project-name: @@PROJECT_NAME@@
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Upload debug images (GitHub)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-debug-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error
+      - name: Upload debug images (Forgejo)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url != 'https://github.com' }}
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-debug-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error

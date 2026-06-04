@@ -1,0 +1,243 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Composite build engine used by both:
+#   - this repo's own CI
+#   - downstream parents, called with a pinned cross-repo ref
+#     (uses: deadbandlabs/dbl-buildroot/.github/actions/build@<sha>)
+#
+# Defaults target the parent project (dbl-buildroot as submodule) layout
+#
+# Two build modes:
+#   shell:      `nix develop ...#ci --command <build-command>` (default)
+#   nix-build:  `nix build`
+#
+# Outputs:
+#   images-dir  - path to images directory (empty if none built)
+#   sdk-dir     - path to SDK directory (empty if SDK not requested)
+---
+name: 'dbl-buildroot build'
+description: 'Run a dbl-buildroot build and locate outputs'
+
+inputs:
+  project-name:
+    description: 'Name used to namespace cache keys and build outputs'
+    required: true
+  nix-flake:
+    description: 'Path to nix flake'
+    default: '.?submodules=1'
+  build-mode:
+    description: "'shell' (Makefile) or 'nix-build'"
+    default: 'shell'
+  build-command:
+    description: 'Build command run inside nix shell'
+    default: 'make'
+  build-sdk:
+    description: 'Build nix-build SDK target'
+    default: 'false'
+  images-path:
+    description: 'Path to built images (shell only)'
+    default: 'output/debug/images/'
+  dl-cache-path:
+    description: 'Download cache storage path'
+    default: 'dl/'
+  dl-key-files:
+    description: 'Space-separated paths/globs to hash for the download cache key'
+    default: 'modules/dbl-buildroot/buildroot.lock'
+  ccache-path:
+    description: 'Ccache storage path (parent default)'
+    default: 'output/ccache/'
+  ccache-key-files:
+    description: 'Space-separated paths/globs to hash for the ccache key'
+    default: >-
+      modules/dbl-buildroot/buildroot.lock
+      overlay/*.fragment
+      buildroot.lock
+  host-cache-paths:
+    description: 'Host toolchain cache storage paths (newline-separated), may be empty'
+    default: |
+      output/debug/host/
+      output/debug/build/host-*/
+  host-key-files:
+    description: 'Space-separated paths/globs to hash for the host cache key, may be empty'
+    default: >-
+      modules/dbl-buildroot/buildroot.lock
+      overlay/*.fragment
+      buildroot.lock
+  cachix-cache:
+    description: 'Cachix cache to pull/push. Empty = disable (pull-only)'
+    default: 'deadbandlabs'
+  cachix-auth-token:
+    description: 'Cachix auth token for storing build cache (optional)'
+    default: ''
+  github-external-token:
+    description: 'github.com PAT for Nix flake fetch outside GH (optional)'
+    default: ''
+
+outputs:
+  images-dir:
+    description: 'Path to the built images directory (empty if none)'
+    value: ${{ steps.pack.outputs.images-dir }}
+  sdk-dir:
+    description: 'Path to the built SDK directory (empty if unused)'
+    value: ${{ steps.pack.outputs.sdk-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Strip checkout credentials outside Github
+      if: ${{ !contains(github.server_url, 'github.com') }}
+      shell: bash
+      run: |
+        git config --local --unset-all http.https://github.com/.extraheader || true
+        git config --global --unset-all http.https://github.com/.extraheader || true
+        git config --global --unset-all url.https://github.com/.insteadOf || true
+
+    - name: Compute cache keys
+      id: keys
+      if: ${{ inputs.build-mode == 'shell' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        shopt -s nullglob
+        # Hash the concatenation of every file matched by the given
+        # space-separated path/glob list.
+        hash_of() {
+          # shellcheck disable=SC2206  # intentional word-split + glob
+          local files=( $1 )
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::no files matched cache-key list: '$1'" >&2
+            exit 1
+          fi
+          cat -- "${files[@]}" | sha256sum | cut -d' ' -f1
+        }
+        PFX='${{ inputs.project-name }}'
+        {
+          echo "dl=br-dl-${PFX}-$(hash_of '${{ inputs.dl-key-files }}')"
+          echo "cc=br-cc-${PFX}-$(hash_of '${{ inputs.ccache-key-files }}')"
+          if [ -n '${{ inputs.host-key-files }}' ]; then
+            echo "host=br-host-${PFX}-$(hash_of '${{ inputs.host-key-files }}')"
+          else
+            echo "host="
+          fi
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Allow user namespaces for buildFHSEnv
+      shell: bash
+      run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+
+    - name: Install Nix
+      uses: nixbuild/nix-quick-install-action@v34
+      with:
+        # Set empty github.token or github-external-token
+        # used for Nix flake fetch in CI runs outside of github.com
+        github_access_token: ${{ contains(github.server_url, 'github.com') && github.token || inputs.github-external-token }}
+        nix_conf: |
+          build-users-group =
+          sandbox = false
+          cores = 0
+          # Build up-to 4 parallel derivations, matched to build users below
+          max-jobs = 4
+
+    # Selfhosted runners (including act) may run the job as root
+    # Provision unprivileged nixbld users to match Github runner (no-op when non-root)
+    - name: Use unprivileged build user
+      shell: bash
+      run: |
+        if [ "$(id -u)" -eq 0 ]; then
+          groupadd -r nixbld 2>/dev/null || true
+          for i in $(seq 1 8); do
+            id "nixbld$i" >/dev/null 2>&1 || \
+              useradd -r -g nixbld -G nixbld -d /var/empty \
+                -s "$(command -v nologin || echo /bin/false)" "nixbld$i"
+          done
+          # NIX_CONFIG has highest precedence and overrides the empty
+          # build-users-group set at install time; forward it to later steps.
+          echo 'NIX_CONFIG=build-users-group = nixbld' >> "$GITHUB_ENV"
+        fi
+
+    - name: Setup Cachix
+      if: ${{ inputs.cachix-cache != '' }}
+      uses: cachix/cachix-action@v14
+      with:
+        name: ${{ inputs.cachix-cache }}
+        authToken: ${{ inputs.cachix-auth-token }}
+
+    # Shell caches (skipped in nix-build mode)
+
+    - name: Cache downloads
+      if: ${{ inputs.build-mode == 'shell' }}
+      uses: actions/cache@v5
+      with:
+        path: ${{ inputs.dl-cache-path }}
+        key: ${{ steps.keys.outputs.dl }}
+        restore-keys: br-dl-${{ inputs.project-name }}-
+
+    - name: Cache host toolchain
+      if: ${{ inputs.build-mode == 'shell' && steps.keys.outputs.host != '' }}
+      uses: actions/cache@v5
+      with:
+        path: ${{ inputs.host-cache-paths }}
+        key: ${{ steps.keys.outputs.host }}
+        restore-keys: br-host-${{ inputs.project-name }}-
+
+    - name: Clean host cache
+      if: ${{ inputs.build-mode == 'shell' && steps.keys.outputs.host != '' }}
+      shell: bash
+      run: |
+        while IFS= read -r dir; do
+          [ -n "$dir" ] && find "$dir" -name '*.la' -delete 2>/dev/null || true
+        done <<< "${{ inputs.host-cache-paths }}"
+
+    - name: Cache ccache
+      if: ${{ inputs.build-mode == 'shell' }}
+      uses: actions/cache@v5
+      with:
+        path: ${{ inputs.ccache-path }}
+        key: ${{ steps.keys.outputs.cc }}
+        restore-keys: br-cc-${{ inputs.project-name }}-
+
+    # Build
+
+    - name: Makefile build  # (build-mode = shell)
+      if: ${{ inputs.build-mode == 'shell' }}
+      shell: bash
+      run: nix develop '${{ inputs.nix-flake }}#ci' --command ${{ inputs.build-command }}
+
+    - name: Nix build  # (build-mode = nix-build)
+      if: ${{ inputs.build-mode == 'nix-build' }}
+      shell: bash
+      run: nix build '${{ inputs.nix-flake }}' --print-build-logs
+
+    - name: Build SDK  # (nix-build mode, opt-in)
+      if: ${{ inputs.build-mode == 'nix-build' && inputs.build-sdk == 'true' }}
+      shell: bash
+      run: nix build '${{ inputs.nix-flake }}#sdk' --print-build-logs
+
+    # Locate outputs
+
+    - name: Locate build outputs
+      id: pack
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [ '${{ inputs.build-mode }}' = 'nix-build' ]; then
+          IMG_DIR='result/images'
+          SDK_DIR='result-sdk'
+        else
+          IMG_DIR='${{ inputs.images-path }}'
+          SDK_DIR=''
+        fi
+
+        # Clear outputs if dirs are empty/missing
+        if [ ! -d "$IMG_DIR" ] || [ -z "$(ls -A "$IMG_DIR" 2>/dev/null)" ]; then IMG_DIR=''; fi
+        if [ -z "$SDK_DIR" ] || [ ! -d "$SDK_DIR" ] || [ -z "$(ls -A "$SDK_DIR" 2>/dev/null)" ]; then SDK_DIR=''; fi
+
+        echo "images-dir=${IMG_DIR}" >> "$GITHUB_OUTPUT"
+        echo "sdk-dir=${SDK_DIR}" >> "$GITHUB_OUTPUT"
+
+        # Summary
+        echo '### Build outputs' >> "$GITHUB_STEP_SUMMARY"
+        if [ -n "$IMG_DIR" ]; then echo "- **Images:** \`$IMG_DIR\`" >> "$GITHUB_STEP_SUMMARY"; fi
+        if [ -n "$SDK_DIR" ]; then echo "- **SDK:** \`$SDK_DIR\`" >> "$GITHUB_STEP_SUMMARY"; fi
