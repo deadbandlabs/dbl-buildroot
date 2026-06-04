@@ -248,27 +248,22 @@ name: Build (reusable)
         run: |
           set -euo pipefail
 
-          resolve() {
-            # shellcheck disable=SC2206  # intentional word-split
-            local candidates=( $1 )
-            for d in "${candidates[@]}"; do
-              [ -d "$d" ] && [ -n "$(ls -A "$d" 2>/dev/null)" ] && { echo "$d"; return; }
-            done
-            echo ""
-          }
-
           if [ '${{ inputs.build-mode }}' = 'nix-build' ]; then
-            IMG_DIR="$(resolve 'result/images')"
-            SDK_DIR="$(resolve 'result-sdk')"
+            IMG_DIR='result/images'
+            SDK_DIR='result-sdk'
           else
-            IMG_DIR="$(resolve '${{ inputs.images-path }}')"
-            SDK_DIR=""
+            IMG_DIR='${{ inputs.images-path }}'
+            SDK_DIR=''
           fi
+
+          # Clear outputs if dirs are empty/missing
+          if [ ! -d "$IMG_DIR" ] || [ -z "$(ls -A "$IMG_DIR" 2>/dev/null)" ]; then IMG_DIR=''; fi
+          if [ -z "$SDK_DIR" ] || [ ! -d "$SDK_DIR" ] || [ -z "$(ls -A "$SDK_DIR" 2>/dev/null)" ]; then SDK_DIR=''; fi
 
           echo "images-dir=${IMG_DIR}" >> "$GITHUB_OUTPUT"
           echo "sdk-dir=${SDK_DIR}" >> "$GITHUB_OUTPUT"
 
           # Summary
           echo '### Build outputs' >> "$GITHUB_STEP_SUMMARY"
-          [ -n "$IMG_DIR" ] && echo "- **Images:** \`$IMG_DIR\`" >> "$GITHUB_STEP_SUMMARY"
-          [ -n "$SDK_DIR" ] && echo "- **SDK:** \`$SDK_DIR\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$IMG_DIR" ]; then echo "- **Images:** \`$IMG_DIR\`" >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -n "$SDK_DIR" ]; then echo "- **SDK:** \`$SDK_DIR\`" >> "$GITHUB_STEP_SUMMARY"; fi
