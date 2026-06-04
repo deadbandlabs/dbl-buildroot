@@ -9,7 +9,17 @@ debug_o=$3
 share_host_for_debug=$4
 make_bin=$5
 
+# Remove host toolchain symlinks left by a previous SHARE_HOST_FOR_DEBUG=1 run
+teardown_share_links() {
+  [ -L "$debug_o/host" ] && rm -f "$debug_o/host"
+  for l in "$debug_o"/build/host-*; do
+    [ -L "$l" ] && rm -f "$l"
+  done
+  return 0
+}
+
 if [ "$share_host_for_debug" != "1" ]; then
+  teardown_share_links
   exit 0
 fi
 

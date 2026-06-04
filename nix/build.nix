@@ -29,6 +29,7 @@
   # Note: The nix flake currently only builds the release variant today, so CONFIG_FRAGMENT_DEBUG is unused
   # Wired through lib.nix so a future debug derivation can consume it
   configFragmentDebug ? null,
+  certEnv ? "",
   # Optional programmer (USB DFU loader TF-A + FIP) defconfig fragment.
   # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
   programmerFragment ? null,
@@ -59,6 +60,7 @@ let
     targetPkgs =
       pkgs: with pkgs; [
         bc
+        cacert
         cpio
         file
         libxcrypt
@@ -74,6 +76,7 @@ let
         gnutls # libgnutls.so for linking (u-boot mkeficapsule)
         gnutls.dev # gnutls/gnutls.h headers
       ];
+    profile = certEnv;
     runScript = "make";
   };
 
@@ -117,7 +120,7 @@ let
     output: base: deltas:
     let
       nonEmpty = builtins.filter (d: d != null) deltas;
-      argv = pkgs.lib.concatMapStringsSep " " (d: toString d) nonEmpty;
+      argv = pkgs.lib.concatMapStringsSep " " (d: "${d}") nonEmpty;
     in
     ''
       ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} ${output} ${base} ${argv}

@@ -7,12 +7,12 @@ name: Build
   push:
     branches:
       - main
-      - 'release/*'
+      - "release/*"
 
   pull_request:
     branches:
       - main
-      - 'release/*'
+      - "release/*"
 
   workflow_dispatch:
 
@@ -37,7 +37,7 @@ name: Build
       - uses: cachix/cachix-action@v14
         with:
           name: deadbandlabs
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
       - name: Check flake.lock is updated
         run: nix flake lock --no-update-lock-file
@@ -58,47 +58,33 @@ name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Allow user namespaces for buildFHSEnv
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-        continue-on-error: true  # not available with act
-
-      - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v34
         with:
-          nix_conf: |
-            build-users-group =
-            sandbox = false
-            max-jobs = auto
+          submodules: true
 
-      - uses: cachix/cachix-action@v14
+      - name: Build
+        id: build
+        uses: ./.github/actions/build
         with:
-          name: deadbandlabs
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
-      - name: Build image
-        run: nix build --print-build-logs
-
-      - name: Build SDK
-        run: nix build .#sdk --print-build-logs
-
-      - name: Package artifacts
-        run: |
-          mkdir -p artifacts/images artifacts/sdk
-          cp -r result/images/. artifacts/images/
-          cp -r result-sdk/. artifacts/sdk/
+          build-mode: nix-build
+          nix-flake: .
+          project-name: dbl-buildroot
+          build-sdk: true
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Upload image artifacts
+        if: ${{ steps.build.outputs.images-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-images
-          path: artifacts/images/
+          path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error
 
       - name: Upload SDK artifacts
+        if: ${{ steps.build.outputs.sdk-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-sdk
-          path: artifacts/sdk/
+          path: ${{ steps.build.outputs.sdk-dir }}/
           if-no-files-found: error
 
   debug:
@@ -107,66 +93,41 @@ name: Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Allow user namespaces for buildFHSEnv
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-        continue-on-error: true  # not available with act
-
-      - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v34
         with:
-          nix_conf: |
-            build-users-group =
-            sandbox = false
-            max-jobs = auto
+          submodules: true
 
-      - uses: cachix/cachix-action@v14
+      - name: Build
+        id: build
+        uses: ./.github/actions/build
         with:
-          name: deadbandlabs
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
-      - name: Restore download cache
-        uses: actions/cache@v5
-        with:
-          path: dl/
-          key: br-dl-${{ hashFiles('buildroot.lock') }}
-          restore-keys: br-dl-
-
-      - name: Restore host toolchain cache
-        uses: actions/cache@v5
-        with:
-          path: |
+          build-mode: shell
+          nix-flake: .
+          build-command: make SHARE_HOST_FOR_DEBUG=0 debug  # No release build; do not share host toolchain
+          project-name: dbl-buildroot
+          images-path: output/debug/images/
+          dl-cache-path: dl/
+          ccache-path: output/ccache/
+          host-cache-paths: |
             output/debug/host/
             output/debug/build/host-*/
-          key: br-host-${{ hashFiles('buildroot.lock', 'configs/myd_yf135_defconfig', 'configs/myd_yf135_debug.fragment') }}
-          restore-keys: br-host-
+          dl-key-files: buildroot.lock
+          ccache-key-files: >-
+            configs/myd_yf135_defconfig
+            configs/myd_yf135_debug.fragment
+            board/myd-yf135/linux.config
+            board/myd-yf135/linux-debug.fragment
+            board/myd-yf135/uboot.config
+            board/myd-yf135/uboot-debug.fragment
+          host-key-files: >-
+            buildroot.lock
+            configs/myd_yf135_defconfig
+            configs/myd_yf135_debug.fragment
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      # Cached host .la files make libtool hand host x86-64 .so files to the
-      # target ld ("file format not recognized"). Remove for direct -l<name>.
-      - name: Clean host cache
-        run: find output/debug/host -name '*.la' -delete 2>/dev/null || true
-
-      - name: Restore ccache
-        uses: actions/cache@v5
-        with:
-          path: output/ccache/
-          key: >-
-            br-ccache-${{ hashFiles(
-              'configs/myd_yf135_defconfig',
-              'configs/myd_yf135_debug.fragment',
-              'board/myd-yf135/linux.config',
-              'board/myd-yf135/linux-debug.fragment',
-              'board/myd-yf135/uboot.config',
-              'board/myd-yf135/uboot-debug.fragment'
-            ) }}
-          restore-keys: br-ccache-
-
-      - name: Build debug image
-        run: nix develop .#ci --command make SHARE_HOST_FOR_DEBUG=0 debug
-
-      - name: Upload debug artifacts
+      - name: Upload debug image artifacts
+        if: ${{ steps.build.outputs.images-dir != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: myd-yf135-debug-images
-          path: output/debug/images/
+          path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error

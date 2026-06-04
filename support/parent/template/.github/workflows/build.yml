@@ -1,5 +1,18 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
+#
+# Calls dbl-buildroot's submodule-check and build composite action
+# both pinned to the submodule SHA by `make update-dbl-buildroot`
+#
+# Parent-layout cache paths are defaults but can be overridden in `with:`
+#
+# The build runs as a composite action inside these jobs to allow for
+# user-defined artifact uploads or other additional steps
+#
+# Cachix pulls from the public `deadbandlabs` Nix cache by default,
+# mainly for downloading the build shell environment dependencies
+# To push your own cache, set a CACHIX_AUTH_TOKEN repo secret or
+# to disable cachix entirely, pass `cachix-cache: ""` in `with:`.
 ---
 name: Build
 
@@ -15,11 +28,86 @@ name: Build
   workflow_dispatch:
 
 "jobs":
-  build:
-    uses: deadbandlabs/dbl-buildroot/.github/workflows/downstream.yml@@@SUBMODULE_SHA@@
-    with:
-      project-name: @@PROJECT_NAME@@
-      dl-cache-key: br-dl-${{ hashFiles('modules/dbl-buildroot/buildroot.lock') }}
-      ccache-key: br-cc-${{ hashFiles('overlay/@@PROJECT_NAME@@.fragment') }}
-      host-cache-key: br-host-${{ hashFiles('modules/dbl-buildroot/buildroot.lock', 'overlay/@@PROJECT_NAME@@.fragment') }}
-    secrets: inherit
+  check:
+    uses: deadbandlabs/dbl-buildroot/.github/workflows/check-reusable.yml@@@SUBMODULE_SHA@@
+
+  release:
+    name: Build release image (nix)
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Build
+        id: build
+        uses: deadbandlabs/dbl-buildroot/.github/actions/build@@@SUBMODULE_SHA@@
+        with:
+          build-mode: nix-build
+          project-name: @@PROJECT_NAME@@
+          build-sdk: true
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Upload images (GitHub)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error
+      - name: Upload images (Forgejo)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url != 'https://github.com' }}
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error
+
+      - name: Upload SDK (GitHub)
+        if: ${{ steps.build.outputs.sdk-dir != '' && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-sdk
+          path: ${{ steps.build.outputs.sdk-dir }}/
+          if-no-files-found: error
+      - name: Upload SDK (Forgejo)
+        if: ${{ steps.build.outputs.sdk-dir != '' && github.server_url != 'https://github.com' }}
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-sdk
+          path: ${{ steps.build.outputs.sdk-dir }}/
+          if-no-files-found: error
+
+  debug:
+    name: Build debug image (make)
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Build
+        id: build
+        uses: deadbandlabs/dbl-buildroot/.github/actions/build@@@SUBMODULE_SHA@@
+        with:
+          build-mode: shell
+          build-command: make debug
+          project-name: @@PROJECT_NAME@@
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Upload debug images (GitHub)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url == 'https://github.com' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-debug-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error
+      - name: Upload debug images (Forgejo)
+        if: ${{ steps.build.outputs.images-dir != '' && github.server_url != 'https://github.com' }}
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: @@PROJECT_NAME@@-debug-images
+          path: ${{ steps.build.outputs.images-dir }}/
+          if-no-files-found: error

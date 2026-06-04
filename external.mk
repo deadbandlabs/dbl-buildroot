@@ -29,15 +29,12 @@ LINUX_PRE_BUILD_HOOKS += LINUX_MYD_YF135_COPY_DTS
 # overlay.ubifs   empty UBIFS, mounted as overlayfs upper at runtime
 # optee_ss.ubifs  empty UBIFS, populated by OP-TEE on first use
 
-# Empty source tree for mkfs.ubifs -r (creates an empty filesystem image).
-$(BUILD_DIR)/.empty:
-	mkdir -p $@
+# Empty UBIFS images (mkfs.ubifs creates an empty fs).
+$(BINARIES_DIR)/overlay.ubifs: | host-mtd
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 622 -o $@
 
-$(BINARIES_DIR)/overlay.ubifs: $(BUILD_DIR)/.empty | host-mtd
-	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 622 -r $< -o $@
-
-$(BINARIES_DIR)/optee_ss.ubifs: $(BUILD_DIR)/.empty | host-mtd
-	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -r $< -o $@
+$(BINARIES_DIR)/optee_ss.ubifs: | host-mtd
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -o $@
 
 # U-Boot env binary, redundant variant. BR2_TARGET_UBOOT_ENVIMAGE does not
 # pass -r to mkenvimage; CONFIG_SYS_REDUNDAND_ENVIRONMENT requires the flag
