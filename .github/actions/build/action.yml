@@ -6,6 +6,12 @@
 #   - downstream parents, called with a pinned cross-repo ref
 #     (uses: deadbandlabs/dbl-buildroot/.github/actions/build@<sha>)
 #
+# The caller must run the setup-nix action (Nix + Cachix, max-jobs/cores) first
+#
+#   - uses: deadbandlabs/dbl-buildroot/.github/actions/setup-nix@<sha>
+#     with: { max-jobs: '4', cores: '0', cachix-auth-token: ... }
+#   - uses: deadbandlabs/dbl-buildroot/.github/actions/build@<sha>
+#
 # Defaults target the parent project (dbl-buildroot as submodule) layout
 #
 # Two build modes:
@@ -64,15 +70,6 @@ inputs:
       modules/dbl-buildroot/buildroot.lock
       overlay/*.fragment
       buildroot.lock
-  cachix-cache:
-    description: 'Cachix cache to pull/push. Empty = disable (pull-only)'
-    default: 'deadbandlabs'
-  cachix-auth-token:
-    description: 'Cachix auth token for storing build cache (optional)'
-    default: ''
-  github-external-token:
-    description: 'github.com PAT for Nix flake fetch outside GH (optional)'
-    default: ''
 
 outputs:
   images-dir:
@@ -85,13 +82,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Strip checkout credentials outside Github
-      if: ${{ !contains(github.server_url, 'github.com') }}
-      shell: bash
-      run: |
-        git config --local --unset-all http.https://github.com/.extraheader || true
-        git config --global --unset-all http.https://github.com/.extraheader || true
-        git config --global --unset-all url.https://github.com/.insteadOf || true
+    # Caller must run the setup-nix action (Nix + Cachix) before this action.
 
     - name: Compute cache keys
       id: keys
@@ -121,47 +112,6 @@ runs:
             echo "host="
           fi
         } >> "$GITHUB_OUTPUT"
-
-    - name: Allow user namespaces for buildFHSEnv
-      shell: bash
-      run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-
-    - name: Install Nix
-      uses: nixbuild/nix-quick-install-action@v34
-      with:
-        # Set empty github.token or github-external-token
-        # used for Nix flake fetch in CI runs outside of github.com
-        github_access_token: ${{ contains(github.server_url, 'github.com') && github.token || inputs.github-external-token }}
-        nix_conf: |
-          build-users-group =
-          sandbox = false
-          cores = 0
-          # Build up-to 4 parallel derivations, matched to build users below
-          max-jobs = 4
-
-    # Selfhosted runners (including act) may run the job as root
-    # Provision unprivileged nixbld users to match Github runner (no-op when non-root)
-    - name: Use unprivileged build user
-      shell: bash
-      run: |
-        if [ "$(id -u)" -eq 0 ]; then
-          groupadd -r nixbld 2>/dev/null || true
-          for i in $(seq 1 8); do
-            id "nixbld$i" >/dev/null 2>&1 || \
-              useradd -r -g nixbld -G nixbld -d /var/empty \
-                -s "$(command -v nologin || echo /bin/false)" "nixbld$i"
-          done
-          # NIX_CONFIG has highest precedence and overrides the empty
-          # build-users-group set at install time; forward it to later steps.
-          echo 'NIX_CONFIG=build-users-group = nixbld' >> "$GITHUB_ENV"
-        fi
-
-    - name: Setup Cachix
-      if: ${{ inputs.cachix-cache != '' }}
-      uses: cachix/cachix-action@v14
-      with:
-        name: ${{ inputs.cachix-cache }}
-        authToken: ${{ inputs.cachix-auth-token }}
 
     # Shell caches (skipped in nix-build mode)
 

@@ -31,6 +31,8 @@ The submodule provides:
 - `support/parent/update.sh`: one-shot bumper (submodule + all SHA pins)
 - `support/parent/check-pinned-shas.sh`: drift gate
 - `.github/workflows/check-reusable.yml`: reusable submodule-check workflow
+- `.github/actions/setup-nix`: shared CI Nix-environment setup (used by the below)
+- `.github/actions/lockfile`: composite `buildroot.lock` drift gate
 - `.github/actions/build`: composite build action
 - `.pre-commit-hooks.yaml`: exported hooks for downstream repos
 
@@ -53,7 +55,7 @@ This generates everything from the template in `support/parent/template/`:
 | `Makefile` | Includes `support/parent.mk`; forwards `make` to submodule, provides `make build` for nix |
 | `overlay/` | BR2_EXTERNAL tree (external.desc, Config.in, fragment, package/Config.in) |
 | `.pre-commit-config.yaml` | Hook IDs from submodule, SHA pinned |
-| `.github/workflows/build.yml` | Calls `check-reusable.yml` + the `build` composite action at pinned SHA |
+| `.github/workflows/build.yml` | Calls `check-reusable.yml`, then `setup-nix` + the `lockfile`/`build` composite actions at pinned SHA |
 | `.envrc` | direnv integration |
 | `.gitignore` | Standard patterns |
 | `REUSE.toml` | License annotations |
@@ -147,6 +149,10 @@ make nix-lock   # writes ./buildroot.lock, commit the result
 overlay-selected packages from the same externals + merged defconfig as the real
 build. Re-run and commit it whenever you change package versions or add
 packages.
+
+The generated `build.yml` calls the `lockfile` composite action, which regenerates
+the lock in CI and fails the build if the committed `buildroot.lock` is stale or
+missing
 
 ## Local development
 

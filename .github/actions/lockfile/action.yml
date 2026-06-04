@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Lockfile-drift gate, used by this repo's CI and downstream parents.
+#
+# Regenerates buildroot.lock from the merged (base + overlay) config via
+# `make nix-lock` and fails if it differs from the committed lock. Use it to
+# gate a long build that would otherwise fail.
+#
+# The caller must `actions/checkout` (with submodules) and run the setup-nix
+# action before invoking this
+#
+#   - uses: actions/checkout@v6
+#     with: { submodules: true }
+#   - uses: deadbandlabs/dbl-buildroot/.github/actions/setup-nix@<sha>
+#   - uses: deadbandlabs/dbl-buildroot/.github/actions/lockfile@<sha>
+---
+name: 'dbl-buildroot lockfile check'
+description: 'Fail if the committed buildroot.lock is stale or uncommitted'
+
+runs:
+  using: composite
+  steps:
+    - name: Check flake.lock is up to date
+      shell: bash
+      run: nix flake lock --no-update-lock-file
+
+    - name: Regenerate lockfile
+      shell: bash
+      run: make nix-lock
+
+    - name: Check buildroot.lock is up to date
+      shell: bash
+      run: |
+        # --porcelain catches both modified and untracked (fresh parent) locks;
+        # plain `git diff --exit-code` would silently pass an untracked file.
+        if [ -n "$(git status --porcelain buildroot.lock)" ]; then
+          git --no-pager diff -- buildroot.lock || true
+          echo "::error::buildroot.lock is out of date or uncommitted. Run 'make nix-lock' and commit the result."
+          exit 1
+        fi
