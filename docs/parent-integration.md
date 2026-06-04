@@ -115,8 +115,38 @@ in the parent. There is no parent-side input to keep in sync.
 | `flashLayout` | no | `board/<board>/flashlayout.tsv` | Override flash layout path |
 | `extraExternalSrcs` | no | `[]` | Additional BR2_EXTERNAL trees |
 | `configFragment` | no | `null` | Defconfig fragment to merge over base |
+| `lockfile` | no | submodule's `buildroot.lock` | Project-local package lock (see below) |
 | `system` | no | `"x86_64-linux"` | Target system |
 | `extraDevShellPackages` | no | `[]` | Additional packages in dev shell |
+
+## Package lockfile
+
+The build prefetches all Buildroot package sources from a `buildroot.lock`. The
+`lockfile` parameter **defaults to the submodule's own lock**, which only covers
+the base packages used by dbl-buildroot.
+
+If your overlay adds packages (or bumps versions via `configFragment`), you
+**must** point `lockfile` at a project-local lock, or the build will fetch overlay
+sources at build time and may fail in the FHSEnv.
+
+```nix
+mkProject {
+  # ...
+  configFragment = ./overlay/my-project.fragment;
+  lockfile = ./buildroot.lock;   # required once the overlay adds packages
+}
+```
+
+Generate/refresh that lock from the merged (base + overlay) config with:
+
+```bash
+make nix-lock   # writes ./buildroot.lock, commit the result
+```
+
+`make nix-lock` builds the `#lockfile` flake output, which enumerates the
+overlay-selected packages from the same externals + merged defconfig as the real
+build. Re-run and commit it whenever you change package versions or add
+packages.
 
 ## Local development
 
@@ -124,6 +154,7 @@ in the parent. There is no parent-side input to keep in sync.
 make develop          # enter nix dev shell
 make build            # hermetic release build (nix build)
 make sdk              # SDK tarball
+make nix-lock         # regenerate ./buildroot.lock (after package changes)
 make                  # interactive make (debug, menuconfig, etc.)
 make debug            # debug variant via make
 ```

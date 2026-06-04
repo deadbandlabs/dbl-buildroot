@@ -48,8 +48,8 @@ develop:
 nix-lock:
 	nix build '$(DBL_BR_FLAKEREF)#lockfile' --out-link $(REPO_ROOT)/.nix-lockfile
 	cp -L $(REPO_ROOT)/.nix-lockfile $(REPO_ROOT)/buildroot.lock
+	chmod +w $(REPO_ROOT)/buildroot.lock
 	rm -f $(REPO_ROOT)/.nix-lockfile
-	python3 $(DBL_BR_DIR)/support/build/fix-cargo2-lockfile.py $(REPO_ROOT)/buildroot.lock
 
 update-dbl-buildroot:
 	$(DBL_BR_HELPERS)/update.sh $(REF)

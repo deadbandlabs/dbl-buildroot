@@ -7,6 +7,8 @@ result
 result-*
 .direnv/
 .cache/
+# Temporary file from `make nix-lock`
+.nix-lockfile
 
 # Misc
 *.swp

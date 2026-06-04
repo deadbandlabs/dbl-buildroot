@@ -34,29 +34,11 @@
   # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
   programmerFragment ? null,
   # Lockfile path used for source prefetch + lock generation
+  # Parent repos override this via lib.nix's `lockfile` param
+  # (paths resolve relative to the parent repo root)
   lockfilePath ? (self + "/buildroot.lock"),
 }:
 let
-  ## Lockfile generation (via upstream buildroot.nix)
-
-  buildrootPackages = buildroot-nix.lib.mkBuildroot {
-    name = projectName;
-    inherit pkgs;
-    src = buildroot;
-    # Feed locks generation the same externals + defconfig of the the real build
-    # Allows overlay-selected packages to be enumerated and locked offline
-    externalSrc = brExternalValue;
-    defconfig = lockDefconfig;
-    lockfile = lockfilePath;
-    nativeBuildInputs = [
-      cmake-compat
-      pkgs.git
-      pkgs.linux-pam
-      pkgs.gnutls
-      pkgs.gnutls.dev
-    ];
-  };
-
   ## FHS environment
 
   makeFHSEnv = pkgs.buildFHSEnv {
@@ -83,8 +65,6 @@ let
     profile = certEnv;
     runScript = "make";
   };
-
-  lockedSources = buildrootPackages.packageInputs;
 
   # Filtered external source to only dirs that affect the Buildroot output
   # Excludes docs/, .github/, nix/, support/, README.md, etc. so that changes
@@ -118,6 +98,9 @@ let
   # Shared defconfig merger also used by Makefile build
   mergeDefconfigScript = self + "/support/build/merge-defconfig.py";
 
+  # Strips non-mirror cargo2 URLs from a generated lock (see script header).
+  fixCargo2Script = self + "/support/build/fix-cargo2-lockfile.py";
+
   # Returns a shell snippet that merges `base + deltas` into `output`
   # `deltas` is a list of store paths; null entries are filtered out
   mergeFragments =
@@ -138,18 +121,49 @@ let
   baseDefconfig = self + "/configs/${defconfigName}";
 
   # defconfig passed to mkBuildroot for lock generation
-  # merged-config derivations of fragments take the full make-arg string
-  # otherwise, defconfig paths are passed directly
+  #
+  # mkBuildroot wraps a path arg as `defconfig BR2_DEFCONFIG=<path>` or
+  # directly uses a string arg. For the merged-fragment case (nix derivation)
+  # this is always a string and unified to the same type of result
+  mkLockDefconfig = cfg: "defconfig BR2_DEFCONFIG=${cfg}";
+
   lockDefconfig =
     if configFragment != null then
-      let
-        merged = pkgs.runCommand "lock-defconfig" { } ''
+      mkLockDefconfig (
+        pkgs.runCommand "lock-defconfig" { } ''
           ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} $out ${baseDefconfig} ${configFragment}
-        '';
-      in
-      "defconfig BR2_DEFCONFIG=${merged}"
+        ''
+      )
     else
-      baseDefconfig;
+      mkLockDefconfig baseDefconfig;
+
+  ## Lockfile generation (via upstream buildroot.nix)
+  # Feed lock generation the same externals + defconfig as the real build so
+  # overlay-selected packages are enumerated and locked in the nix cache.
+  buildrootPackages = buildroot-nix.lib.mkBuildroot {
+    name = projectName;
+    inherit pkgs;
+    src = buildroot;
+    externalSrc = brExternalValue;
+    defconfig = lockDefconfig;
+    lockfile = lockfilePath;
+    nativeBuildInputs = [
+      cmake-compat
+      pkgs.git
+      pkgs.linux-pam
+      pkgs.gnutls
+      pkgs.gnutls.dev
+    ];
+  };
+
+  lockedSources = buildrootPackages.packageInputs;
+
+  # Process the generated lock to drop non-mirror cargo2 URLs during derivation
+  lockfile = pkgs.runCommand "${projectName}-buildroot.lock" { } ''
+    cp ${buildrootPackages.packageLockFile} $out
+    chmod +w $out
+    ${pkgs.python3}/bin/python3 ${fixCargo2Script} $out
+  '';
 
   build = pkgs.stdenv.mkDerivation {
     name = projectName;
@@ -249,7 +263,7 @@ let
   };
 in
 {
-  lockfile = buildrootPackages.packageLockFile;
+  inherit lockfile;
   default = build;
   sdk = build.sdk;
 }
