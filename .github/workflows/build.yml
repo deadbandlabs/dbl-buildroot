@@ -98,16 +98,19 @@ name: Build
           host-cache-paths: |
             output/debug/host/
             output/debug/build/host-*/
-          dl-key-files: buildroot.lock
+          dl-key-files: buildroot.lock inputs.nix
           ccache-key-files: >-
+            inputs.nix
             configs/myd_yf135_defconfig
             configs/myd_yf135_debug.fragment
             board/myd-yf135/linux.config
             board/myd-yf135/linux-debug.fragment
             board/myd-yf135/uboot.config
             board/myd-yf135/uboot-debug.fragment
-          host-key-files: >-
+          host-toolchain-key-files: >-
+            inputs.nix
             buildroot.lock
+          host-key-files: >-
             configs/myd_yf135_defconfig
             configs/myd_yf135_debug.fragment
 
