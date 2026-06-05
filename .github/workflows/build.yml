@@ -56,7 +56,7 @@ name: Build
 
       - name: Upload image artifacts
         if: ${{ steps.build.outputs.images-dir != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: myd-yf135-images
           path: ${{ steps.build.outputs.images-dir }}/
@@ -64,7 +64,7 @@ name: Build
 
       - name: Upload SDK artifacts
         if: ${{ steps.build.outputs.sdk-dir != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: myd-yf135-sdk
           path: ${{ steps.build.outputs.sdk-dir }}/
@@ -98,22 +98,25 @@ name: Build
           host-cache-paths: |
             output/debug/host/
             output/debug/build/host-*/
-          dl-key-files: buildroot.lock
+          dl-key-files: buildroot.lock inputs.nix
           ccache-key-files: >-
+            inputs.nix
             configs/myd_yf135_defconfig
             configs/myd_yf135_debug.fragment
             board/myd-yf135/linux.config
             board/myd-yf135/linux-debug.fragment
             board/myd-yf135/uboot.config
             board/myd-yf135/uboot-debug.fragment
-          host-key-files: >-
+          host-toolchain-key-files: >-
+            inputs.nix
             buildroot.lock
+          host-key-files: >-
             configs/myd_yf135_defconfig
             configs/myd_yf135_debug.fragment
 
       - name: Upload debug image artifacts
         if: ${{ steps.build.outputs.images-dir != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: myd-yf135-debug-images
           path: ${{ steps.build.outputs.images-dir }}/

@@ -49,7 +49,7 @@ inputs:
     default: 'dl/'
   dl-key-files:
     description: 'Space-separated paths/globs to hash for the download cache key'
-    default: 'modules/dbl-buildroot/buildroot.lock'
+    default: 'modules/dbl-buildroot/buildroot.lock modules/dbl-buildroot/inputs.nix'
   ccache-path:
     description: 'Ccache storage path (parent default)'
     default: 'output/ccache/'
@@ -57,6 +57,7 @@ inputs:
     description: 'Space-separated paths/globs to hash for the ccache key'
     default: >-
       modules/dbl-buildroot/buildroot.lock
+      modules/dbl-buildroot/inputs.nix
       overlay/*.fragment
       buildroot.lock
   host-cache-paths:
@@ -64,12 +65,16 @@ inputs:
     default: |
       output/debug/host/
       output/debug/build/host-*/
-  host-key-files:
-    description: 'Space-separated paths/globs to hash for the host cache key, may be empty'
+  host-toolchain-key-files:
+    description: 'Toolchain-identity paths/globs hashed into the host cache key prefix (restore-keys fallback)'
     default: >-
+      modules/dbl-buildroot/inputs.nix
       modules/dbl-buildroot/buildroot.lock
-      overlay/*.fragment
       buildroot.lock
+  host-key-files:
+    description: 'Config paths/globs hashed into the host cache key suffix, may be empty'
+    default: >-
+      overlay/*.fragment
 
 outputs:
   images-dir:
@@ -107,8 +112,12 @@ runs:
           echo "dl=br-dl-${PFX}-$(hash_of '${{ inputs.dl-key-files }}')"
           echo "cc=br-cc-${PFX}-$(hash_of '${{ inputs.ccache-key-files }}')"
           if [ -n '${{ inputs.host-key-files }}' ]; then
-            echo "host=br-host-${PFX}-$(hash_of '${{ inputs.host-key-files }}')"
+            # Toolchain in the prefix so restore-keys never falls back across toolchains.
+            host_pfx="br-host-${PFX}-$(hash_of '${{ inputs.host-toolchain-key-files }}')-"
+            echo "host_prefix=${host_pfx}"
+            echo "host=${host_pfx}$(hash_of '${{ inputs.host-key-files }}')"
           else
+            echo "host_prefix="
             echo "host="
           fi
         } >> "$GITHUB_OUTPUT"
@@ -129,7 +138,7 @@ runs:
       with:
         path: ${{ inputs.host-cache-paths }}
         key: ${{ steps.keys.outputs.host }}
-        restore-keys: br-host-${{ inputs.project-name }}-
+        restore-keys: ${{ steps.keys.outputs.host_prefix }}
 
     - name: Clean host cache
       if: ${{ inputs.build-mode == 'shell' && steps.keys.outputs.host != '' }}
