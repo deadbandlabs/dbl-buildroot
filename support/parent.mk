@@ -33,7 +33,7 @@ REF             ?= origin/main
 # Required because the submodule is a separate git context from the parent.
 DBL_BR_FLAKEREF ?= .?submodules=1
 
-.PHONY: build sdk develop update-dbl-buildroot check-dbl-buildroot
+.PHONY: build sdk develop nix-lock update-dbl-buildroot check-dbl-buildroot
 
 build:
 	nix build '$(DBL_BR_FLAKEREF)'
@@ -43,6 +43,13 @@ sdk:
 
 develop:
 	nix develop '$(DBL_BR_FLAKEREF)'
+
+# Regenerate the project-local buildroot.lock from the merged (base + overlay) config
+nix-lock:
+	nix build '$(DBL_BR_FLAKEREF)#lockfile' --out-link $(REPO_ROOT)/.nix-lockfile
+	cp -L $(REPO_ROOT)/.nix-lockfile $(REPO_ROOT)/buildroot.lock
+	chmod +w $(REPO_ROOT)/buildroot.lock
+	rm -f $(REPO_ROOT)/.nix-lockfile
 
 update-dbl-buildroot:
 	$(DBL_BR_HELPERS)/update.sh $(REF)
