@@ -77,7 +77,7 @@ runs:
 
     - name: Setup Cachix
       if: ${{ inputs.cachix-cache != '' }}
-      uses: cachix/cachix-action@v14
+      uses: cachix/cachix-action@v17
       with:
         name: ${{ inputs.cachix-cache }}
         authToken: ${{ inputs.cachix-auth-token }}

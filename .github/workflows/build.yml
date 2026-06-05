@@ -56,7 +56,7 @@ name: Build
 
       - name: Upload image artifacts
         if: ${{ steps.build.outputs.images-dir != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: myd-yf135-images
           path: ${{ steps.build.outputs.images-dir }}/
@@ -64,7 +64,7 @@ name: Build
 
       - name: Upload SDK artifacts
         if: ${{ steps.build.outputs.sdk-dir != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: myd-yf135-sdk
           path: ${{ steps.build.outputs.sdk-dir }}/
@@ -116,7 +116,7 @@ name: Build
 
       - name: Upload debug image artifacts
         if: ${{ steps.build.outputs.images-dir != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: myd-yf135-debug-images
           path: ${{ steps.build.outputs.images-dir }}/

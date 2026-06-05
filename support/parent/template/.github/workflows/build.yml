@@ -69,14 +69,14 @@ name: Build
 
       - name: Upload images (GitHub)
         if: ${{ steps.build.outputs.images-dir != '' && github.server_url == 'https://github.com' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: @@PROJECT_NAME@@-images
           path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error
       - name: Upload images (Forgejo)
         if: ${{ steps.build.outputs.images-dir != '' && github.server_url != 'https://github.com' }}
-        uses: forgejo/upload-artifact@v4
+        uses: forgejo/upload-artifact@v5
         with:
           name: @@PROJECT_NAME@@-images
           path: ${{ steps.build.outputs.images-dir }}/
@@ -84,14 +84,14 @@ name: Build
 
       - name: Upload SDK (GitHub)
         if: ${{ steps.build.outputs.sdk-dir != '' && github.server_url == 'https://github.com' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: @@PROJECT_NAME@@-sdk
           path: ${{ steps.build.outputs.sdk-dir }}/
           if-no-files-found: error
       - name: Upload SDK (Forgejo)
         if: ${{ steps.build.outputs.sdk-dir != '' && github.server_url != 'https://github.com' }}
-        uses: forgejo/upload-artifact@v4
+        uses: forgejo/upload-artifact@v5
         with:
           name: @@PROJECT_NAME@@-sdk
           path: ${{ steps.build.outputs.sdk-dir }}/
@@ -121,14 +121,14 @@ name: Build
 
       - name: Upload debug images (GitHub)
         if: ${{ steps.build.outputs.images-dir != '' && github.server_url == 'https://github.com' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: @@PROJECT_NAME@@-debug-images
           path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error
       - name: Upload debug images (Forgejo)
         if: ${{ steps.build.outputs.images-dir != '' && github.server_url != 'https://github.com' }}
-        uses: forgejo/upload-artifact@v4
+        uses: forgejo/upload-artifact@v5
         with:
           name: @@PROJECT_NAME@@-debug-images
           path: ${{ steps.build.outputs.images-dir }}/
