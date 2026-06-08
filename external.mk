@@ -51,3 +51,21 @@ $(BINARIES_DIR)/rootfs.ubi: \
 	$(BINARIES_DIR)/overlay.ubifs \
 	$(BINARIES_DIR)/optee_ss.ubifs \
 	$(BINARIES_DIR)/uboot.env
+
+# Project version derived from dbl-buildroot git state at build. Sets:
+#   - U-Boot binary, via localversion -> CONFIG_VERSION_VARIABLE
+#   - Rootfs /etc/firmware/expected-uboot-version (e.g for rauc-mark-good)
+MYD_YF135_VERSION := $(shell cd $(BR2_EXTERNAL_MYD_YF135_PATH) && \
+	git describe --always --dirty --tags 2>/dev/null || echo unknown)
+
+define UBOOT_MYD_YF135_LOCALVERSION
+	printf -- '-%s\n' "$(MYD_YF135_VERSION)" > $(@D)/localversion
+endef
+UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_LOCALVERSION
+
+define MYD_YF135_EXPECTED_UBOOT_VERSION
+	mkdir -p $(TARGET_DIR)/etc/firmware
+	printf '%s\n' "$(MYD_YF135_VERSION)" \
+		> $(TARGET_DIR)/etc/firmware/expected-uboot-version
+endef
+TARGET_FINALIZE_HOOKS += MYD_YF135_EXPECTED_UBOOT_VERSION
