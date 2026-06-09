@@ -31,7 +31,7 @@ LINUX_PRE_BUILD_HOOKS += LINUX_MYD_YF135_COPY_DTS
 
 # Empty UBIFS images (mkfs.ubifs creates an empty fs).
 $(BINARIES_DIR)/overlay.ubifs: | host-mtd
-	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 622 -o $@
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 630 -o $@
 
 $(BINARIES_DIR)/optee_ss.ubifs: | host-mtd
 	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -o $@
