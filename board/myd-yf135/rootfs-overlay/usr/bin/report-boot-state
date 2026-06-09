@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 # Report boot health to /run/boot-state:
-#   BL33_STATE:   does running U-Boot (ver_saved) match the version shipped with
+#   BL33_STATE:   does running U-Boot (ver) match the version shipped with
 #                 this rootfs expected-bl33-version (OK) or BL2 walked to
 #                 the recovery fip-factory (FALLBACK)
 #   ROOTFS_STATE: booted an A/B slot (OK) or recovery rootfs_factory (FALLBACK).
@@ -10,8 +10,8 @@ set -eu
 
 want=$(cat /etc/firmware/expected-bl33-version 2>/dev/null || echo unknown)
 
-# ver_saved format: "U-Boot 2025.01-<hash>[-dirty] (<date>)" -> "<hash>[-dirty]"
-got=$(fw_printenv -n ver_saved 2>/dev/null |
+# ver format: "U-Boot <ver>-<build hash>[-dirty] (<date>)" -> "<hash>[-dirty]"
+got=$(fw_printenv -n ver 2>/dev/null |
   sed -n 's/^U-Boot [^-]*-\([^ ]*\) .*/\1/p')
 [ -n "$got" ] || got=unknown
 
