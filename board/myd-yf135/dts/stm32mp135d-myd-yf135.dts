@@ -186,24 +186,16 @@
 				reg = <0x080000 0x080000>; /* 512 KB (TF-A BL2 copy 2) */
 			};
 			partition@100000 {
-				label = "metadata1";
-				reg = <0x100000 0x080000>; /* 512 KB (FWU metadata A) */
+				label = "fip-active";
+				reg = <0x100000 0x400000>; /* 4 MB (set by STM32MP_FORCE_MTD_START_OFFSET=0x100000) */
 			};
-			partition@180000 {
-				label = "metadata2";
-				reg = <0x180000 0x080000>; /* 512 KB (FWU metadata B) */
+			partition@500000 {
+				label = "fip-factory";
+				reg = <0x500000 0x400000>; /* 4 MB. (BL2 walks to here to try boot when fip-active fails) */
 			};
-			partition@200000 {
-				label = "fip-a";
-				reg = <0x200000 0x400000>; /* 4 MB (FIP bank A) */
-			};
-			partition@600000 {
-				label = "fip-b";
-				reg = <0x600000 0x400000>; /* 4 MB (FIP bank B) */
-			};
-			partition@a00000 {
+			partition@900000 {
 				label = "UBI";
-				reg = <0xa00000 0xf600000>; /* To end of NAND (246 MB): UBI: env A/B + rootfs A/B/factory + overlay + optee_ss */
+				reg = <0x900000 0xf700000>; /* To end of NAND (247 MB): UBI: env A/B + rootfs A/B/factory + overlay + optee_ss */
 			};
 		};
 	};

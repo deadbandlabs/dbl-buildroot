@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# Report BL33/U-Boot version and active rootfs slot to /run/boot-state
+
+[Unit]
+Description=Report boot state
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/report-boot-state
+
+[Install]
+WantedBy=multi-user.target

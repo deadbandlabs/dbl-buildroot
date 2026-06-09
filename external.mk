@@ -31,7 +31,7 @@ LINUX_PRE_BUILD_HOOKS += LINUX_MYD_YF135_COPY_DTS
 
 # Empty UBIFS images (mkfs.ubifs creates an empty fs).
 $(BINARIES_DIR)/overlay.ubifs: | host-mtd
-	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 622 -o $@
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 630 -o $@
 
 $(BINARIES_DIR)/optee_ss.ubifs: | host-mtd
 	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -o $@
@@ -51,3 +51,21 @@ $(BINARIES_DIR)/rootfs.ubi: \
 	$(BINARIES_DIR)/overlay.ubifs \
 	$(BINARIES_DIR)/optee_ss.ubifs \
 	$(BINARIES_DIR)/uboot.env
+
+# Project version derived from dbl-buildroot git state at build. Sets:
+#   - U-Boot binary, via localversion -> CONFIG_VERSION_VARIABLE
+#   - Rootfs /etc/firmware/expected-bl33-version (e.g for verify-bl33-version)
+MYD_YF135_VERSION := $(shell cd $(BR2_EXTERNAL_MYD_YF135_PATH) && \
+	git describe --always --dirty --tags 2>/dev/null || echo unknown)
+
+define UBOOT_MYD_YF135_LOCALVERSION
+	printf -- '-%s\n' "$(MYD_YF135_VERSION)" > $(@D)/localversion
+endef
+UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_LOCALVERSION
+
+define MYD_YF135_EXPECTED_BL33_VERSION
+	mkdir -p $(TARGET_DIR)/etc/firmware
+	printf '%s\n' "$(MYD_YF135_VERSION)" \
+		> $(TARGET_DIR)/etc/firmware/expected-bl33-version
+endef
+TARGET_FINALIZE_HOOKS += MYD_YF135_EXPECTED_BL33_VERSION
