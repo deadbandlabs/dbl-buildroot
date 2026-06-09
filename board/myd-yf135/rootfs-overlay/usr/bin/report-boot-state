@@ -1,0 +1,34 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# Report boot health to /run/boot-state:
+#   BL33_STATE:   does running U-Boot (ver_saved) match the version shipped with
+#                 this rootfs expected-bl33-version (OK) or BL2 walked to
+#                 the recovery fip-factory (FALLBACK)
+#   ROOTFS_STATE: booted an A/B slot (OK) or recovery rootfs_factory (FALLBACK).
+set -eu
+
+want=$(cat /etc/firmware/expected-bl33-version 2>/dev/null || echo unknown)
+
+# ver_saved format: "U-Boot 2025.01-<hash>[-dirty] (<date>)" -> "<hash>[-dirty]"
+got=$(fw_printenv -n ver_saved 2>/dev/null |
+  sed -n 's/^U-Boot [^-]*-\([^ ]*\) .*/\1/p')
+[ -n "$got" ] || got=unknown
+
+# Compare the commit hash only (ignore -dirty if hash is same)
+if [ "${got%-dirty}" != unknown ] && [ "${got%-dirty}" = "${want%-dirty}" ]; then
+  bl33_state=OK
+else
+  bl33_state=FALLBACK
+fi
+
+# Active rootfs slot from the kernel cmdline (from RAUC)
+slot=$(sed -n 's/.*rauc\.slot=\([^ ]*\).*/\1/p' /proc/cmdline)
+[ -n "$slot" ] || slot=unknown
+case $slot in
+  A | B) rootfs_state=OK ;;
+  *) rootfs_state=FALLBACK ;;
+esac
+
+printf 'EXPECTED=%s\nRUNNING=%s\nBL33_STATE=%s\nROOTFS_SLOT=%s\nROOTFS_STATE=%s\n' \
+  "$want" "$got" "$bl33_state" "$slot" "$rootfs_state" >/run/boot-state

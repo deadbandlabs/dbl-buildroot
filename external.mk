@@ -54,7 +54,7 @@ $(BINARIES_DIR)/rootfs.ubi: \
 
 # Project version derived from dbl-buildroot git state at build. Sets:
 #   - U-Boot binary, via localversion -> CONFIG_VERSION_VARIABLE
-#   - Rootfs /etc/firmware/expected-uboot-version (e.g for rauc-mark-good)
+#   - Rootfs /etc/firmware/expected-bl33-version (e.g for verify-bl33-version)
 MYD_YF135_VERSION := $(shell cd $(BR2_EXTERNAL_MYD_YF135_PATH) && \
 	git describe --always --dirty --tags 2>/dev/null || echo unknown)
 
@@ -63,9 +63,9 @@ define UBOOT_MYD_YF135_LOCALVERSION
 endef
 UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_LOCALVERSION
 
-define MYD_YF135_EXPECTED_UBOOT_VERSION
+define MYD_YF135_EXPECTED_BL33_VERSION
 	mkdir -p $(TARGET_DIR)/etc/firmware
 	printf '%s\n' "$(MYD_YF135_VERSION)" \
-		> $(TARGET_DIR)/etc/firmware/expected-uboot-version
+		> $(TARGET_DIR)/etc/firmware/expected-bl33-version
 endef
-TARGET_FINALIZE_HOOKS += MYD_YF135_EXPECTED_UBOOT_VERSION
+TARGET_FINALIZE_HOOKS += MYD_YF135_EXPECTED_BL33_VERSION
