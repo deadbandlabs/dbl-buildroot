@@ -3,124 +3,76 @@
 # Copyright 2026 Deadband Inc.
 """Merge buildroot defconfig fragments left-to-right.
 
-Each fragment overrides keys from prior inputs, except for keys matching
-``*_FRAGMENT_FILES`` (e.g. ``BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES``,
-``BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES``) which are appended
-space-separated so kernel/u-boot fragment lists accumulate across layers.
+Each fragment overrides keys from prior inputs, except keys matching
+``*_FRAGMENT_FILES`` (kernel/u-boot config fragment lists) whose values
+append space-separated so fragment lists accumulate across layers.
 
-Comments and blank lines in the base file are preserved in place.
-New keys introduced by a delta append at the end of the output in delta order.
+Comments and blank lines in the base file are preserved in place. New
+keys introduced by a delta append at the end of the output in delta order.
 
 Usage: merge-defconfig.py <output> <base> [delta1 delta2 ...]
 """
-
-from __future__ import annotations
 
 import re
 import sys
 from pathlib import Path
 
-# Kconfig key lines are generally one of:
-#   CONFIG_FOO=value             (set)
-#   # CONFIG_FOO is not set      (explicit unset)
-_SET_LINE = re.compile(r"^([A-Z0-9_]+)=(.*)$")
-_UNSET_LINE = re.compile(r"^# ([A-Z0-9_]+) is not set$")
+# `CONFIG_FOO=value` (set) or `# CONFIG_FOO is not set` (explicit unset)
+_KEY = re.compile(r"^([A-Z0-9_]+)=|^# ([A-Z0-9_]+) is not set$")
 
 
-def parse_key(line: str) -> str | None:
-    """Return the CONFIG_* key defined on this line, or None."""
-    m = _SET_LINE.match(line)
-    if m:
-        return m.group(1)
-    m = _UNSET_LINE.match(line)
-    if m:
-        return m.group(1)
-    return None
+def key_of(line):
+    m = _KEY.match(line)
+    return (m.group(1) or m.group(2)) if m else None
 
 
-def parse_value(line: str) -> str:
-    """Return the unquoted RHS of a ``KEY=value`` line, or '' otherwise."""
-    m = _SET_LINE.match(line)
-    if not m:
-        return ""
-    raw = m.group(2)
-    if len(raw) >= 2 and raw[0] == '"' and raw[-1] == '"':
-        return raw[1:-1]
-    return raw
+def value_of(line):
+    """Unquoted RHS of a ``KEY=value`` line, or '' otherwise."""
+    value = line.partition("=")[2]
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        value = value[1:-1]
+    return value
 
 
-def is_fragment_list_key(key: str) -> bool:
-    return key.endswith("_FRAGMENT_FILES")
+def load_overrides(path):
+    """Read a delta file as ``{key: full_line}`` in file order.
 
-
-def load_overrides(path: Path) -> dict[str, str]:
-    """Read a delta file, returning ``{key: full_line}`` in file order.
-
-    Blank lines and pure comments are skipped, but ``# X is not set`` lines
-    are kept (they're unset assertions, not simply commentary)
+    Pure comments are skipped; ``# X is not set`` lines are kept (they are
+    unset assertions, not commentary). Later occurrences in a file win.
     """
-    overrides: dict[str, str] = {}
-    for raw in path.read_text().splitlines():
-        line = raw.rstrip()
-        if not line.strip():
-            continue
-        stripped = line.lstrip()
-        if stripped.startswith("#") and not stripped.endswith("is not set"):
-            continue
-        key = parse_key(line)
-        if key is not None:
-            # Later occurrence in the same file wins.
-            overrides[key] = line
-    return overrides
+    lines = (raw.rstrip() for raw in path.read_text().splitlines())
+    return {key_of(ln): ln for ln in lines if key_of(ln) is not None}
 
 
-def apply_delta(base_lines: list[str], overrides: dict[str, str]) -> list[str]:
-    """Return ``base_lines`` with ``overrides`` applied.
-
-    - Matching base lines are replaced in place.
-    - For ``*_FRAGMENT_FILES`` keys, the override's value is appended to
-      the base's value rather than replacing it.
-    - Override keys absent from the base are appended at the end in
-      delta order.
-    """
-    out: list[str] = []
-    applied: set[str] = set()
+def apply_delta(base_lines, overrides):
+    """Replace matching base lines in place (appending the value instead for
+    ``*_FRAGMENT_FILES`` keys); append unmatched override keys at the end."""
+    out = []
+    applied = set()
     for line in base_lines:
-        key = parse_key(line)
+        key = key_of(line)
         if key is None or key not in overrides:
             out.append(line)
-            continue
-        override_line = overrides[key]
-        if is_fragment_list_key(key):
-            base_val = parse_value(line)
-            new_val = parse_value(override_line)
-            combined = " ".join(v for v in (base_val, new_val) if v)
-            out.append(f'{key}="{combined}"')
+        elif key.endswith("_FRAGMENT_FILES"):
+            values = (value_of(line), value_of(overrides[key]))
+            out.append('{}="{}"'.format(key, " ".join(v for v in values if v)))
+            applied.add(key)
         else:
-            out.append(override_line)
-        applied.add(key)
-    for key, override_line in overrides.items():
-        if key not in applied:
-            out.append(override_line)
+            out.append(overrides[key])
+            applied.add(key)
+    out.extend(ln for key, ln in overrides.items() if key not in applied)
     return out
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) < 3:
-        print(f"Usage: {argv[0]} <output> <base> [delta...]", file=sys.stderr)
-        return 1
-
-    output = Path(argv[1])
-    base = Path(argv[2])
-    deltas = [Path(p) for p in argv[3:] if p]  # tolerate empty args
-
-    lines = base.read_text().splitlines()
-    for delta in deltas:
-        lines = apply_delta(lines, load_overrides(delta))
-
-    output.write_text("\n".join(lines) + "\n")
-    return 0
+def main():
+    if len(sys.argv) < 3:
+        sys.exit(f"Usage: {sys.argv[0]} <output> <base> [delta...]")
+    lines = Path(sys.argv[2]).read_text().splitlines()
+    for delta in sys.argv[3:]:
+        if delta:  # tolerate empty args from make
+            lines = apply_delta(lines, load_overrides(Path(delta)))
+    Path(sys.argv[1]).write_text("\n".join(lines) + "\n")
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    main()
