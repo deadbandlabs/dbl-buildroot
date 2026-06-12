@@ -26,9 +26,6 @@
   # Optional defconfig fragment to merge over the base defconfig.
   # Merged via support/build/merge-defconfig.py.
   configFragment ? null,
-  # Note: The nix flake currently only builds the release variant today, so CONFIG_FRAGMENT_DEBUG is unused
-  # Wired through lib.nix so a future debug derivation can consume it
-  configFragmentDebug ? null,
   certEnv ? "",
   # Optional programmer (USB DFU loader TF-A + FIP) defconfig fragment.
   # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
@@ -115,27 +112,18 @@ let
 
   ## Build
 
-  # defconfig name depends on whether a config fragment is injected.
-  # When no fragment: use the built-in defconfig target directly.
-  # When fragment: generate merged defconfig and apply it.
   baseDefconfig = self + "/configs/${defconfigName}";
 
-  # defconfig passed to mkBuildroot for lock generation
-  #
-  # mkBuildroot wraps a path arg as `defconfig BR2_DEFCONFIG=<path>` or
-  # directly uses a string arg. For the merged-fragment case (nix derivation)
-  # this is always a string and unified to the same type of result
-  mkLockDefconfig = cfg: "defconfig BR2_DEFCONFIG=${cfg}";
-
-  lockDefconfig =
+  # defconfig passed to mkBuildroot for lock generation, in mkBuildroot's
+  # string form: `defconfig BR2_DEFCONFIG=<path>`
+  lockDefconfig = "defconfig BR2_DEFCONFIG=${
     if configFragment != null then
-      mkLockDefconfig (
-        pkgs.runCommand "lock-defconfig" { } ''
-          ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} $out ${baseDefconfig} ${configFragment}
-        ''
-      )
+      pkgs.runCommand "lock-defconfig" { } ''
+        ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} $out ${baseDefconfig} ${configFragment}
+      ''
     else
-      mkLockDefconfig baseDefconfig;
+      baseDefconfig
+  }";
 
   ## Lockfile generation (via upstream buildroot.nix)
   # Feed lock generation the same externals + defconfig as the real build so
@@ -178,24 +166,12 @@ let
           package/util-linux/util-linux.mk
     '';
 
-    configurePhase =
-      let
-        releaseDeltas = pkgs.lib.optional (configFragment != null) configFragment;
-      in
-      ''
-        mkdir -p output/images
-      ''
-      + (
-        if releaseDeltas != [ ] then
-          mergeFragments "merged_defconfig" baseDefconfig releaseDeltas
-          + ''
-            ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
-          ''
-        else
-          ''
-            ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} ${defconfigName}
-          ''
-      );
+    # mergeFragments drops null deltas; with no fragment this is a plain
+    # copy of the base defconfig, so both cases share one path.
+    configurePhase = mergeFragments "merged_defconfig" baseDefconfig [ configFragment ] + ''
+      mkdir -p output/images
+      ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
+    '';
 
     buildPhase = ''
       export BR2_DL_DIR="$PWD/dl"
