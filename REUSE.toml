@@ -20,10 +20,13 @@ SPDX-License-Identifier = "CC0-1.0"
 [[annotations]]
 path = [
   "board/myd-yf135/patches/uboot/0003-stm32mp13-add-spi-nand-ubi-boot-support.patch",
+  "board/myd-yf135/patches/arm-trusted-firmware/0001-0c9cdc5.patch",
+  "board/myd-yf135/patches/arm-trusted-firmware/0002-4fa17e3.patch",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = [
   "2022 STMicroelectronics - All Rights Reserved",
+  "Copyright (c) 2015-2025, Arm Limited and Contributors. All rights reserved.",
   "2026 Deadband Inc.",
 ]
 SPDX-License-Identifier = "GPL-2.0-or-later OR BSD-3-Clause"

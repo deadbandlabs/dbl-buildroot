@@ -1,0 +1,46 @@
+From 0c9cdc5389fbe60d306f32fd824eef27d102fd71 Mon Sep 17 00:00:00 2001
+From: Austin Shirley <austin@deadband.dev>
+Date: Fri, 12 Jun 2026 15:19:38 -0600
+Subject: [PATCH] fix(st): stop NAND backup walk past partition end
+
+When try_nand_backup_partitions() is used without PSA_FWU, the
+backup block count PLATFORM_MTD_MAX_PART_SIZE / nand_block_sz is
+incorrect as the caller already tries the primary block.
+
+Under PSA_FWU the FIP_B boundary check catches this; without it the
+walk tries one block past the partition boundary before returning
+-ENOSPC. Subtract one so it stays within the partition.
+
+Tested on STM32MP135.
+
+Change-Id: Ia18ff2db47382d9465aa590dd3eb80b22f67e3fe
+Signed-off-by: Austin Shirley <austin@deadband.dev>
+---
+
+diff --git a/plat/st/common/bl2_io_storage.c b/plat/st/common/bl2_io_storage.c
+index c478b49..9c0eb39 100644
+--- a/plat/st/common/bl2_io_storage.c
++++ b/plat/st/common/bl2_io_storage.c
+@@ -319,14 +319,21 @@
+ {
+ 	static unsigned int backup_id;
+ 	static unsigned int backup_block_nb;
++	unsigned int max_backup_block_nb;
+ 
+ 	/* Check if NAND storage used */
+ 	if (nand_block_sz == 0U) {
+ 		return -ENODEV;
+ 	}
+ 
++	/* Primary block is tried by the caller, walk only the remainder */
++	max_backup_block_nb = PLATFORM_MTD_MAX_PART_SIZE / nand_block_sz;
++	if (max_backup_block_nb != 0U) {
++		max_backup_block_nb--;
++	}
++
+ 	if (backup_id != image_id) {
+-		backup_block_nb = PLATFORM_MTD_MAX_PART_SIZE / nand_block_sz;
++		backup_block_nb = max_backup_block_nb;
+ 		backup_id = image_id;
+ 	}
+ 
