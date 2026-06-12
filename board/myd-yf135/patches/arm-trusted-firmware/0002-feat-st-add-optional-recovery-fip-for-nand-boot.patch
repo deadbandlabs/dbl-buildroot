@@ -1,0 +1,105 @@
+From 37a66c811bc7c6c9a75375e5aaa195c31c746bf5 Mon Sep 17 00:00:00 2001
+From: Austin Shirley <austin@deadband.dev>
+Date: Fri, 12 Jun 2026 15:20:07 -0600
+Subject: [PATCH] feat(st): add optional recovery FIP for NAND boot
+
+Without PSA_FWU, the NAND boot path walks backup blocks of the active
+FIP. Add an optional build flag STM32MP_NAND_FIP_RECOVERY_OFFSET that
+falls back to a recovery FIP once the active FIP and its backup blocks
+are exhausted.
+
+Before Ia18ff2d the backup walk overran the partition end and could
+load a FIP placed there. Make this behaviour an explicit opt-in.
+
+Tested on STM32MP135.
+
+Change-Id: Id308e39998cbb863c8c0ccfead49a5af831c3761
+Signed-off-by: Austin Shirley <austin@deadband.dev>
+---
+
+diff --git a/docs/plat/st/stm32mpus.rst b/docs/plat/st/stm32mpus.rst
+index 7b47112..7bea16a 100644
+--- a/docs/plat/st/stm32mpus.rst
++++ b/docs/plat/st/stm32mpus.rst
+@@ -54,6 +54,13 @@
+   | Default: stm32mp157c-ev1.dtb
+ - | ``DWL_BUFFER_BASE``: the 'serial boot' load address of FIP,
+   | default location (end of the first 128MB) is used when absent
++- | ``STM32MP_FORCE_MTD_START_OFFSET``: to force the FIP offset on MTD devices.
++  | Requires PSA_FWU_SUPPORT=0.
++  | Default: 0x80000 on NOR, 0x200000 on NAND
++- | ``STM32MP_NAND_FIP_RECOVERY_OFFSET``: NAND offset of a recovery FIP, tried when
++  | the active FIP and its backup blocks are exhausted. Requires PSA_FWU_SUPPORT=0.
++  | Use a partition the same size as the active FIP.
++  | Default: 0 (disabled)
+ - | ``STM32MP_RECONFIGURE_CONSOLE``: to re-configure crash console (especially after BL2).
+   | Default: 0 (disabled)
+ - | ``STM32MP_UART_BAUDRATE``: to select UART baud rate.
+diff --git a/plat/st/common/bl2_io_storage.c b/plat/st/common/bl2_io_storage.c
+index 2579e11..398440b 100644
+--- a/plat/st/common/bl2_io_storage.c
++++ b/plat/st/common/bl2_io_storage.c
+@@ -327,6 +327,9 @@
+ {
+ 	static unsigned int backup_id;
+ 	static unsigned int backup_block_nb;
++#if STM32MP_NAND_FIP_RECOVERY_OFFSET != 0U
++	static bool recovery_tried;
++#endif
+ 
+ 	/* Check if NAND storage used */
+ 	if (nand_block_sz == 0U) {
+@@ -336,9 +339,21 @@
+ 	if (backup_id != image_id) {
+ 		backup_block_nb = nand_backup_block_count();
+ 		backup_id = image_id;
++#if STM32MP_NAND_FIP_RECOVERY_OFFSET != 0U
++		recovery_tried = false;
++#endif
+ 	}
+ 
+ 	if (backup_block_nb-- == 0U) {
++#if STM32MP_NAND_FIP_RECOVERY_OFFSET != 0U
++		if (!recovery_tried) {
++			recovery_tried = true;
++			NOTICE("BL2: active FIP exhausted, falling back to recovery FIP\n");
++			image_block_spec.offset = STM32MP_NAND_FIP_RECOVERY_OFFSET;
++			backup_block_nb = nand_backup_block_count();
++			return 0;
++		}
++#endif
+ 		return -ENOSPC;
+ 	}
+ 
+diff --git a/plat/st/common/common.mk b/plat/st/common/common.mk
+index e6ae21c..2a24eec 100644
+--- a/plat/st/common/common.mk
++++ b/plat/st/common/common.mk
+@@ -267,6 +267,12 @@
+ ifneq (${STM32MP_FORCE_MTD_START_OFFSET},)
+ $(eval $(call add_define_val,STM32MP_NAND_FIP_OFFSET,${STM32MP_FORCE_MTD_START_OFFSET}))
+ endif
++ifneq (${STM32MP_NAND_FIP_RECOVERY_OFFSET},)
++ifneq (${PSA_FWU_SUPPORT},0)
++$(error STM32MP_NAND_FIP_RECOVERY_OFFSET requires PSA_FWU_SUPPORT=0)
++endif
++$(eval $(call add_define_val,STM32MP_NAND_FIP_RECOVERY_OFFSET,${STM32MP_NAND_FIP_RECOVERY_OFFSET}))
++endif
+ BL2_SOURCES			+=	drivers/mtd/nand/core.c
+ endif
+ 
+diff --git a/plat/st/common/include/stm32mp_io_storage.h b/plat/st/common/include/stm32mp_io_storage.h
+index ce0d647..161d327 100644
+--- a/plat/st/common/include/stm32mp_io_storage.h
++++ b/plat/st/common/include/stm32mp_io_storage.h
+@@ -49,6 +49,10 @@
+ #endif
+ #endif /* PSA_FWU_SUPPORT */
+ 
++#ifndef STM32MP_NAND_FIP_RECOVERY_OFFSET
++#define STM32MP_NAND_FIP_RECOVERY_OFFSET	U(0)
++#endif
++
+ /*
+  * Only used for MTD devices that need some backup blocks.
+  * Must define a maximum size for a partition.
