@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
-BUILDROOT_SRC ?= $(shell echo $$BUILDROOT_SRC)
+# BUILDROOT_SRC is inherited from the environment (set by the nix dev shell)
 
 # Build/output paths.
 # OUTPUT_BASE anchors all build artefacts (output/, dl/). When this Makefile
@@ -125,7 +125,7 @@ endif
 
 .DEFAULT_GOAL := all
 
-.PHONY: help all release debug programmer regen-debug-defconfig regen-programmer-defconfig prepare-variant-host-reuse host-toolchain _toolchain-only toolchain
+.PHONY: help all release debug programmer regen-debug-defconfig regen-programmer-defconfig prepare-variant-host-reuse host-toolchain _toolchain-only
 
 help:
 	@echo "Common targets:"

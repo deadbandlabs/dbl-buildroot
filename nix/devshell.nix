@@ -132,8 +132,7 @@ in
         echo ""
         echo "Nix hermetic build:"
         echo "  make nix-lock         # first time / after pkg version changes"
-        echo "  nix build             # build image (both toolchain + target)"
-        echo "  nix build .#toolchain # build toolchain only"
+        echo "  nix build             # build image"
       '';
     }
   );
