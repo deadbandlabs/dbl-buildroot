@@ -12,7 +12,6 @@ set -euo pipefail
 # Commit message check (pre-push stage) uses CZ_CHECK_BASE if set, otherwise
 # falls back to git merge-base HEAD origin/main.
 
-# Suppress nix's "Git tree is dirty" warning tree is always dirty when running hooks
 # DBL_BUILDROOT_DIR: path to the dbl-buildroot checkout.
 # Auto-detected from caller's repo, or defaults to current dir.
 DBL_BUILDROOT_DIR="${DBL_BUILDROOT_DIR:-.}"
@@ -25,6 +24,7 @@ if [ "$DBL_BUILDROOT_DIR" = "." ] && [ -d "${repo_root}/modules/dbl-buildroot" ]
   DBL_BUILDROOT_DIR="${repo_root}/modules/dbl-buildroot"
 fi
 
+# warn-dirty=false: the tree is always dirty when running hooks
 NIX=(nix develop --option warn-dirty false "${DBL_BUILDROOT_DIR}#pre-commit" -c)
 
 if [ "$#" -gt 0 ]; then

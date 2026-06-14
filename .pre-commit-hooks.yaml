@@ -60,14 +60,16 @@
   stages: [pre-commit]
   pass_filenames: false
 
-# Custom scripts (language: script: run from this repo, cwd = caller's repo root)
+# pygrep: pre-commit's built-in line-regex checker, fails on any match
 - id: no-tabs
   name: no tabs in repo text files
-  entry: support/pre-commit/no-tabs.sh
-  language: script
+  entry: "\t"
+  language: pygrep
   files: (\.envrc|\.gitignore|\.pre-commit-config\.yaml|external\.desc|\.ya?ml|\.nix|\.sh|\.toml|\.cfg|\.conf|\.fragment|\.defconfig)$
   exclude: (^|/)Makefile$|\.patch$
   stages: [pre-commit]
+
+# Custom scripts (language: script: run from this repo, cwd = caller's repo root)
 
 - id: dts-checkpatch
   name: dts checkpatch
