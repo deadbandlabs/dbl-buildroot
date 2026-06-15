@@ -35,8 +35,8 @@ repos:
 
       - id: no-tabs
         name: no tabs in repo text files
-        entry: ./support/pre-commit/no-tabs.sh
-        language: system
+        entry: "\t"
+        language: pygrep
         files: (\.envrc|\.gitignore|\.pre-commit-config\.yaml|external\.desc|\.ya?ml|\.nix|\.sh|\.toml|\.cfg|\.conf|\.fragment|\.defconfig)$
         exclude: (^|/)Makefile$|\.patch$
         stages: [pre-commit]

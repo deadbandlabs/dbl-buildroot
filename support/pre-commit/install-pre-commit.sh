@@ -6,11 +6,6 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-if ! git rev-parse --git-dir >/dev/null 2>&1; then
-  echo "error: not inside a git repository" >&2
-  exit 1
-fi
-
 # Auto-detect DBL_BUILDROOT_DIR: check caller's repo for submodule, then cwd.
 if [ -z "${DBL_BUILDROOT_DIR:-}" ]; then
   if [ -d "${repo_root}/modules/dbl-buildroot" ] && [ -f "${repo_root}/modules/dbl-buildroot/flake.nix" ]; then
@@ -32,35 +27,24 @@ git config core.hooksPath .githooks
 
 mkdir -p .githooks
 
-cat >.githooks/pre-commit <<EOF
+# Hook stage names match the hook filenames, so one launcher template
+# covers all three. commit-msg additionally forwards the message file.
+write_hook() {
+  local stage=$1 extra_args=${2:-}
+  cat >".githooks/$stage" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
 
 repo_root="\$(git rev-parse --show-toplevel)"
-exec "\$repo_root/${PRE_COMMIT_SCRIPT}" run --hook-stage pre-commit
+exec "\$repo_root/${PRE_COMMIT_SCRIPT}" run --hook-stage $stage $extra_args
 EOF
+  chmod +x ".githooks/$stage"
+}
 
-chmod +x .githooks/pre-commit
-
-cat >.githooks/commit-msg <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-
-repo_root="\$(git rev-parse --show-toplevel)"
-exec "\$repo_root/${PRE_COMMIT_SCRIPT}" run --hook-stage commit-msg --commit-msg-filename "\$1"
-EOF
-
-chmod +x .githooks/commit-msg
-
-cat >.githooks/pre-push <<EOF
-#!/usr/bin/env bash
-set -euo pipefail
-
-repo_root="\$(git rev-parse --show-toplevel)"
-exec "\$repo_root/${PRE_COMMIT_SCRIPT}" run --hook-stage pre-push
-EOF
-
-chmod +x .githooks/pre-push
+write_hook pre-commit
+# shellcheck disable=SC2016 # $1 must stay literal for the generated hook
+write_hook commit-msg '--commit-msg-filename "$1"'
+write_hook pre-push
 
 nix develop --option warn-dirty false "${DBL_BUILDROOT_DIR}#pre-commit" -c pre-commit install-hooks
 

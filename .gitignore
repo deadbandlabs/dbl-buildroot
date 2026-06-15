@@ -15,3 +15,6 @@ result-sdk
 
 # Unused debugging patches
 board/**/patches/.old/
+
+# Python bytecode from support scripts
+__pycache__/
