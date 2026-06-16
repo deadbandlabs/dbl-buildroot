@@ -10,10 +10,15 @@
   certEnv ? "",
   # Downstream-injected packages added to the default shell
   extraPackages ? [ ],
+  # Prebuilt external-toolchain SDK (.#toolchain)
+  # Make builds in this shell reuse TOOLCHAIN_SDK instead of compiling the toolchain
+  # Set to null to have make fall back to an internal or custom toolchain (see Makefile)
+  toolchainSdk ? null,
 }:
 let
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
+    ${pkgs.lib.optionalString (toolchainSdk != null) ''export TOOLCHAIN_SDK="${toolchainSdk}"''}
     ${certEnv}
   '';
 

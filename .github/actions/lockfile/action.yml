@@ -3,9 +3,9 @@
 #
 # Lockfile-drift gate, used by this repo's CI and downstream parents.
 #
-# Regenerates buildroot.lock from the merged (base + overlay) config via
-# `make nix-lock` and fails if it differs from the committed lock. Use it to
-# gate a long build that would otherwise fail.
+# Regenerates buildroot.lock (target) and toolchain.lock (toolchain SDK) from
+# the merged (base + overlay) config via `make nix-lock`
+# Fails if either differs from the committed lock
 #
 # The caller must `actions/checkout` (with submodules) and run the setup-nix
 # action before invoking this
@@ -16,7 +16,7 @@
 #   - uses: deadbandlabs/dbl-buildroot/.github/actions/lockfile@<sha>
 ---
 name: 'dbl-buildroot lockfile check'
-description: 'Fail if the committed buildroot.lock is stale or uncommitted'
+description: 'Fail if the committed buildroot.lock / toolchain.lock are stale or uncommitted'
 
 runs:
   using: composite
@@ -29,13 +29,14 @@ runs:
       shell: bash
       run: make nix-lock
 
-    - name: Check buildroot.lock is up to date
+    - name: Check buildroot.lock / toolchain.lock are up to date
       shell: bash
       run: |
         # --porcelain catches both modified and untracked (fresh parent) locks;
         # plain `git diff --exit-code` would silently pass an untracked file.
-        if [ -n "$(git status --porcelain buildroot.lock)" ]; then
-          git --no-pager diff -- buildroot.lock || true
-          echo "::error::buildroot.lock is out of date or uncommitted. Run 'make nix-lock' and commit the result."
+        stale=$(git status --porcelain buildroot.lock toolchain.lock)
+        if [ -n "$stale" ]; then
+          git --no-pager diff -- buildroot.lock toolchain.lock || true
+          echo "::error::buildroot.lock/toolchain.lock out of date or uncommitted. Run 'make nix-lock' and commit the result."
           exit 1
         fi

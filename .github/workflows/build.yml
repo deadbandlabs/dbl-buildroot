@@ -31,9 +31,26 @@ name: Build
       - name: Check lockfile
         uses: ./.github/actions/lockfile
 
+  # Build and push the toolchain SDK to cachix first
+  # Allows both the nix image build and the make (shell) build to use it
+  toolchain:
+    name: Build + cache toolchain SDK (nix)
+    needs: lockfile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Set up Nix environment
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Build toolchain SDK
+        run: nix build .#toolchain --print-build-logs
+
   image:
     name: Build release image (nix)
-    needs: lockfile
+    needs: toolchain
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -72,7 +89,7 @@ name: Build
 
   debug:
     name: Build debug image (make)
-    needs: lockfile
+    needs: toolchain
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -90,7 +107,7 @@ name: Build
         with:
           build-mode: shell
           nix-flake: .
-          build-command: make SHARE_HOST_FOR_DEBUG=0 debug  # No release build; do not share host toolchain
+          build-command: make debug
           project-name: dbl-buildroot
           images-path: output/debug/images/
           dl-cache-path: dl/
@@ -109,7 +126,7 @@ name: Build
             board/myd-yf135/uboot-debug.fragment
           host-toolchain-key-files: >-
             inputs.nix
-            buildroot.lock
+            toolchain.lock
           host-key-files: >-
             configs/myd_yf135_defconfig
             configs/myd_yf135_debug.fragment

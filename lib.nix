@@ -47,9 +47,13 @@ in
       # set to null to disable the programmer build entirely.
       programmerFragment ? "configs/myd_yf135_programmer.fragment",
       extraExternalSrcs ? [ ],
-      # Buildroot package lockfile. Defaults to local
-      # Downstream repos with overlay packages can provide e.g. `lockfile = ./buildroot.lock;`
+      # Buildroot target package lockfile (override when using overlay packages)
       lockfile ? (./. + "/buildroot.lock"),
+      # Custom toolchain (leave null to reuse this repo's cached SDK)
+      toolchainName ? null,
+      toolchainDefconfig ? null,
+      toolchainLockfile ? null,
+      toolchainFragment ? null,
       systems ? [
         "x86_64-linux"
         "aarch64-linux"
@@ -83,23 +87,29 @@ in
             export WGETRC="${wgetrc}"
           '';
 
-          buildPkgs = import ./nix/build.nix {
-            inherit
-              pkgs
-              buildroot
-              buildroot-nix
-              cmake-compat
-              certEnv
-              extraExternalSrcs
-              configFragment
-              programmerFragment
-              ;
-            self = ./.;
-            projectName = name;
-            defconfigName = defconfig;
-            flashLayoutPath = flashLayout;
-            lockfilePath = lockfile;
-          };
+          buildPkgs = import ./nix/build.nix (
+            {
+              inherit
+                pkgs
+                buildroot
+                buildroot-nix
+                cmake-compat
+                certEnv
+                extraExternalSrcs
+                configFragment
+                programmerFragment
+                ;
+              self = ./.;
+              projectName = name;
+              defconfigName = defconfig;
+              flashLayoutPath = flashLayout;
+              lockfilePath = lockfile;
+            }
+            // lib.optionalAttrs (toolchainName != null) { inherit toolchainName; }
+            // lib.optionalAttrs (toolchainDefconfig != null) { inherit toolchainDefconfig; }
+            // lib.optionalAttrs (toolchainLockfile != null) { inherit toolchainLockfile; }
+            // lib.optionalAttrs (toolchainFragment != null) { inherit toolchainFragment; }
+          );
 
           shells = import ./nix/devshell.nix {
             inherit
@@ -110,11 +120,19 @@ in
               ;
             inherit buildroot;
             extraPackages = extraDevShellPackages;
+            # Share the cached toolchain with make builds in the dev/ci shells
+            toolchainSdk = buildPkgs.toolchain;
           };
         in
         {
           packages.${system} = {
-            inherit (buildPkgs) default sdk lockfile;
+            inherit (buildPkgs)
+              default
+              sdk
+              lockfile
+              toolchain
+              toolchain-lockfile
+              ;
           }
           // lib.optionalAttrs (stm32cubeprog != null) { inherit stm32cubeprog; };
           devShells.${system} = shells;

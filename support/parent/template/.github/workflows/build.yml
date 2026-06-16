@@ -45,6 +45,27 @@ name: Build
       - name: Check lockfile
         uses: deadbandlabs/dbl-buildroot/.github/actions/lockfile@@@SUBMODULE_SHA@@
 
+  # OPTIONAL:
+  # Only needed when overriding mkProject with custom toolchain
+  # (toolchainDefconfig / toolchainFragment / toolchainLockfile / toolchainName)
+  # To enable: uncomment this job and add `toolchain` to the `needs:` of the
+  # release and debug jobs below
+  #
+  # toolchain:
+  #   name: Build + cache toolchain SDK (nix)
+  #   needs: [check, lockfile]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #       with:
+  #         submodules: true
+  #     - name: Set up Nix environment
+  #       uses: deadbandlabs/dbl-buildroot/.github/actions/setup-nix@@@SUBMODULE_SHA@@
+  #       with:
+  #         cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+  #     - name: Build toolchain SDK
+  #       run: nix build '.?submodules=1#toolchain' --print-build-logs
+
   release:
     name: Build release image (nix)
     needs: [check, lockfile]

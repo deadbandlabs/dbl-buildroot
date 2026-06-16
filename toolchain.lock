@@ -1,0 +1,217 @@
+{
+  "Python-3.12.13.tar.xz": {
+    "algo": "sha256",
+    "checksum": "c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684",
+    "uris": [
+      "https://python.org/ftp/python/3.12.13/Python-3.12.13.tar.xz",
+      "https://sources.buildroot.net/python3/Python-3.12.13.tar.xz",
+      "https://sources.buildroot.net/Python-3.12.13.tar.xz"
+    ]
+  },
+  "acl-2.3.2.tar.xz": {
+    "algo": "sha256",
+    "checksum": "97203a72cae99ab89a067fe2210c1cbf052bc492b479eca7d226d9830883b0bd",
+    "uris": [
+      "https://download.savannah.nongnu.org/releases/acl/acl-2.3.2.tar.xz",
+      "https://sources.buildroot.net/acl/acl-2.3.2.tar.xz",
+      "https://sources.buildroot.net/acl-2.3.2.tar.xz"
+    ]
+  },
+  "attr-2.5.2.tar.xz": {
+    "algo": "sha256",
+    "checksum": "f2e97b0ab7ce293681ab701915766190d607a1dba7fae8a718138150b700a70b",
+    "uris": [
+      "http://download.savannah.gnu.org/releases/attr/attr-2.5.2.tar.xz",
+      "https://sources.buildroot.net/attr/attr-2.5.2.tar.xz",
+      "https://sources.buildroot.net/attr-2.5.2.tar.xz"
+    ]
+  },
+  "autoconf-2.72.tar.xz": {
+    "algo": "sha256",
+    "checksum": "ba885c1319578d6c94d46e9b0dceb4014caafe2490e437a0dbca3f270a223f5a",
+    "uris": [
+      "https://ftpmirror.gnu.org/autoconf/autoconf-2.72.tar.xz",
+      "https://sources.buildroot.net/autoconf/autoconf-2.72.tar.xz",
+      "https://sources.buildroot.net/autoconf-2.72.tar.xz"
+    ]
+  },
+  "autoconf-archive-2023.02.20.tar.xz": {
+    "algo": "sha256",
+    "checksum": "71d4048479ae28f1f5794619c3d72df9c01df49b1c628ef85fde37596dc31a33",
+    "uris": [
+      "https://ftpmirror.gnu.org/autoconf-archive/autoconf-archive-2023.02.20.tar.xz",
+      "https://sources.buildroot.net/autoconf-archive/autoconf-archive-2023.02.20.tar.xz",
+      "https://sources.buildroot.net/autoconf-archive-2023.02.20.tar.xz"
+    ]
+  },
+  "automake-1.16.5.tar.xz": {
+    "algo": "sha256",
+    "checksum": "f01d58cd6d9d77fbdca9eb4bbd5ead1988228fdb73d6f7a201f5f8d6b118b469",
+    "uris": [
+      "https://ftpmirror.gnu.org/automake/automake-1.16.5.tar.xz",
+      "https://sources.buildroot.net/automake/automake-1.16.5.tar.xz",
+      "https://sources.buildroot.net/automake-1.16.5.tar.xz"
+    ]
+  },
+  "binutils-2.43.1.tar.xz": {
+    "algo": "sha512",
+    "checksum": "20977ad17729141a2c26d358628f44a0944b84dcfefdec2ba029c2d02f40dfc41cc91c0631044560d2bd6f9a51e1f15846b4b311befbe14f1239f14ff7d57824",
+    "uris": [
+      "https://ftpmirror.gnu.org/binutils/binutils-2.43.1.tar.xz",
+      "https://sources.buildroot.net/binutils/binutils-2.43.1.tar.xz",
+      "https://sources.buildroot.net/binutils-2.43.1.tar.xz"
+    ]
+  },
+  "bison-3.8.2.tar.xz": {
+    "algo": "sha256",
+    "checksum": "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2",
+    "uris": [
+      "https://ftpmirror.gnu.org/bison/bison-3.8.2.tar.xz",
+      "https://sources.buildroot.net/bison/bison-3.8.2.tar.xz",
+      "https://sources.buildroot.net/bison-3.8.2.tar.xz"
+    ]
+  },
+  "busybox-1.37.0.tar.bz2": {
+    "algo": "sha256",
+    "checksum": "3311dff32e746499f4df0d5df04d7eb396382d7e108bb9250e7b519b837043a4",
+    "uris": [
+      "https://www.busybox.net/downloads/busybox-1.37.0.tar.bz2",
+      "https://sources.buildroot.net/busybox/busybox-1.37.0.tar.bz2",
+      "https://sources.buildroot.net/busybox-1.37.0.tar.bz2"
+    ]
+  },
+  "expat-2.8.0.tar.xz": {
+    "algo": "sha256",
+    "checksum": "a37bfae0aa9775bd8521ebd85dc456d486f0ff31138f6c91fd902ea732624542",
+    "uris": [
+      "https://github.com/libexpat/libexpat/releases/download/R_2_8_0/expat-2.8.0.tar.xz",
+      "https://sources.buildroot.net/expat/expat-2.8.0.tar.xz",
+      "https://sources.buildroot.net/expat-2.8.0.tar.xz"
+    ]
+  },
+  "fakeroot_1.36.orig.tar.gz": {
+    "algo": "sha256",
+    "checksum": "7fe3cf3daf95ee93b47e568e85f4d341a1f9ae91766b4f9a9cdc29737dea4988",
+    "uris": [
+      "https://snapshot.debian.org/archive/debian/20241022T144244Z/pool/main/f/fakeroot//fakeroot_1.36.orig.tar.gz",
+      "https://sources.buildroot.net/fakeroot/fakeroot_1.36.orig.tar.gz",
+      "https://sources.buildroot.net/fakeroot_1.36.orig.tar.gz"
+    ]
+  },
+  "gawk-5.3.1.tar.xz": {
+    "algo": "sha256",
+    "checksum": "694db764812a6236423d4ff40ceb7b6c4c441301b72ad502bb5c27e00cd56f78",
+    "uris": [
+      "https://ftpmirror.gnu.org/gawk/gawk-5.3.1.tar.xz",
+      "https://sources.buildroot.net/gawk/gawk-5.3.1.tar.xz",
+      "https://sources.buildroot.net/gawk-5.3.1.tar.xz"
+    ]
+  },
+  "gcc-13.4.0.tar.xz": {
+    "algo": "sha512",
+    "checksum": "9b4b83ecf51ef355b868608b8d257b2fa435c06d2719cb86657a7c2c2a0828ff4ce04e9bac1055bbcad8ed5b4da524cafaef654785e23a50233d95d89201e35f",
+    "uris": [
+      "https://ftpmirror.gnu.org/gcc/gcc-13.4.0/gcc-13.4.0.tar.xz",
+      "https://sources.buildroot.net/gcc/gcc-13.4.0.tar.xz",
+      "https://sources.buildroot.net/gcc-13.4.0.tar.xz"
+    ]
+  },
+  "glibc-2.41-123-gfb4db64a04ad6c96cd1fbb7e02eb59323b1f2ac2-git4.tar.gz": {
+    "algo": "sha256",
+    "checksum": "3789146d175834dc4873f41bd87932cd6ad7c83d0b7bf340768ee6a927aac784",
+    "uris": [
+      "https://sources.buildroot.net/glibc/glibc-2.41-123-gfb4db64a04ad6c96cd1fbb7e02eb59323b1f2ac2-git4.tar.gz",
+      "https://sources.buildroot.net/glibc-2.41-123-gfb4db64a04ad6c96cd1fbb7e02eb59323b1f2ac2-git4.tar.gz"
+    ]
+  },
+  "gmp-6.3.0.tar.xz": {
+    "algo": "sha256",
+    "checksum": "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    "uris": [
+      "https://ftpmirror.gnu.org/gmp/gmp-6.3.0.tar.xz",
+      "https://sources.buildroot.net/gmp/gmp-6.3.0.tar.xz",
+      "https://sources.buildroot.net/gmp-6.3.0.tar.xz"
+    ]
+  },
+  "libffi-3.4.6.tar.gz": {
+    "algo": "sha256",
+    "checksum": "b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e",
+    "uris": [
+      "https://github.com/libffi/libffi/releases/download/v3.4.6/libffi-3.4.6.tar.gz",
+      "https://sources.buildroot.net/libffi/libffi-3.4.6.tar.gz",
+      "https://sources.buildroot.net/libffi-3.4.6.tar.gz"
+    ]
+  },
+  "libtool-2.4.6.tar.xz": {
+    "algo": "sha256",
+    "checksum": "7c87a8c2c8c0fc9cd5019e402bed4292462d00a718a7cd5f11218153bf28b26f",
+    "uris": [
+      "https://ftpmirror.gnu.org/libtool/libtool-2.4.6.tar.xz",
+      "https://sources.buildroot.net/libtool/libtool-2.4.6.tar.xz",
+      "https://sources.buildroot.net/libtool-2.4.6.tar.xz"
+    ]
+  },
+  "linux-6.12.90.tar.xz": {
+    "algo": "sha256",
+    "checksum": "1f1a1ff057468b8a6284d3ce1d181278259beb5670ea16724c46dbf8820fa2a8",
+    "uris": [
+      "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.90.tar.xz",
+      "https://sources.buildroot.net/linux/linux-6.12.90.tar.xz",
+      "https://sources.buildroot.net/linux-6.12.90.tar.xz"
+    ]
+  },
+  "m4-1.4.21.tar.xz": {
+    "algo": "sha256",
+    "checksum": "f25c6ab51548a73a75558742fb031e0625d6485fe5f9155949d6486a2408ab66",
+    "uris": [
+      "https://ftpmirror.gnu.org/m4/m4-1.4.21.tar.xz",
+      "https://sources.buildroot.net/m4/m4-1.4.21.tar.xz",
+      "https://sources.buildroot.net/m4-1.4.21.tar.xz"
+    ]
+  },
+  "mpc-1.3.1.tar.gz": {
+    "algo": "sha256",
+    "checksum": "ab642492f5cf882b74aa0cb730cd410a81edcdbec895183ce930e706c1c759b8",
+    "uris": [
+      "https://ftpmirror.gnu.org/mpc/mpc-1.3.1.tar.gz",
+      "https://sources.buildroot.net/mpc/mpc-1.3.1.tar.gz",
+      "https://sources.buildroot.net/mpc-1.3.1.tar.gz"
+    ]
+  },
+  "mpfr-4.1.1.tar.xz": {
+    "algo": "sha256",
+    "checksum": "ffd195bd567dbaffc3b98b23fd00aad0537680c9896171e44fe3ff79e28ac33d",
+    "uris": [
+      "http://www.mpfr.org/mpfr-4.1.1/mpfr-4.1.1.tar.xz",
+      "https://sources.buildroot.net/mpfr/mpfr-4.1.1.tar.xz",
+      "https://sources.buildroot.net/mpfr-4.1.1.tar.xz"
+    ]
+  },
+  "patchelf-0.13.tar.bz2": {
+    "algo": "sha256",
+    "checksum": "4c7ed4bcfc1a114d6286e4a0d3c1a90db147a4c3adda1814ee0eee0f9ee917ed",
+    "uris": [
+      "https://github.com/NixOS/patchelf/releases/download/0.13/patchelf-0.13.tar.bz2",
+      "https://sources.buildroot.net/patchelf/patchelf-0.13.tar.bz2",
+      "https://sources.buildroot.net/patchelf-0.13.tar.bz2"
+    ]
+  },
+  "pkgconf-2.3.0.tar.xz": {
+    "algo": "sha256",
+    "checksum": "3a9080ac51d03615e7c1910a0a2a8df08424892b5f13b0628a204d3fcce0ea8b",
+    "uris": [
+      "https://distfiles.ariadne.space/pkgconf/pkgconf-2.3.0.tar.xz",
+      "https://sources.buildroot.net/pkgconf/pkgconf-2.3.0.tar.xz",
+      "https://sources.buildroot.net/pkgconf-2.3.0.tar.xz"
+    ]
+  },
+  "zlib-1.3.2.tar.xz": {
+    "algo": "sha256",
+    "checksum": "d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3",
+    "uris": [
+      "https://www.zlib.net/zlib-1.3.2.tar.xz",
+      "https://sources.buildroot.net/libzlib/zlib-1.3.2.tar.xz",
+      "https://sources.buildroot.net/zlib-1.3.2.tar.xz"
+    ]
+  }
+}

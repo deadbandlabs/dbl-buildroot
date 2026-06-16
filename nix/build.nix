@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 #
-# Single-stage hermetic Buildroot build, following the buildroot-nix approach.
-# Source is filtered to only dirs that affect the build output, so changes to
-# docs/, .github/, nix/, support/, etc. do not trigger a rebuild.
+# Two-stage hermetic Buildroot build, following the buildroot-nix approach:
+#  * cached toolchain SDK (stage 1) consumed as an external toolchain
+#  * image build (stage 2)
+# Source is filtered to only dirs that affect the build output
 #
 # Downstream repos call dblBuildroot.lib.mkProject (see flake.nix)
 # which wires up pkgs/cmake-compat/etc. and invokes this module.
@@ -20,6 +21,16 @@
   projectName ? "myd-yf135",
   defconfigName ? "myd_yf135_defconfig",
   flashLayoutPath ? "board/myd-yf135/flashlayout.tsv",
+  # Toolchain SDK derivation name
+  # Parents that reuse this toolchain with their own projectName still substitute the same
+  # store path for the CI-built SDK from cachix
+  toolchainName ? "myd-yf135-toolchain",
+  # Toolchain defconfig, its lockfile, and the external-toolchain description
+  # Default to the submodule's files so parents reuse the cached SDK
+  # override all (with toolchainName) to build a custom toolchain.
+  toolchainDefconfig ? (self + "/configs/myd_yf135_toolchain_defconfig"),
+  toolchainLockfile ? (self + "/toolchain.lock"),
+  toolchainFragment ? (self + "/configs/myd_yf135_external_toolchain.fragment"),
   # Additional BR2_EXTERNAL source trees (e.g. downstream overlay/).
   # Each entry is a path containing external.desc, external.mk, Config.in, etc.
   extraExternalSrcs ? [ ],
@@ -110,19 +121,63 @@ let
       ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} ${output} ${base} ${argv}
     '';
 
-  ## Build
+  ## Toolchain SDK (stage 1)
+  # Inputs exclude board/, package/, overlays and the image defconfig
+  toolchainPackages = buildroot-nix.lib.mkBuildroot {
+    name = toolchainName;
+    inherit pkgs;
+    src = buildroot;
+    defconfig = "defconfig BR2_DEFCONFIG=${toolchainDefconfig}";
+    lockfile = toolchainLockfile;
+    nativeBuildInputs = [
+      cmake-compat
+      pkgs.git
+    ];
+  };
+
+  toolchainSdk = pkgs.stdenv.mkDerivation {
+    name = "${toolchainName}-sdk";
+    src = buildroot;
+    configurePhase = ''
+      ${makeFHSEnv}/bin/make-with-fhs-env BR2_DEFCONFIG=${toolchainDefconfig} defconfig
+    '';
+    buildPhase = ''
+      export BR2_DL_DIR="$PWD/dl"
+      mkdir -p "$BR2_DL_DIR"
+      for lockedInput in ${toolchainPackages.packageInputs}/*; do
+        ln -s $lockedInput "$BR2_DL_DIR/$(basename $lockedInput)"
+      done
+      ${makeFHSEnv}/bin/make-with-fhs-env BR2_JLEVEL=$NIX_BUILD_CORES sdk
+    '';
+    installPhase = ''
+      mkdir -p $out
+      tar -xf output/images/*_sdk-buildroot.tar.gz -C $out --strip-components=1
+      ${pkgs.bash}/bin/bash $out/relocate-sdk.sh
+    '';
+    hardeningDisable = [ "format" ];
+    dontFixup = true;
+  };
+
+  # Append the nix-specific SDK store path to the committed external-toolchain fragment
+  externalToolchainFragment = pkgs.runCommand "external-toolchain.fragment" { } ''
+    cp ${toolchainFragment} $out
+    chmod +w $out
+    echo 'BR2_TOOLCHAIN_EXTERNAL_PATH="${toolchainSdk}"' >> $out
+  '';
+
+  ## Build (stage 2)
 
   baseDefconfig = self + "/configs/${defconfigName}";
 
   # defconfig passed to mkBuildroot for lock generation, in mkBuildroot's
   # string form: `defconfig BR2_DEFCONFIG=<path>`
   lockDefconfig = "defconfig BR2_DEFCONFIG=${
-    if configFragment != null then
-      pkgs.runCommand "lock-defconfig" { } ''
-        ${pkgs.python3}/bin/python3 ${mergeDefconfigScript} $out ${baseDefconfig} ${configFragment}
-      ''
-    else
-      baseDefconfig
+    pkgs.runCommand "lock-defconfig" { } (
+      mergeFragments "$out" baseDefconfig [
+        configFragment
+        externalToolchainFragment
+      ]
+    )
   }";
 
   ## Lockfile generation (via upstream buildroot.nix)
@@ -166,12 +221,16 @@ let
           package/util-linux/util-linux.mk
     '';
 
-    # mergeFragments drops null deltas; with no fragment this is a plain
-    # copy of the base defconfig, so both cases share one path.
-    configurePhase = mergeFragments "merged_defconfig" baseDefconfig [ configFragment ] + ''
-      mkdir -p output/images
-      ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
-    '';
+    # mergeFragments drops null deltas.
+    configurePhase =
+      mergeFragments "merged_defconfig" baseDefconfig [
+        configFragment
+        externalToolchainFragment
+      ]
+      + ''
+        mkdir -p output/images
+        ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
+      '';
 
     buildPhase = ''
       export BR2_DL_DIR="$PWD/dl"
@@ -192,7 +251,10 @@ let
       # Programmer merge chain: base + parent CONFIG_FRAGMENT + programmer fragment
       let
         progFragmentPath = buildExternalSrc + "/${programmerFragment}";
-        deltas = (pkgs.lib.optional (configFragment != null) configFragment) ++ [ progFragmentPath ];
+        deltas = (pkgs.lib.optional (configFragment != null) configFragment) ++ [
+          progFragmentPath
+          externalToolchainFragment
+        ];
       in
       mergeFragments "programmer_defconfig" baseDefconfig deltas
       + ''
@@ -242,4 +304,6 @@ in
   inherit lockfile;
   default = build;
   sdk = build.sdk;
+  toolchain = toolchainSdk;
+  toolchain-lockfile = toolchainPackages.packageLockFile;
 }

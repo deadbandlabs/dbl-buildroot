@@ -13,10 +13,6 @@ O             ?= $(OUTPUT_BASE)/output/$(MODE)
 RELEASE_O     ?= $(OUTPUT_BASE)/output/release
 CCACHE_DIR    ?= $(OUTPUT_BASE)/output/ccache
 
-# Debug builds reuse release host tools by default through output/debug/host symlink.
-# Set SHARE_HOST_FOR_DEBUG=0 to disable and keep separate host trees.
-SHARE_HOST_FOR_DEBUG ?= 1
-
 # Download cache kept at the output base so it survives cleaning output dir
 # Override with BR2_DL_DIR=/path/to/shared/cache to share across projects
 BR2_DL_DIR    ?= $(OUTPUT_BASE)/dl
@@ -31,9 +27,25 @@ _HOST_PYTHON3        := $(RELEASE_O)/host/bin/python3
 _PYTHON3             := $(if $(wildcard $(_HOST_PYTHON3)),$(_HOST_PYTHON3),python3)
 MERGE_DEFCONFIG      := $(_PYTHON3) $(CURDIR)/support/build/merge-defconfig.py
 CONFIG_FRAGMENT_DEBUG ?=
-SHARE_HOST_SCRIPT    := $(CURDIR)/support/build/share-host-artifacts.sh
 BUNDLE_IMAGES_SCRIPT := $(CURDIR)/support/build/bundle-images.sh
 FLASHLAYOUT_SRC      := $(CURDIR)/board/myd-yf135/flashlayout.tsv
+
+# When set, target will use external toolchain when TOOLCHAIN_SDK points at a existing SDK
+# The nix dev/ci shells export TOOLCHAIN_SDK (a Nix .#toolchain build, from Cachix)
+# Purely Makefile builds use can run `make toolchain` below, pass TOOLCHAIN_SDK=<path>,
+# or use any external toolchain
+# When empty, the internal toolchain is built with the target
+TOOLCHAIN_SDK ?=
+
+# Merge external-toolchain fragment description for TOOLCHAIN_SDK builds
+EXTERNAL_TOOLCHAIN_FRAGMENT ?= $(CURDIR)/configs/myd_yf135_external_toolchain.fragment
+_TC_PATH_FRAGMENT           := $(O)/external-toolchain-path.fragment
+
+# `make toolchain` builds a relocatable SDK from the toolchain-only defconfig.
+TOOLCHAIN_DEFCONFIG := $(CURDIR)/configs/myd_yf135_toolchain_defconfig
+TOOLCHAIN_O         := $(OUTPUT_BASE)/output/toolchain
+TOOLCHAIN_SDK_OUT   := $(TOOLCHAIN_O)/sdk
+TOOLCHAIN_MAKE      := $(MAKE) -C $(BUILDROOT_SRC) O=$(TOOLCHAIN_O) BR2_DL_DIR=$(BR2_DL_DIR) BR2_CCACHE_DIR=$(CCACHE_DIR)
 
 # BR2_EXTERNAL is a ':' separated list. Default to this repository.
 # Downstream/super-projects can append with BR2_EXTERNAL_EXTRA or override BR2_EXTERNAL entirely.
@@ -78,24 +90,13 @@ LOG     ?= $(LOG_DIR)/$(shell date +%Y%m%d-%H%M%S).log
 # Set BUILD_PROGRAMMER=0 to opt out
 BUILD_PROGRAMMER ?= 1
 
-# Set host toolchain to reuse (via symlink) instead of rebuilding:
-#   debug -> release (see SHARE_HOST_FOR_DEBUG=0)
-#   programmer -> chained parent $(O) via PROGRAMMER_HOST_SRC or release if standalone
-PROGRAMMER_HOST_SRC ?= $(RELEASE_O)
 ifeq ($(MODE),debug)
-_VARIANT_PREP   := prepare-variant-host-reuse
-_SHARE_SRC      := $(RELEASE_O)
-_SHARE_ENABLE   := $(SHARE_HOST_FOR_DEBUG)
 _BUILD_TARGETS  :=
 _UPDATE_LATEST  := true
 else ifeq ($(MODE),programmer)
-_VARIANT_PREP   := prepare-variant-host-reuse
-_SHARE_SRC      := $(PROGRAMMER_HOST_SRC)
-_SHARE_ENABLE   := 1
 _BUILD_TARGETS  := arm-trusted-firmware
 _UPDATE_LATEST  := false
 else
-_VARIANT_PREP   :=
 _BUILD_TARGETS  :=
 _UPDATE_LATEST  := true
 endif
@@ -117,15 +118,23 @@ else
 endif
 _MERGE_DELTAS := $(strip $(_MERGE_DELTAS))
 
+# Append external toolchain SDK properties last to override the base internal-toolchain selection
+ifneq ($(strip $(TOOLCHAIN_SDK)),)
+  _MERGE_DELTAS += $(EXTERNAL_TOOLCHAIN_FRAGMENT) $(_TC_PATH_FRAGMENT)
+  _WRITE_TC_PATH = @mkdir -p $(O) && printf 'BR2_TOOLCHAIN_EXTERNAL_PATH="%s"\n' '$(TOOLCHAIN_SDK)' > $(_TC_PATH_FRAGMENT)
+else
+  _WRITE_TC_PATH = @true
+endif
+
 ifneq ($(_MERGE_DELTAS),)
-_APPLY_DEFCONFIG = @$(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
+_APPLY_DEFCONFIG = $(_WRITE_TC_PATH) && $(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
 else
 _APPLY_DEFCONFIG = $(BR2_MAKE) myd_yf135_defconfig
 endif
 
 .DEFAULT_GOAL := all
 
-.PHONY: help all release debug programmer regen-debug-defconfig regen-programmer-defconfig prepare-variant-host-reuse host-toolchain _toolchain-only
+.PHONY: help all release debug programmer regen-debug-defconfig regen-programmer-defconfig regen-toolchain-defconfig toolchain
 
 help:
 	@echo "Common targets:"
@@ -137,7 +146,8 @@ help:
 	@echo "  make programmer                   Alias for programmer build"
 	@echo "  make regen-debug-defconfig        Regenerate debug defconfig"
 	@echo "  make regen-programmer-defconfig   Regenerate programmer defconfig"
-	@echo "  make host-toolchain               Build release host toolchain"
+	@echo "  make regen-toolchain-defconfig    Regenerate toolchain defconfig from main"
+	@echo "  make toolchain                    Build relocatable external-toolchain SDK"
 
 # Buildroot defconfigs do not support inheritance. Keep release as source of
 # truth and regenerate variant defconfigs from release + variant fragment at
@@ -150,10 +160,11 @@ regen-programmer-defconfig:
 	@mkdir -p $(O)
 	$(MERGE_DEFCONFIG) $(PROGRAMMER_DEFCONFIG) $(RELEASE_DEFCONFIG) $(PROGRAMMER_FRAGMENT)
 
-prepare-variant-host-reuse:
-	@$(SHARE_HOST_SCRIPT) "$(CURDIR)" "$(_SHARE_SRC)" "$(O)" "$(_SHARE_ENABLE)" "$(MAKE)"
+# Sync the toolchain defconfig's tracked symbol values from the main defconfig (run in pre-commit)
+regen-toolchain-defconfig:
+	$(CURDIR)/support/pre-commit/check-toolchain-defconfig.sh
 
-all: $(_VARIANT_PREP)
+all:
 	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
 	$(_APPLY_DEFCONFIG)
 	$(BR2_MAKE) $(_BUILD_TARGETS) 2>&1 | tee $(LOG); exit $${PIPESTATUS[0]}
@@ -163,7 +174,7 @@ all: $(_VARIANT_PREP)
 	fi
 ifneq ($(MODE),programmer)
 ifeq ($(BUILD_PROGRAMMER),1)
-	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' PROGRAMMER_HOST_SRC=$(O) all
+	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
 	@if [ -f $(FLASHLAYOUT_SRC) ]; then \
 		$(BUNDLE_IMAGES_SCRIPT) \
 			$(O)/images \
@@ -183,13 +194,19 @@ debug:
 programmer:
 	$(MAKE) MODE=programmer all
 
-host-toolchain:
-	$(MAKE) MODE=release _toolchain-only
-
-_toolchain-only:
-	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
-	$(_APPLY_DEFCONFIG)
-	$(BR2_MAKE) toolchain
+# Build SDK from the toolchain-only defconfig and unpack it to $(TOOLCHAIN_SDK_OUT)
+# Mirrors the Nix stage-1 (.#toolchain): make sdk -> untar -> relocate-sdk.sh
+# Use with a target build with TOOLCHAIN_SDK=<path>.
+toolchain:
+	@mkdir -p $(TOOLCHAIN_O) $(CCACHE_DIR)
+	$(TOOLCHAIN_MAKE) BR2_DEFCONFIG=$(TOOLCHAIN_DEFCONFIG) defconfig
+	$(TOOLCHAIN_MAKE) sdk
+	rm -rf $(TOOLCHAIN_SDK_OUT)
+	@mkdir -p $(TOOLCHAIN_SDK_OUT)
+	tar -xf $(TOOLCHAIN_O)/images/*_sdk-buildroot.tar.gz -C $(TOOLCHAIN_SDK_OUT) --strip-components=1
+	$(TOOLCHAIN_SDK_OUT)/relocate-sdk.sh
+	@echo "INFO: SDK ready at $(TOOLCHAIN_SDK_OUT)"
+	@echo "INFO: reuse via: make TOOLCHAIN_SDK=$(TOOLCHAIN_SDK_OUT) debug"
 
 myd_yf135_debug_defconfig: regen-debug-defconfig
 	$(BR2_MAKE) BR2_DEFCONFIG=$(DEBUG_DEFCONFIG) defconfig
@@ -218,12 +235,17 @@ MENUCONFIG_TARGETS := menuconfig linux-menuconfig uboot-menuconfig \
 $(MENUCONFIG_TARGETS):
 	$(BR2_MAKE) $@
 
-# Regenerate buildroot.lock (run after changing package versions in defconfig)
+# Regenerate all locks
+#  * buildroot.lock: target/image sources
+#  * toolchain.lock: toolchain SDK sources
 .PHONY: nix-lock
 nix-lock:
 	nix build .#lockfile --out-link $(O)/nix-lockfile
 	cp -L $(O)/nix-lockfile buildroot.lock
 	chmod +w buildroot.lock
+	nix build .#toolchain-lockfile --out-link $(O)/nix-toolchain-lockfile
+	cp -L $(O)/nix-toolchain-lockfile toolchain.lock
+	chmod +w toolchain.lock
 
 # Forward everything else to buildroot, tee'd stdout+stderr to $(LOG)
 # Explicit local targets above take precedence over this catch-all

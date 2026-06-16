@@ -11,6 +11,7 @@ path = [
   ".cz.toml",
   "external.desc",
   "buildroot.lock",
+  "toolchain.lock",
   "flake.lock",
 ]
 precedence = "aggregate"
@@ -35,6 +36,7 @@ path = [
   "board/myd-yf135/uboot-debug.fragment",
   "board/myd-yf135/uboot-programmer.fragment",
   "configs/myd_yf135_debug.fragment",
+  "configs/myd_yf135_external_toolchain.fragment",
   "configs/myd_yf135_programmer.fragment",
   "board/myd-yf135/linux.config",
   "board/myd-yf135/rootfs-overlay/boot/extlinux/extlinux.conf",
@@ -42,9 +44,6 @@ path = [
   "README.md",
   "CONTRIBUTING.md",
   "SECURITY.md",
-  "docs/debug.md",
-  "docs/ci.md",
-  "docs/parent-integration.md",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
