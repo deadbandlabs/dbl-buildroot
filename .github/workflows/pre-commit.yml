@@ -19,17 +19,25 @@ name: Pre-commit checks
       - name: Set up Nix environment
         uses: ./.github/actions/setup-nix
 
-      - name: Cache Buildroot downloads
+      - name: Cache Linux source download
+        id: dl-cache
         uses: actions/cache@v5
         with:
           path: dl/
-          key: br-dl-${{ hashFiles('buildroot.lock') }}
-          restore-keys: br-dl-
+          key: br-dl-linux-${{ hashFiles('configs/myd_yf135_defconfig') }}
 
-      - name: Fetch Linux source
+      # Smoke-test the devshell and Buildroot make on every run (no network).
+      - name: Verify devshell and Buildroot make
         env:
           SKIP_TOOLCHAIN: 1
-        run: nix develop .#ci --command bash -c 'make myd_yf135_defconfig && make linux-source'
+        run: nix develop .#ci --command bash -c 'make myd_yf135_defconfig'
+
+      # Download latest linux-source (for dts-checkpatch) if cached download was not restored
+      - name: Fetch Linux source
+        if: steps.dl-cache.outputs.cache-hit != 'true'
+        env:
+          SKIP_TOOLCHAIN: 1
+        run: nix develop .#ci --command bash -c 'make linux-source'
 
   pre-commit:
     name: Run pre-commit
@@ -41,11 +49,11 @@ name: Pre-commit checks
       - name: Set up Nix environment
         uses: ./.github/actions/setup-nix
 
-      - name: Restore Buildroot downloads
+      - name: Restore Linux source
         uses: actions/cache/restore@v5
         with:
           path: dl/
-          key: br-dl-${{ hashFiles('buildroot.lock') }}
+          key: br-dl-linux-${{ hashFiles('configs/myd_yf135_defconfig') }}
 
       - name: Set up pre-commit shell
         run: nix develop --option warn-dirty false .#pre-commit -c true
