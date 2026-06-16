@@ -18,7 +18,18 @@
 let
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
-    ${pkgs.lib.optionalString (toolchainSdk != null) ''export TOOLCHAIN_SDK="${toolchainSdk}"''}
+    ${pkgs.lib.optionalString (toolchainSdk != null) ''
+      # Lazy TOOLCHAIN_SDK: resolves store path at make-call time
+      # Set SKIP_TOOLCHAIN=1 to bypass (e.g. make linux-source, without build)
+      make() {
+        if [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
+          TOOLCHAIN_SDK="$(nix build .#toolchain --no-link --print-out-paths 2>/dev/null)" \
+            command make "$@"
+        else
+          command make "$@"
+        fi
+      }
+    ''}
     ${certEnv}
   '';
 
