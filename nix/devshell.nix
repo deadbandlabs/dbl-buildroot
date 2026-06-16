@@ -16,18 +16,49 @@
   toolchainSdk ? null,
 }:
 let
+  # make goals that do not need the cross toolchain: source fetch, config, clean,
+  # and the metadata targets from buildroot's package/pkg-generic.mk.
+  noToolchainGoals = [
+    "*config"
+    "*-source"
+    "*-extract"
+    "*-dirclean"
+    "*-depends"
+    "*-show-*"
+    "*-graph-*"
+    "*-legal-info"
+    "*-external-deps"
+    "clean"
+    "distclean"
+    "help"
+    "source"
+    "legal-info"
+    "external-deps"
+    "printvars"
+    "list-defconfigs"
+    "regen-*"
+    "toolchain"
+  ];
+
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
     ${pkgs.lib.optionalString (toolchainSdk != null) ''
-      # Lazy TOOLCHAIN_SDK: resolves store path at make-call time
-      # Set SKIP_TOOLCHAIN=1 to bypass (e.g. make linux-source, without build)
+      # Lazy TOOLCHAIN_SDK: resolve the cached toolchain at make but skip for no-build
+      # goals including source fetch, config, clean, metadata (see BR package/pkg-generic.mk)
+      # SKIP_TOOLCHAIN=1 can be set globally to always disable nix toolchain resolution
       make() {
-        if [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
-          TOOLCHAIN_SDK="$(nix build .#toolchain --no-link --print-out-paths 2>/dev/null)" \
-            command make "$@"
-        else
-          command make "$@"
+        local needToolchain=1 arg
+        for arg in "$@"; do
+          case "$arg" in
+            -*|*=*) ;;  # NB: option or VAR=val (no build goal)
+            ${pkgs.lib.concatStringsSep "|" noToolchainGoals}) needToolchain=0 ;;
+            *) needToolchain=1; break ;;
+          esac
+        done
+        if [ "$needToolchain" = 1 ] && [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
+          export TOOLCHAIN_SDK="$(nix build .#toolchain --no-link --print-out-paths)"
         fi
+        command make "$@"
       }
     ''}
     ${certEnv}
