@@ -171,11 +171,12 @@ let
 
   # defconfig passed to mkBuildroot for lock generation, in mkBuildroot's
   # string form: `defconfig BR2_DEFCONFIG=<path>`
+  # Uses toolchainFragment to avoid BR2_TOOLCHAIN_EXTERNAL_PATH forcing an SDK build to derive
   lockDefconfig = "defconfig BR2_DEFCONFIG=${
     pkgs.runCommand "lock-defconfig" { } (
       mergeFragments "$out" baseDefconfig [
         configFragment
-        externalToolchainFragment
+        toolchainFragment
       ]
     )
   }";
