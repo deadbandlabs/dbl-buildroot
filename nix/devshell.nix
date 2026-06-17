@@ -40,27 +40,26 @@ let
     "toolchain"
   ];
 
+  # make wrapper to resolve the cached .#toolchain SDK for build goals only
+  # SKIP_TOOLCHAIN=1 disables the SDK entirely or automatically for noToolchainGoals above
+  # Esnures only the top-level make is wrapped, and real gnumake is used for recursive $(MAKE)
+  makeShim = pkgs.writeShellScriptBin "make" ''
+    needToolchain=1
+    for arg in "$@"; do
+      case "$arg" in
+        -*|*=*) ;;  # option or VAR=val, not a build goal
+        ${pkgs.lib.concatStringsSep "|" noToolchainGoals}) needToolchain=0 ;;
+        *) needToolchain=1; break ;;
+      esac
+    done
+    if [ "$needToolchain" = 1 ] && [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
+      export TOOLCHAIN_SDK="$(nix build .#toolchain --no-link --print-out-paths)"
+    fi
+    exec ${pkgs.gnumake}/bin/make "$@"
+  '';
+
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
-    ${pkgs.lib.optionalString (toolchainSdk != null) ''
-      # Lazy TOOLCHAIN_SDK: resolve the cached toolchain at make but skip for no-build
-      # goals including source fetch, config, clean, metadata (see BR package/pkg-generic.mk)
-      # SKIP_TOOLCHAIN=1 can be set globally to always disable nix toolchain resolution
-      make() {
-        local needToolchain=1 arg
-        for arg in "$@"; do
-          case "$arg" in
-            -*|*=*) ;;  # NB: option or VAR=val (no build goal)
-            ${pkgs.lib.concatStringsSep "|" noToolchainGoals}) needToolchain=0 ;;
-            *) needToolchain=1; break ;;
-          esac
-        done
-        if [ "$needToolchain" = 1 ] && [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
-          export TOOLCHAIN_SDK="$(nix build .#toolchain --no-link --print-out-paths)"
-        fi
-        command make "$@"
-      }
-    ''}
     ${certEnv}
   '';
 
@@ -69,8 +68,10 @@ let
     # Core build toolchain
     gcc
     binutils
-    gnumake
     cmake-compat
+
+    # makeShim replaces make when an SDK is enabled
+    (if toolchainSdk != null then makeShim else gnumake)
 
     # Scripting / config
     # Note: Buildroot builds its own host Python
