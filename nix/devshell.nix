@@ -42,7 +42,8 @@ let
 
   # make wrapper to resolve the cached .#toolchain SDK for build goals only
   # SKIP_TOOLCHAIN=1 disables the SDK entirely or automatically for noToolchainGoals above
-  # Esnures only the top-level make is wrapped, and real gnumake is used for recursive $(MAKE)
+  # Ensures only the top-level make is wrapped, and gnumake is used directly for recursive $(MAKE)
+  # NB: '.?submodules=1' is used to resolve the wrapper in parent repos
   makeShim = pkgs.writeShellScriptBin "make" ''
     needToolchain=1
     for arg in "$@"; do
@@ -53,7 +54,12 @@ let
       esac
     done
     if [ "$needToolchain" = 1 ] && [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
-      export TOOLCHAIN_SDK="$(nix build .#toolchain --no-link --print-out-paths)"
+      sdk="$(nix build '.?submodules=1#toolchain' --no-link --print-out-paths)"
+      if [ -z "$sdk" ]; then
+        echo "make: could not resolve toolchain SDK; set TOOLCHAIN_SDK= or SKIP_TOOLCHAIN=1" >&2
+        exit 1
+      fi
+      export TOOLCHAIN_SDK="$sdk"
     fi
     exec ${pkgs.gnumake}/bin/make "$@"
   '';
