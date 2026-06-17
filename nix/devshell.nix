@@ -36,8 +36,12 @@ let
     "external-deps"
     "printvars"
     "list-defconfigs"
+    "show-info"
     "regen-*"
     "toolchain"
+    "linux-config-init"
+    # nix-lock does not depend on completed TOOLCHAIN_SDK, runs nix directly
+    "nix-lock"
   ];
 
   # make wrapper to resolve the cached .#toolchain SDK for build goals only

@@ -50,15 +50,24 @@ check_fragment() {
   # libc: BR2_TOOLCHAIN_BUILDROOT_<LIBC> <-> BR2_TOOLCHAIN_EXTERNAL_CUSTOM_<LIBC>
   m=$(sed -nE 's/^BR2_TOOLCHAIN_BUILDROOT_(GLIBC|UCLIBC|MUSL)=y$/\1/p' "$main" | head -1)
   f=$(sed -nE 's/^BR2_TOOLCHAIN_EXTERNAL_CUSTOM_(GLIBC|UCLIBC|MUSL)=y$/\1/p' "$frag" | head -1)
-  [[ "$m" == "$f" ]] || { echo "fragment libc ($f) disagrees with main ($m)" >&2 && rc=1; }
+  [[ "$m" == "$f" ]] || {
+    echo "fragment libc ($f) disagrees with main ($m)" >&2
+    rc=1
+  }
   # kernel headers version
   m=$(sed -nE 's/^BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_([0-9_]+)=y$/\1/p' "$main" | head -1)
   f=$(sed -nE 's/^BR2_TOOLCHAIN_EXTERNAL_HEADERS_([0-9_]+)=y$/\1/p' "$frag" | head -1)
-  [[ "$m" == "$f" ]] || { echo "fragment headers ($f) disagrees with main ($m)" >&2 && rc=1; }
+  [[ "$m" == "$f" ]] || {
+    echo "fragment headers ($f) disagrees with main ($m)" >&2
+    rc=1
+  }
   # C++ support
   m=$(grep -qxF 'BR2_TOOLCHAIN_BUILDROOT_CXX=y' "$main" && echo y || echo n)
   f=$(grep -qxF 'BR2_TOOLCHAIN_EXTERNAL_CXX=y' "$frag" && echo y || echo n)
-  [[ "$m" == "$f" ]] || { echo "fragment C++ ($f) disagrees with main ($m)" >&2 && rc=1; }
+  [[ "$m" == "$f" ]] || {
+    echo "fragment C++ ($f) disagrees with main ($m)" >&2
+    rc=1
+  }
   return $rc
 }
 
