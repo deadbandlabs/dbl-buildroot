@@ -23,7 +23,4 @@ name: Submodule check (reusable)
         with:
           submodules: true
 
-      - name: Set up Nix environment
-        uses: ./.github/actions/setup-nix
-
       - run: make check-dbl-buildroot
