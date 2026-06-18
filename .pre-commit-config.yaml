@@ -2,6 +2,14 @@
 repos:
   - repo: local
     hooks:
+      - id: toolchain-defconfig
+        name: toolchain defconfig sync
+        entry: support/pre-commit/check-toolchain-defconfig.sh
+        language: system
+        files: ^configs/myd_yf135_(defconfig|toolchain_defconfig|external_toolchain\.fragment)$
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: shellcheck
         name: shellcheck
         entry: shellcheck -x

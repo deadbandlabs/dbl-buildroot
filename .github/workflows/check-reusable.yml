@@ -22,7 +22,5 @@ name: Submodule check (reusable)
       - uses: actions/checkout@v6
         with:
           submodules: true
-      - uses: cachix/install-nix-action@v31
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
+
       - run: make check-dbl-buildroot

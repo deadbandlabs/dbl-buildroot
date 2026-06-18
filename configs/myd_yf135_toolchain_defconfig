@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Toolchain-only defconfig for the split nix build without target packages
+#
+# Lines select which symbols/keys are tracked, and is normally updated
+# automatically by check-toolchain-defconfig.sh (make regen-toolchain-defconfig)
+BR2_arm=y
+BR2_cortex_a7=y
+BR2_ARM_ENABLE_NEON=y
+BR2_ARM_ENABLE_VFP=y
+BR2_ARM_FPU_NEON_VFPV4=y
+BR2_TOOLCHAIN_BUILDROOT_GLIBC=y
+BR2_TOOLCHAIN_BUILDROOT_CXX=y
+BR2_PACKAGE_HOST_LINUX_HEADERS_CUSTOM_6_12=y

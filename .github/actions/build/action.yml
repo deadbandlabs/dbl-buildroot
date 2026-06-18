@@ -69,8 +69,7 @@ inputs:
     description: 'Toolchain-identity paths/globs hashed into the host cache key prefix (restore-keys fallback)'
     default: >-
       modules/dbl-buildroot/inputs.nix
-      modules/dbl-buildroot/buildroot.lock
-      buildroot.lock
+      modules/dbl-buildroot/toolchain.lock
   host-key-files:
     description: 'Config paths/globs hashed into the host cache key suffix, may be empty'
     default: >-

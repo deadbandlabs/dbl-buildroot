@@ -23,13 +23,13 @@ If a report stalls on the maintainers' end, you are free to disclose after the 9
 The project accepts reports for anything actionable in this repository:
 
 - The Buildroot external tree configuration, device tree patches, and board-level customizations.
-- The Nix build setup and `buildroot.lock` integrity.
+- The Nix build setup and `buildroot.lock` / `toolchain.lock` integrity.
 
 A request to update a pinned upstream component (Linux, U-Boot, TF-A, OP-TEE, or RAUC) to resolve a known vulnerability can be filed as a regular GitHub issue, as a general update request.
 
 ## Security updates
 
-This project tracks upstream LTS releases through Buildroot 2025.02.y (LTS). All component versions are pinned in the defconfig and locked in `buildroot.lock` with SHA-256 checksums. Updates are applied manually when a new Buildroot LTS point release is available and tested.
+This project tracks upstream LTS releases through Buildroot 2025.02.y (LTS). All component versions are pinned in the defconfig and locked in `buildroot.lock` (and the toolchain in `toolchain.lock`) with SHA-256 checksums. Updates are applied manually when a new Buildroot LTS point release is available and tested.
 
 | Component | Version | Info |
 |-----------|---------|--------|

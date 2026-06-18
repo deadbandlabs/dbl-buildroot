@@ -10,8 +10,64 @@
   certEnv ? "",
   # Downstream-injected packages added to the default shell
   extraPackages ? [ ],
+  # Prebuilt external-toolchain SDK (.#toolchain)
+  # Make builds in this shell reuse TOOLCHAIN_SDK instead of compiling the toolchain
+  # Set to null to have make fall back to an internal or custom toolchain (see Makefile)
+  toolchainSdk ? null,
 }:
 let
+  # make goals that do not need the cross toolchain: source fetch, config, clean,
+  # and the metadata targets from buildroot's package/pkg-generic.mk.
+  noToolchainGoals = [
+    "*config"
+    "*-source"
+    "*-extract"
+    "*-dirclean"
+    "*-depends"
+    "*-show-*"
+    "*-graph-*"
+    "*-legal-info"
+    "*-external-deps"
+    "clean"
+    "distclean"
+    "help"
+    "source"
+    "legal-info"
+    "external-deps"
+    "printvars"
+    "list-defconfigs"
+    "show-info"
+    "regen-*"
+    "toolchain"
+    "linux-config-init"
+    # nix-lock does not depend on completed TOOLCHAIN_SDK, runs nix directly
+    "nix-lock"
+  ];
+
+  # make wrapper to resolve the cached .#toolchain SDK for build goals only
+  # SKIP_TOOLCHAIN=1 disables the SDK entirely or automatically for noToolchainGoals above
+  # Ensures only the top-level make is wrapped, and gnumake is used directly for recursive $(MAKE)
+  # NB: '.?submodules=1' is used to resolve the wrapper in parent repos
+  makeShim = pkgs.writeShellScriptBin "make" ''
+    needToolchain=1
+    for arg in "$@"; do
+      case "$arg" in
+        -*|*=*) ;;  # option or VAR=val, not a build goal
+        ${pkgs.lib.concatStringsSep "|" noToolchainGoals}) needToolchain=0 ;;
+        *) needToolchain=1; break ;;
+      esac
+    done
+    if [ "$needToolchain" = 1 ] && [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
+      sdk="$(nix build '.?submodules=1#toolchain' --no-link --print-out-paths)"
+      if [ -z "$sdk" ]; then
+        echo "make: could not resolve toolchain SDK; set TOOLCHAIN_SDK= or SKIP_TOOLCHAIN=1" >&2
+        exit 1
+      fi
+      export TOOLCHAIN_SDK="$sdk"
+    fi
+    exec ${pkgs.gnumake}/bin/make "$@"
+  '';
+
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
     ${certEnv}
@@ -22,8 +78,10 @@ let
     # Core build toolchain
     gcc
     binutils
-    gnumake
     cmake-compat
+
+    # makeShim replaces make when an SDK is enabled
+    (if toolchainSdk != null then makeShim else gnumake)
 
     # Scripting / config
     # Note: Buildroot builds its own host Python

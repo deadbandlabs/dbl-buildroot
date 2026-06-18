@@ -44,7 +44,9 @@ sdk:
 develop:
 	nix develop '$(DBL_BR_FLAKEREF)'
 
-# Regenerate the project-local buildroot.lock from the merged (base + overlay) config
+# Regenerate the project-local buildroot.lock (target sources)
+# The toolchain SDK is reused from the submodule's cached build and is not generated here
+# If used, a custom toolchain regenerates one from '#toolchain-lockfile' when needed
 nix-lock:
 	nix build '$(DBL_BR_FLAKEREF)#lockfile' --out-link $(REPO_ROOT)/.nix-lockfile
 	cp -L $(REPO_ROOT)/.nix-lockfile $(REPO_ROOT)/buildroot.lock
