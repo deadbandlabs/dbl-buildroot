@@ -209,7 +209,10 @@ let
   # BR2_ROOTFS_OVERLAY value accumulates onto the base/consumer rootfsOverlays
   # so no in-place edit of the merged defconfig is needed
   # null when there are none (NB: see merge-defconfig.py)
-  rootfsOverlays = extraRootfsOverlays { sdk = toolchainSdk; inherit pkgs; };
+  rootfsOverlays = extraRootfsOverlays {
+    sdk = toolchainSdk;
+    inherit pkgs;
+  };
   rootfsOverlayFragment =
     if rootfsOverlays == [ ] then
       null
