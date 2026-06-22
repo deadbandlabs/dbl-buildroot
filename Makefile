@@ -60,6 +60,11 @@ endif
 CONFIG_FRAGMENT ?=
 OVERLAY_DEFCONFIG := $(O)/overlay_defconfig
 
+# (Optional) extra rootfs overlay dirs (e.g. Nix-built image content) appended to
+# BR2_ROOTFS_OVERLAY via a generated fragment, mirroring the nix build's extraRootfsOverlays
+EXTRA_ROOTFS_OVERLAYS    ?=
+_ROOTFS_OVERLAY_FRAGMENT := $(O)/rootfs-overlays.fragment
+
 # Derive the kernel source directory from the version in the defconfig so
 # this stays in sync automatically if the version is ever bumped
 LINUX_VERSION := $(shell grep BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE \
@@ -126,8 +131,16 @@ else
   _WRITE_TC_PATH = @true
 endif
 
+# Append extra rootfs overlays last to stack onto base + fragment overlays
+ifneq ($(strip $(EXTRA_ROOTFS_OVERLAYS)),)
+  _MERGE_DELTAS += $(_ROOTFS_OVERLAY_FRAGMENT)
+  _WRITE_ROOTFS_OVERLAY = mkdir -p $(O) && printf 'BR2_ROOTFS_OVERLAY="%s"\n' '$(EXTRA_ROOTFS_OVERLAYS)' > $(_ROOTFS_OVERLAY_FRAGMENT)
+else
+  _WRITE_ROOTFS_OVERLAY = true
+endif
+
 ifneq ($(_MERGE_DELTAS),)
-_APPLY_DEFCONFIG = $(_WRITE_TC_PATH) && $(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
+_APPLY_DEFCONFIG = $(_WRITE_TC_PATH) && $(_WRITE_ROOTFS_OVERLAY) && $(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
 else
 _APPLY_DEFCONFIG = $(BR2_MAKE) myd_yf135_defconfig
 endif

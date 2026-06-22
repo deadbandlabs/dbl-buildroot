@@ -16,6 +16,7 @@
 #   make update-dbl-buildroot         # bump submodule + propagate SHA
 #   make update-dbl-buildroot REF=... # bump to a specific ref
 #   make check-dbl-buildroot          # SHA pin drift check
+#   make nix-overlays                 # build DBL_BR_NIX_ROOTFS_OVERLAYS attrs
 #   make <anything-else>              # forwards to submodule Makefile with
 #                                       BR2_EXTERNAL_EXTRA + CONFIG_FRAGMENT
 
@@ -77,5 +78,31 @@ ifneq ($(strip $(DBL_BR_FRAGMENT_DEBUG)),)
 DBL_BR_FORWARD_FLAGS += CONFIG_FRAGMENT_DEBUG=$(REPO_ROOT)/$(DBL_BR_FRAGMENT_DEBUG)
 endif
 
+# --- Nix-built rootfs overlays ---
+# DBL_BR_NIX_ROOTFS_OVERLAYS: flake attrs that produce overlay dirs
+# Store paths are stacked onto BR2_ROOTFS_OVERLAY for interactive image builds
+#
+# `make nix-overlays` builds overlays standalone; also a prerequisite of
+# all/debug/release and lands at output/nix-overlays/<attr> as a symlink
+#
+# Raw Buildroot image targets (e.g. `make rootfs-ubifs`) skip this
+# prerequisite and use whatever BR2_ROOTFS_OVERLAY is already in
+# .config from the last all/debug build
+DBL_BR_NIX_ROOTFS_OVERLAYS ?=
+_DBL_BR_OVERLAY_OUT := $(REPO_ROOT)/output/nix-overlays
+DBL_BR_OVERLAY_FLAG =
+
+.PHONY: nix-overlays
+nix-overlays:
+	@mkdir -p $(_DBL_BR_OVERLAY_OUT)
+	@for a in $(DBL_BR_NIX_ROOTFS_OVERLAYS); do \
+	  nix build '$(DBL_BR_FLAKEREF)#'$$a --out-link $(_DBL_BR_OVERLAY_OUT)/$$a || exit $$?; \
+	done
+
+ifneq ($(strip $(DBL_BR_NIX_ROOTFS_OVERLAYS)),)
+all debug release: nix-overlays
+all debug release: DBL_BR_OVERLAY_FLAG = EXTRA_ROOTFS_OVERLAYS="$(foreach a,$(DBL_BR_NIX_ROOTFS_OVERLAYS),$(_DBL_BR_OVERLAY_OUT)/$(a))"
+endif
+
 %:
-	$(MAKE) -C $(REPO_ROOT)/$(DBL_BR_DIR) $(DBL_BR_FORWARD_FLAGS) $@
+	$(MAKE) -C $(REPO_ROOT)/$(DBL_BR_DIR) $(DBL_BR_FORWARD_FLAGS) $(DBL_BR_OVERLAY_FLAG) $@
