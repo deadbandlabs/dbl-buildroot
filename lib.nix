@@ -47,6 +47,11 @@ in
       # set to null to disable the programmer build entirely.
       programmerFragment ? "configs/myd_yf135_programmer.fragment",
       extraExternalSrcs ? [ ],
+      # Extra rootfs overlay dirs to stack onto BR2_ROOTFS_OVERLAY
+      # for image content built by Nix instead of a Buildroot package
+      # (e.g. a cross-built rust binary)
+      # Passed `sdk` (the image's toolchain) and `pkgs` to ensure binary is linked against image libc
+      extraRootfsOverlays ? ({ sdk, pkgs }: [ ]),
       # Buildroot target package lockfile (override when using overlay packages)
       lockfile ? (./. + "/buildroot.lock"),
       # Custom toolchain (leave null to reuse this repo's cached SDK)
@@ -96,6 +101,7 @@ in
                 cmake-compat
                 certEnv
                 extraExternalSrcs
+                extraRootfsOverlays
                 configFragment
                 programmerFragment
                 ;

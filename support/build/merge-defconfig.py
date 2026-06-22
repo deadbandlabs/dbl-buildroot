@@ -3,9 +3,9 @@
 # Copyright 2026 Deadband Inc.
 """Merge buildroot defconfig fragments left-to-right.
 
-Each fragment overrides keys from prior inputs, except keys matching
-``*_FRAGMENT_FILES`` (kernel/u-boot config fragment lists) whose values
-append space-separated so fragment lists accumulate across layers.
+Each fragment overrides keys from prior inputs, except accumulating keys
+(``*_FRAGMENT_FILES`` kernel/u-boot config fragment lists, and
+``BR2_ROOTFS_OVERLAY``) whose values append to stack layers
 
 Comments and blank lines in the base file are preserved in place. New
 keys introduced by a delta append at the end of the output in delta order.
@@ -19,6 +19,10 @@ from pathlib import Path
 
 # `CONFIG_FOO=value` (set) or `# CONFIG_FOO is not set` (explicit unset)
 _KEY = re.compile(r"^([A-Z0-9_]+)=|^# ([A-Z0-9_]+) is not set$")
+
+# Keys whose values accumulate (space-joined) across layers
+# NB: `*_FRAGMENT_FILES` is matched by suffix
+_ACCUMULATE = ("BR2_ROOTFS_OVERLAY",)
 
 
 def key_of(line):
@@ -53,7 +57,7 @@ def apply_delta(base_lines, overrides):
         key = key_of(line)
         if key is None or key not in overrides:
             out.append(line)
-        elif key.endswith("_FRAGMENT_FILES"):
+        elif key.endswith("_FRAGMENT_FILES") or key in _ACCUMULATE:
             values = (value_of(line), value_of(overrides[key]))
             out.append('{}="{}"'.format(key, " ".join(v for v in values if v)))
             applied.add(key)

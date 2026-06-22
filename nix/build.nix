@@ -34,6 +34,9 @@
   # Additional BR2_EXTERNAL source trees (e.g. downstream overlay/).
   # Each entry is a path containing external.desc, external.mk, Config.in, etc.
   extraExternalSrcs ? [ ],
+  # Extra rootfs overlay dirs; `sdk` is the image's toolchain SDK
+  # (See lib.nix's extraRootfsOverlays)
+  extraRootfsOverlays ? ({ sdk, pkgs }: [ ]),
   # Optional defconfig fragment to merge over the base defconfig.
   # Merged via support/build/merge-defconfig.py.
   configFragment ? null,
@@ -202,6 +205,19 @@ let
 
   lockedSources = buildrootPackages.packageInputs;
 
+  # Resolve the extra overlays and express them as a defconfig fragment whose
+  # BR2_ROOTFS_OVERLAY value accumulates onto the base/consumer rootfsOverlays
+  # so no in-place edit of the merged defconfig is needed
+  # null when there are none (NB: see merge-defconfig.py)
+  rootfsOverlays = extraRootfsOverlays { sdk = toolchainSdk; inherit pkgs; };
+  rootfsOverlayFragment =
+    if rootfsOverlays == [ ] then
+      null
+    else
+      pkgs.writeText "rootfs-overlays.fragment" ''
+        BR2_ROOTFS_OVERLAY="${pkgs.lib.concatMapStringsSep " " toString rootfsOverlays}"
+      '';
+
   # Process the generated lock to drop non-mirror cargo2 URLs during derivation
   lockfile = pkgs.runCommand "${projectName}-buildroot.lock" { } ''
     cp ${buildrootPackages.packageLockFile} $out
@@ -227,6 +243,7 @@ let
       mergeFragments "merged_defconfig" baseDefconfig [
         configFragment
         externalToolchainFragment
+        rootfsOverlayFragment
       ]
       + ''
         mkdir -p output/images
