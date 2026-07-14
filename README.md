@@ -23,7 +23,7 @@ Two build paths share one configuration:
 - A `make` workflow that runs in a Nix development shell for fast, incremental local iteration. This is the usual Buildroot experience, with per-target rebuilds and reusable `dl/` and `ccache` caches.
 - A hermetic `nix build` that produces the full image and a relocatable cross-compiler SDK in a single derivation. This path is built on [velentr/buildroot.nix](https://github.com/velentr/buildroot.nix), and is cached using [Cachix](https://deadbandlabs.cachix.org).
 
-Both paths apply the same defconfig and fragments, so a local `make` build and a `nix build` produce the same configuration. See the [Setup](https://github.com/deadbandlabs/dbl-buildroot/wiki/1.-Setup) wiki page for the comparison and prerequisites.
+Both paths apply the same defconfig and fragments, and both consume the same prebuilt cross-toolchain SDK (`nix build .#toolchain`), so a local `make` build and a `nix build` produce the same configuration without rebuilding the toolchain. See the [Setup](https://github.com/deadbandlabs/dbl-buildroot/wiki/1.-Setup) wiki page for the comparison and prerequisites.
 
 ## Documentation
 
@@ -33,9 +33,9 @@ Full documentation lives in the [wiki](https://github.com/deadbandlabs/dbl-build
 - [Hardware](https://github.com/deadbandlabs/dbl-buildroot/wiki/2.-Hardware): SoC, RAM, flash, console, memory map, SPI-NAND partition layout
 - [Boot Chain](https://github.com/deadbandlabs/dbl-buildroot/wiki/3.-Boot-Chain): Boot sequence, device tree, NAND parameters with OTP fuse details
 - [Flashing](https://github.com/deadbandlabs/dbl-buildroot/wiki/4.-Flashing): DFU flashing via STM32CubeProgrammer, BOOT pin settings
-- [Build Variants](https://github.com/deadbandlabs/dbl-buildroot/wiki/5.-Build-Variants): Release and debug build variants, host toolchain sharing, configuration fragments
+- [Build Variants](https://github.com/deadbandlabs/dbl-buildroot/wiki/5.-Build-Variants): Release and debug build variants, external toolchain SDK, configuration fragments
 - [CI](https://github.com/deadbandlabs/dbl-buildroot/wiki/6.-CI): GitHub Actions workflows, running locally with act, caching
-- [Parent Integration](https://github.com/deadbandlabs/dbl-buildroot/wiki/7.-Parent-Integration): Submodule usage, mkProject parameters, updating, drift detection
+- [Parent Integration](https://github.com/deadbandlabs/dbl-buildroot/wiki/7.-Parent-Integration): Submodule usage, mkProject parameters, Nix-built rootfs overlays, updating, drift detection
 - [Differences](https://github.com/deadbandlabs/dbl-buildroot/wiki/8.-Differences): Comparison with vendor and community configurations
 
 ## Quick start
