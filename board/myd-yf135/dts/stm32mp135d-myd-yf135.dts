@@ -201,11 +201,17 @@
 	};
 };
 
-/* USB gadget :: USB ethernet, ACM, mass storage via g_ether etc. */
+/*
+ * USB gadget :: USB ethernet, ACM, mass storage via g_ether etc.
+ * Configures additional TX FIFOs to support 1204-byte HID endpoint + ECM or other modes
+ */
 &usbotg_hs {
 	dr_mode = "peripheral";
 	phys = <&usbphyc_port1 0>;
 	phy-names = "usb2-phy";
+	g-rx-fifo-size = <320>;
+	g-np-tx-fifo-size = <32>;
+	g-tx-fifo-size = <256 128 128 16 16 16 16 16>;
 	status = "okay";
 };
 
