@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+
+[Unit]
+Description=Commit machine ID before etc overlay
+DefaultDependencies=no
+After=overlay-prepare.service
+Before=etc.mount
+ConditionPathIsMountPoint=/etc/machine-id
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'cat /etc/machine-id > /mnt/overlay/upper/etc/machine-id && umount /etc/machine-id'
+
+[Install]
+WantedBy=local-fs.target
