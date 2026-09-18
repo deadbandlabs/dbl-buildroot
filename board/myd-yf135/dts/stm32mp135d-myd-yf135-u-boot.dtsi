@@ -115,3 +115,8 @@
 		};
 	};
 };
+
+/*
+ * Parent-project additions, must stay the last include
+ */
+#include "parent-u-boot.dtsi"
