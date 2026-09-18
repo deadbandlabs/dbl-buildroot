@@ -18,8 +18,15 @@ ifneq ($(word 2,$(DBL_PARENT_UBOOT_DTSI)),)
 $(error multiple externals provide parent-u-boot.dtsi: $(DBL_PARENT_UBOOT_DTSI))
 endif
 
-# Copied after the defconfig's stub entry: same basename, later copy wins
-UBOOT_CUSTOM_DTS_PATH += $(DBL_PARENT_UBOOT_DTSI)
+# Copy by hook the base Linux dts as control DT for U-Boot
+# Uses the empty parent-linux.dtsi stub, as superproject Linux additions are kernel-only labels
+define UBOOT_MYD_YF135_COPY_DTSI
+	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-linux.dtsi \
+		$(@D)/arch/arm/dts/parent-linux.dtsi
+	cp $(or $(DBL_PARENT_UBOOT_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-u-boot.dtsi) \
+		$(@D)/arch/arm/dts/parent-u-boot.dtsi
+endef
+UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_COPY_DTSI
 
 # Copy the board DTS into the kernel source tree before each build, and append
 # the dtb to the ST Makefile at first extraction.
