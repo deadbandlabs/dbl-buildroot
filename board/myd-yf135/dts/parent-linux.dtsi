@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
+// Copyright 2026 Deadband Inc.
+/*
+ * Linux DT parent-project stub
+ * Included at the end of stm32mp135d-myd-yf135.dts by LINUX_MYD_YF135_COPY_DTS (external.mk)
+ * At most one external may provide it.
+ *
+ * Advice: parent dtsi may override properties, /delete-node/, and add nodes,
+ * must not contain /dts-v1/ or include the base DT
+ */

@@ -1,0 +1,10 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
+// Copyright 2026 Deadband Inc.
+/*
+ * U-Boot control DT parent-project stub
+ * Overwritten at build time by a consuming external's
+ * board/dts/parent-u-boot.dtsi (external.mk). At most one external may provide it.
+ *
+ * Advice: Keep parent content minimal: U-Boot's stm32mp131.dtsi lacks many labels
+ * found in the kernel DT
+ */
