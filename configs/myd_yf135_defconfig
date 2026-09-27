@@ -56,8 +56,8 @@ BR2_LINUX_KERNEL_UIMAGE_LOADADDR="0xc2000040"
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
 # Linux 6.12 moved all STM32MP DTS files to arch/arm/boot/dts/st/.
 # CUSTOM_DTS_PATH copies to the root dts/ dir, not scanned for STM32MP.
-# DTS is copied by LINUX_POST_PATCH_HOOKS in external.mk; Makefile entry
-# added via patches/linux/. Edit board/myd-yf135/dts/*.dts directly.
+# DTS is copied and its Makefile entry added by LINUX_MYD_YF135_COPY_DTS
+# (external.mk). Edit board/myd-yf135/dts/*.dts, then `make linux-rebuild`.
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="st/stm32mp135d-myd-yf135"
 BR2_LINUX_KERNEL_DTB_OVERLAY_SUPPORT=y
 BR2_LINUX_KERNEL_INSTALL_TARGET=y

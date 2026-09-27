@@ -5,6 +5,6 @@
  * Overwritten at build time by a consuming external's
  * board/dts/parent-u-boot.dtsi (external.mk). At most one external may provide it.
  *
- * Advice: Keep parent content minimal: U-Boot's stm32mp131.dtsi lacks many labels
- * found in the kernel DT
+ * Advice: keep parent content minimal (gpio hogs, cd-gpios) to what
+ * U-Boot itself uses, Linux peripherals belong in parent-linux.dtsi
  */
