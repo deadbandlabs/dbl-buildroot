@@ -252,3 +252,8 @@
 	st,no-hs-ftime-ctrl;
 	st,no-lsfs-sc;
 };
+
+/*
+ * Parent-project additions, must stay the last include
+ */
+#include "parent-linux.dtsi"

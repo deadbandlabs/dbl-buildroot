@@ -2,19 +2,47 @@
 # Copyright 2026 Deadband Inc.
 include $(sort $(wildcard $(BR2_EXTERNAL_MYD_YF135_PATH)/package/*/*.mk))
 
-# Copy the board DTS into the kernel source tree before each build, and append
-# the dtb to the ST Makefile at first extraction.
+# Parent DT: a superproject may provide
+#   board/dts/parent-linux.dtsi    Linux DT additions
+#   board/dts/parent-u-boot.dtsi   U-Boot control DT additions
+# See wiki: Parent Integration / Parent device tree docs
+DBL_PARENT_DTS_DIRS := $(foreach name,$(filter-out MYD_YF135,$(BR2_EXTERNAL_NAMES)),\
+	$(BR2_EXTERNAL_$(name)_PATH)/board/dts)
+DBL_PARENT_LINUX_DTSI := $(wildcard $(addsuffix /parent-linux.dtsi,$(DBL_PARENT_DTS_DIRS)))
+DBL_PARENT_UBOOT_DTSI := $(wildcard $(addsuffix /parent-u-boot.dtsi,$(DBL_PARENT_DTS_DIRS)))
+
+ifneq ($(word 2,$(DBL_PARENT_LINUX_DTSI)),)
+$(error multiple externals provide parent-linux.dtsi: $(DBL_PARENT_LINUX_DTSI))
+endif
+ifneq ($(word 2,$(DBL_PARENT_UBOOT_DTSI)),)
+$(error multiple externals provide parent-u-boot.dtsi: $(DBL_PARENT_UBOOT_DTSI))
+endif
+
+# U-Boot compiles the base Linux dts as its control DT: provide the empty
+# parent-linux.dtsi stub (Linux-only peripherals) and the parent's U-Boot file.
+# Runs with the build step only: after DT edits, `make uboot-rebuild`.
+define UBOOT_MYD_YF135_COPY_DTSI
+	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-linux.dtsi \
+		$(@D)/arch/arm/dts/parent-linux.dtsi
+	cp $(or $(DBL_PARENT_UBOOT_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-u-boot.dtsi) \
+		$(@D)/arch/arm/dts/parent-u-boot.dtsi
+endef
+UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_COPY_DTSI
+
+# Copy the board DTS into the kernel source tree and add its dtb to the ST Makefile
 #
 # CUSTOM_DTS_PATH would normally be used, but copies to arch/arm/boot/dts/.
 # Linux 6.12+ refactored STM32MP device trees to arch/arm/boot/dts/st/, which
 # is incompatible with that standard method.
 #
-# PRE_BUILD (not POST_PATCH) so DTS edits propagate to the kernel build dir on
-# every `make` without needing linux-dirclean. Mainline 6.12 already ships its
-# own stm32mp135d-myd-yf135.dts upstream; this overwrites it with our copy.
+# Runs with the build step only: after DTS edits, `make linux-rebuild`.
 define LINUX_MYD_YF135_COPY_DTS
 	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/stm32mp135d-myd-yf135.dts \
 		$(@D)/arch/arm/boot/dts/st/stm32mp135d-myd-yf135.dts
+	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-linux.dtsi \
+		$(@D)/arch/arm/boot/dts/st/parent-linux.dtsi
+	$(if $(DBL_PARENT_LINUX_DTSI),cp $(DBL_PARENT_LINUX_DTSI) \
+		$(@D)/arch/arm/boot/dts/st/parent-linux.dtsi)
 	grep -q 'stm32mp135d-myd-yf135\.dtb' $(@D)/arch/arm/boot/dts/st/Makefile || \
 		printf '\ndtb-$$(CONFIG_ARCH_STM32) += stm32mp135d-myd-yf135.dtb\n' \
 			>> $(@D)/arch/arm/boot/dts/st/Makefile

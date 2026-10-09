@@ -56,8 +56,8 @@ BR2_LINUX_KERNEL_UIMAGE_LOADADDR="0xc2000040"
 BR2_LINUX_KERNEL_DTS_SUPPORT=y
 # Linux 6.12 moved all STM32MP DTS files to arch/arm/boot/dts/st/.
 # CUSTOM_DTS_PATH copies to the root dts/ dir, not scanned for STM32MP.
-# DTS is copied by LINUX_POST_PATCH_HOOKS in external.mk; Makefile entry
-# added via patches/linux/. Edit board/myd-yf135/dts/*.dts directly.
+# DTS is copied and its Makefile entry added by LINUX_MYD_YF135_COPY_DTS
+# (external.mk). Edit board/myd-yf135/dts/*.dts, then `make linux-rebuild`.
 BR2_LINUX_KERNEL_INTREE_DTS_NAME="st/stm32mp135d-myd-yf135"
 BR2_LINUX_KERNEL_DTB_OVERLAY_SUPPORT=y
 BR2_LINUX_KERNEL_INSTALL_TARGET=y
@@ -106,6 +106,7 @@ BR2_TARGET_UBOOT_BOARD_DEFCONFIG="stm32mp13"
 BR2_TARGET_UBOOT_NEEDS_PYLIBFDT=y
 BR2_TARGET_UBOOT_NEEDS_OPENSSL=y
 BR2_TARGET_UBOOT_FORMAT_DTB=y
+# parent-*.dtsi are copied by UBOOT_MYD_YF135_COPY_DTSI (external.mk)
 BR2_TARGET_UBOOT_CUSTOM_DTS_PATH="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/stm32mp135d-myd-yf135.dts $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/stm32mp135d-myd-yf135-u-boot.dtsi"
 BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot.config"
 BR2_TARGET_UBOOT_CUSTOM_MAKEOPTS="dtb-y=stm32mp135d-myd-yf135.dtb DEVICE_TREE=stm32mp135d-myd-yf135"
