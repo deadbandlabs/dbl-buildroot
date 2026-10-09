@@ -55,6 +55,14 @@
 	};
 };
 
+/*
+ * Override VBUS + B-session and force device mode for USB DFU (stm32prog) by
+ * bypassing sensing on the OTG_HS_ID (PA10) and OTG_HS_VBUS (PI7) pins
+ */
+&usbotg_hs {
+	u-boot,force-b-session-valid;
+};
+
 /* QSPI needed early for SPI-NAND boot */
 &qspi {
 	bootph-pre-ram;
