@@ -48,8 +48,12 @@
   # Parent repos override this via lib.nix's `lockfile` param
   # (paths resolve relative to the parent repo root)
   lockfilePath ? (self + "/buildroot.lock"),
+  # Extra { "<filename>" = "<sha256>"; } over ./source-hashes.nix
+  extraSourceHashes ? { },
 }:
 let
+  sourceHashes = import ./source-hashes.nix // extraSourceHashes;
+
   ## FHS environment
 
   makeFHSEnv = pkgs.buildFHSEnv {
@@ -132,6 +136,7 @@ let
     src = buildroot;
     defconfig = "defconfig BR2_DEFCONFIG=${toolchainDefconfig}";
     lockfile = toolchainLockfile;
+    extraSha256Hashes = sourceHashes;
     nativeBuildInputs = [
       cmake-compat
       pkgs.git
@@ -194,6 +199,7 @@ let
     externalSrc = brExternalValue;
     defconfig = lockDefconfig;
     lockfile = lockfilePath;
+    extraSha256Hashes = sourceHashes;
     nativeBuildInputs = [
       cmake-compat
       pkgs.git

@@ -54,6 +54,8 @@ in
       extraRootfsOverlays ? ({ sdk, pkgs }: [ ]),
       # Buildroot target package lockfile (override when using overlay packages)
       lockfile ? (./. + "/buildroot.lock"),
+      # Extra { "<filename>" = "<sha256>"; } over nix/source-hashes.nix
+      extraSourceHashes ? { },
       # Custom toolchain (leave null to reuse this repo's cached SDK)
       toolchainName ? null,
       toolchainDefconfig ? null,
@@ -104,6 +106,7 @@ in
                 extraRootfsOverlays
                 configFragment
                 programmerFragment
+                extraSourceHashes
                 ;
               self = ./.;
               projectName = name;
