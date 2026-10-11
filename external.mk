@@ -39,10 +39,8 @@ UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_COPY_DTSI
 define LINUX_MYD_YF135_COPY_DTS
 	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/stm32mp135d-myd-yf135.dts \
 		$(@D)/arch/arm/boot/dts/st/stm32mp135d-myd-yf135.dts
-	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-linux.dtsi \
+	cp $(or $(DBL_PARENT_LINUX_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-linux.dtsi) \
 		$(@D)/arch/arm/boot/dts/st/parent-linux.dtsi
-	$(if $(DBL_PARENT_LINUX_DTSI),cp $(DBL_PARENT_LINUX_DTSI) \
-		$(@D)/arch/arm/boot/dts/st/parent-linux.dtsi)
 	grep -q 'stm32mp135d-myd-yf135\.dtb' $(@D)/arch/arm/boot/dts/st/Makefile || \
 		printf '\ndtb-$$(CONFIG_ARCH_STM32) += stm32mp135d-myd-yf135.dtb\n' \
 			>> $(@D)/arch/arm/boot/dts/st/Makefile
