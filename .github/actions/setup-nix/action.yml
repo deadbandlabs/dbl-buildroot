@@ -47,8 +47,9 @@ runs:
       run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
 
     - name: Install Nix
-      uses: nixbuild/nix-quick-install-action@v34
+      uses: nixbuild/nix-quick-install-action@v35
       with:
+        nix_version: '2.34.7'
         # Empty github.token falls back to github-external-token, used for
         # Nix flake fetch in CI runs outside of github.com
         github_access_token: ${{ contains(github.server_url, 'github.com') && github.token || inputs.github-external-token }}
