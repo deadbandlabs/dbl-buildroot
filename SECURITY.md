@@ -34,10 +34,12 @@ This project tracks upstream LTS releases through Buildroot 2025.02.y (LTS). All
 | Component | Version | Info |
 |-----------|---------|--------|
 | Buildroot | 2025.02.y (LTS) | [CHANGES](https://gitlab.com/buildroot.org/buildroot/-/blob/2025.02/CHANGES) |
-| Linux kernel | 6.12.y (LTS) | pinned in defconfig `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE`, updated via Buildroot LTS |
-| U-Boot | 2025.01 | via Buildroot 2025.02 `BR2_TARGET_UBOOT_LATEST_VERSION` |
-| TF-A | v2.12 | via Buildroot 2025.02 `BR2_TARGET_ARM_TRUSTED_FIRMWARE_LATEST_VERSION` |
+| Linux kernel | 6.12.112 (LTS) | pinned in defconfig `BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE`; toolchain headers pinned to match (`BR2_DEFAULT_KERNEL_VERSION`) |
+| U-Boot | 2026.07 | pinned in defconfig `BR2_TARGET_UBOOT_CUSTOM_VERSION_VALUE` |
+| TF-A | lts-v2.14.10 (LTS) | pinned in defconfig `BR2_TARGET_ARM_TRUSTED_FIRMWARE_CUSTOM_TARBALL_LOCATION` |
 | OP-TEE | 4.3.0 | via Buildroot 2025.02 `BR2_TARGET_OPTEE_OS_LATEST` |
+
+Hashes for versions pinned past the Buildroot release: `nix/source-hashes.nix`.
 
 When a fix is available for a vulnerability in a pinned upstream component, the maintainers bump the pin and release promptly.
 

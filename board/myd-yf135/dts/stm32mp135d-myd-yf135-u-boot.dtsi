@@ -7,8 +7,8 @@
  * Adds bootph markers (so drivers initialise before relocation) and the
  * /config node for boot parameters.
  *
- * bootph-pre-ram  (formerly u-boot,dm-pre-reloc): bind before DRAM relocation
- * bootph-all      (formerly u-boot,dm-spl):       bind in all phases (+SPL)
+ * bootph-all      (formerly u-boot,dm-pre-reloc): bind before relocation
+ * bootph-pre-ram  SPL/TPL only (none here), post-relocation in U-Boot proper
  */
 
 #include "stm32mp13-u-boot.dtsi"
@@ -40,19 +40,24 @@
 	};
 };
 
-/* UART4 must be available before relocation for the console */
+/* UART4 + pins must be available before relocation for the console */
 &uart4 {
-	bootph-pre-ram;
+	bootph-all;
 };
 
 &uart4_pins_a {
-	bootph-pre-ram;
+	bootph-all;
 	pins1 {
-		bootph-pre-ram;
+		bootph-all;
 	};
 	pins2 {
-		bootph-pre-ram;
+		bootph-all;
 	};
+};
+
+/* usbphyc phy-supply, needed pre-reloc for ck_usbo_48m */
+&vdd_usb {
+	bootph-all;
 };
 
 /*

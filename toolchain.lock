@@ -1,11 +1,11 @@
 {
-  "Python-3.12.13.tar.xz": {
+  "Python-3.12.14.tar.xz": {
     "algo": "sha256",
-    "checksum": "c08bc65a81971c1dd5783182826503369466c7e67374d1646519adf05207b684",
+    "checksum": "5c8462af5790baf43a321a1559dbe0db06d1be4300fb85fb53c40060668e548a",
     "uris": [
-      "https://python.org/ftp/python/3.12.13/Python-3.12.13.tar.xz",
-      "https://sources.buildroot.net/python3/Python-3.12.13.tar.xz",
-      "https://sources.buildroot.net/Python-3.12.13.tar.xz"
+      "https://python.org/ftp/python/3.12.14/Python-3.12.14.tar.xz",
+      "https://sources.buildroot.net/python3/Python-3.12.14.tar.xz",
+      "https://sources.buildroot.net/Python-3.12.14.tar.xz"
     ]
   },
   "acl-2.3.2.tar.xz": {
@@ -80,13 +80,13 @@
       "https://sources.buildroot.net/busybox-1.37.0.tar.bz2"
     ]
   },
-  "expat-2.8.0.tar.xz": {
+  "expat-2.8.4.tar.xz": {
     "algo": "sha256",
-    "checksum": "a37bfae0aa9775bd8521ebd85dc456d486f0ff31138f6c91fd902ea732624542",
+    "checksum": "656ae1cc8da3b4ea513bb4e254f33e6243938084c0ec6239da873376b09985a7",
     "uris": [
-      "https://github.com/libexpat/libexpat/releases/download/R_2_8_0/expat-2.8.0.tar.xz",
-      "https://sources.buildroot.net/expat/expat-2.8.0.tar.xz",
-      "https://sources.buildroot.net/expat-2.8.0.tar.xz"
+      "https://github.com/libexpat/libexpat/releases/download/R_2_8_4/expat-2.8.4.tar.xz",
+      "https://sources.buildroot.net/expat/expat-2.8.4.tar.xz",
+      "https://sources.buildroot.net/expat-2.8.4.tar.xz"
     ]
   },
   "fakeroot_1.36.orig.tar.gz": {
@@ -116,12 +116,12 @@
       "https://sources.buildroot.net/gcc-13.4.0.tar.xz"
     ]
   },
-  "glibc-2.41-123-gfb4db64a04ad6c96cd1fbb7e02eb59323b1f2ac2-git4.tar.gz": {
+  "glibc-2.41-161-g5dd252cf1d113644b3679f5a158e9ef20217865e-git4.tar.gz": {
     "algo": "sha256",
-    "checksum": "3789146d175834dc4873f41bd87932cd6ad7c83d0b7bf340768ee6a927aac784",
+    "checksum": "987c4f5951a25dbdcc0b76deddf4fcb97a122cc4f505d351fd44863936e7d903",
     "uris": [
-      "https://sources.buildroot.net/glibc/glibc-2.41-123-gfb4db64a04ad6c96cd1fbb7e02eb59323b1f2ac2-git4.tar.gz",
-      "https://sources.buildroot.net/glibc-2.41-123-gfb4db64a04ad6c96cd1fbb7e02eb59323b1f2ac2-git4.tar.gz"
+      "https://sources.buildroot.net/glibc/glibc-2.41-161-g5dd252cf1d113644b3679f5a158e9ef20217865e-git4.tar.gz",
+      "https://sources.buildroot.net/glibc-2.41-161-g5dd252cf1d113644b3679f5a158e9ef20217865e-git4.tar.gz"
     ]
   },
   "gmp-6.3.0.tar.xz": {
@@ -151,13 +151,13 @@
       "https://sources.buildroot.net/libtool-2.4.6.tar.xz"
     ]
   },
-  "linux-6.12.90.tar.xz": {
+  "linux-6.12.112.tar.xz": {
     "algo": "sha256",
-    "checksum": "1f1a1ff057468b8a6284d3ce1d181278259beb5670ea16724c46dbf8820fa2a8",
+    "checksum": "164dc9d1f6c93c61a15e1f071c48379b467f2b17c469cce7223471968208ed03",
     "uris": [
-      "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.90.tar.xz",
-      "https://sources.buildroot.net/linux/linux-6.12.90.tar.xz",
-      "https://sources.buildroot.net/linux-6.12.90.tar.xz"
+      "https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.12.112.tar.xz",
+      "https://sources.buildroot.net/linux/linux-6.12.112.tar.xz",
+      "https://sources.buildroot.net/linux-6.12.112.tar.xz"
     ]
   },
   "m4-1.4.21.tar.xz": {
