@@ -663,6 +663,15 @@
       "https://sources.buildroot.net/xxhash-0.8.3.tar.gz"
     ]
   },
+  "xz-5.6.4.tar.bz2": {
+    "algo": "sha256",
+    "checksum": "176d510c30d80a23b8050bbc048f2ecaacb823ae48b6821727ed6591f0df9200",
+    "uris": [
+      "https://github.com/tukaani-project/xz/releases/download/v5.6.4/xz-5.6.4.tar.bz2",
+      "https://sources.buildroot.net/xz/xz-5.6.4.tar.bz2",
+      "https://sources.buildroot.net/xz-5.6.4.tar.bz2"
+    ]
+  },
   "zlib-1.3.2.tar.xz": {
     "algo": "sha256",
     "checksum": "d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3",
