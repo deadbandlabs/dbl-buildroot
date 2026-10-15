@@ -28,11 +28,6 @@
 		#size-cells = <1>;
 		ranges;
 
-		optee_framebuffer@cd000000 {
-			reg = <0xcd000000 0x1000000>;
-			no-map;
-		};
-
 		optee@ce000000 {
 			reg = <0xce000000 0x02000000>;
 			no-map;

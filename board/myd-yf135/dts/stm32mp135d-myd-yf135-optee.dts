@@ -39,17 +39,7 @@
 		reg = <0xc0000000 0x10000000>;
 	};
 
-	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
 
-		/* Must match Linux DTS and CFG_TZDRAM_START/CFG_SHMEM_START */
-		optee_framebuffer: optee-framebuffer@cd000000 {
-			reg = <0xcd000000 0x1000000>;
-			no-map;
-		};
-	};
 
 	/*
 	 * SOM provides all power regulation internally, set fixed always-on.

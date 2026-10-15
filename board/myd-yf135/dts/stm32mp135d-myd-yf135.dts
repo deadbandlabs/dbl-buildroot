@@ -55,14 +55,12 @@
 
 		/*
 		 * 256 MB layout (memory ends at 0xd0000000):
-		 *   OP-TEE shmem   @ 0xcd000000  16 MB
 		 *   OP-TEE secure  @ 0xce000000  32 MB
-		 * Must match CFG_TZDRAM_START / CFG_SHMEM_START in OP-TEE build.
+		 * Must match CFG_TZDRAM_START in OP-TEE build.
+		 *
+		 * optee_framebuffer @ 0xcd000000 (16 MB) is unused
+		 * (OP-TEE is built with CFG_WITH_TUI=n and CFG_SHMEM_START unset)
 		 */
-		optee_framebuffer: optee-framebuffer@cd000000 {
-			reg = <0xcd000000 0x1000000>;
-			no-map;
-		};
 		optee: optee@ce000000 {
 			reg = <0xce000000 0x2000000>;
 			no-map;
