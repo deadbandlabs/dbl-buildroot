@@ -96,11 +96,10 @@
 	};
 };
 
-&bsec {
-	board_id: board-id@f0 {
-		reg = <0xf0 0x4>;
-		st,non-secure-otp;
-	};
+/* OTP non-secure grants removed (granted upper word with an ECC error panics boot) */
+
+&ethernet_mac1_address {
+	/delete-property/ st,non-secure-otp;
 };
 
 &cpu0 {

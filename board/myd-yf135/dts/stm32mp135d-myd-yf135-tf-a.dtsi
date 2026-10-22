@@ -244,13 +244,13 @@
 	};
 };
 
+/* No board-id@f0 (word 60) or MAC grant: unused, see -optee.dts. */
 &bsec {
 	status = "okay";
+};
 
-	board_id: board-id@f0 {
-		reg = <0xf0 0x4>;
-		st,non-secure-otp;
-	};
+&mac_addr {
+	/delete-property/ st,non-secure-otp;
 };
 
 &cpu0 {
