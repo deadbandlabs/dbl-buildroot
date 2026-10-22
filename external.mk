@@ -2,20 +2,35 @@
 # Copyright 2026 Deadband Inc.
 include $(sort $(wildcard $(BR2_EXTERNAL_MYD_YF135_PATH)/package/*/*.mk))
 
-# Parent DT: a superproject may provide
-#   board/dts/parent-linux.dtsi    Linux DT additions
-#   board/dts/parent-u-boot.dtsi   U-Boot control DT additions
+# Parent DT, at most one external each:
+#   board/dts/parent-linux.dtsi             Linux DT
+#   board/dts/parent-u-boot.dtsi            U-Boot control DT
+#   board/dts/parent-optee.dtsi             OP-TEE DT (security-critical)
+#   board/dts/parent-tf-a.dtsi              TF-A BL2 DT (security-critical)
+#   board/dts/parent-tf-a-fw-config.dtsi    TF-A load addresses / TZC (security-critical)
 # See wiki: Parent Integration / Parent device tree docs
 DBL_PARENT_DTS_DIRS := $(foreach name,$(filter-out MYD_YF135,$(BR2_EXTERNAL_NAMES)),\
 	$(BR2_EXTERNAL_$(name)_PATH)/board/dts)
 DBL_PARENT_LINUX_DTSI := $(wildcard $(addsuffix /parent-linux.dtsi,$(DBL_PARENT_DTS_DIRS)))
 DBL_PARENT_UBOOT_DTSI := $(wildcard $(addsuffix /parent-u-boot.dtsi,$(DBL_PARENT_DTS_DIRS)))
+DBL_PARENT_OPTEE_DTSI := $(wildcard $(addsuffix /parent-optee.dtsi,$(DBL_PARENT_DTS_DIRS)))
+DBL_PARENT_TF_A_DTSI := $(wildcard $(addsuffix /parent-tf-a.dtsi,$(DBL_PARENT_DTS_DIRS)))
+DBL_PARENT_TF_A_FW_CONFIG_DTSI := $(wildcard $(addsuffix /parent-tf-a-fw-config.dtsi,$(DBL_PARENT_DTS_DIRS)))
 
 ifneq ($(word 2,$(DBL_PARENT_LINUX_DTSI)),)
 $(error multiple externals provide parent-linux.dtsi: $(DBL_PARENT_LINUX_DTSI))
 endif
 ifneq ($(word 2,$(DBL_PARENT_UBOOT_DTSI)),)
 $(error multiple externals provide parent-u-boot.dtsi: $(DBL_PARENT_UBOOT_DTSI))
+endif
+ifneq ($(word 2,$(DBL_PARENT_OPTEE_DTSI)),)
+$(error multiple externals provide parent-optee.dtsi: $(DBL_PARENT_OPTEE_DTSI))
+endif
+ifneq ($(word 2,$(DBL_PARENT_TF_A_DTSI)),)
+$(error multiple externals provide parent-tf-a.dtsi: $(DBL_PARENT_TF_A_DTSI))
+endif
+ifneq ($(word 2,$(DBL_PARENT_TF_A_FW_CONFIG_DTSI)),)
+$(error multiple externals provide parent-tf-a-fw-config.dtsi: $(DBL_PARENT_TF_A_FW_CONFIG_DTSI))
 endif
 
 # U-Boot compiles the base Linux dts as its control DT: provide the empty
@@ -27,6 +42,22 @@ define UBOOT_MYD_YF135_COPY_DTSI
 	cp $(or $(DBL_PARENT_UBOOT_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-u-boot.dtsi) \
 		$(@D)/arch/arm/dts/parent-u-boot.dtsi
 endef
+# OP-TEE and TF-A have their own source trees. Not via CUSTOM_DTS_PATH (that
+# copy would overwrite the parent file with the stub).
+define OPTEE_OS_MYD_YF135_COPY_DTSI
+	cp $(or $(DBL_PARENT_OPTEE_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-optee.dtsi) \
+		$(@D)/core/arch/arm/dts/parent-optee.dtsi
+endef
+OPTEE_OS_PRE_BUILD_HOOKS += OPTEE_OS_MYD_YF135_COPY_DTSI
+
+define ARM_TRUSTED_FIRMWARE_MYD_YF135_COPY_DTSI
+	cp $(or $(DBL_PARENT_TF_A_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-tf-a.dtsi) \
+		$(@D)/fdts/parent-tf-a.dtsi
+	cp $(or $(DBL_PARENT_TF_A_FW_CONFIG_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-tf-a-fw-config.dtsi) \
+		$(@D)/fdts/parent-tf-a-fw-config.dtsi
+endef
+ARM_TRUSTED_FIRMWARE_PRE_BUILD_HOOKS += ARM_TRUSTED_FIRMWARE_MYD_YF135_COPY_DTSI
+
 UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_COPY_DTSI
 
 # Copy the board DTS into the kernel source tree and add its dtb to the ST Makefile

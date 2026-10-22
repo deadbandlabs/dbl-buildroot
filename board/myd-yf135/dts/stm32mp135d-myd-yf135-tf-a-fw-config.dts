@@ -53,3 +53,5 @@
 			DDR_SEC_BASE DDR_SEC_SIZE TZC_REGION_S_RDWR 0>;
 	};
 };
+
+#include "parent-tf-a-fw-config.dtsi"
