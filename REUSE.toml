@@ -37,3 +37,10 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
 SPDX-License-Identifier = "GPL-2.0-or-later"
+
+# Carry patches for upstream projects take the license of the patched project
+[[annotations]]
+path = "board/myd-yf135/patches/arm-trusted-firmware/*.patch"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Deadband Inc."
+SPDX-License-Identifier = "BSD-3-Clause"

@@ -11,7 +11,8 @@ Highlights:
 - Upstream tags for Buildroot, Linux, TF-A, OP-TEE, and U-Boot
 - Board changes isolated in `board/` and `configs/`
 - Small drift, easier release-to-release incremental upgrades
-- A/B firmware and root filesystem updates with factory fallback, via RAUC and a TF-A BL2 fallback walk (no out-of-tree patches)
+- A/B firmware and root filesystem updates with factory fallback, via RAUC and a TF-A BL2 fallback walk
+- Out-of-tree patches only while under upstream review, see `board/myd-yf135/patches/`
 - Nix and flakes for reproducible host tooling, plus hermetic full-image and SDK builds
 
 Hardware and driver functionality is limited to what is supported in upstream Linux, U-Boot, TF-A, and OP-TEE.
