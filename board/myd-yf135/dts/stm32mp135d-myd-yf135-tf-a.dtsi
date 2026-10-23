@@ -97,7 +97,7 @@
 #include <dt-bindings/pinctrl/stm32-pinfunc.h>
 
 #include "stm32mp135.dtsi"
-#include "stm32mp13xf.dtsi"
+#include "stm32mp13xd.dtsi"
 #include "stm32mp13-pinctrl.dtsi"
 #include "stm32mp13-ddr.dtsi"
 
@@ -266,10 +266,6 @@
 	status = "okay";
 };
 
-&pka {
-	status = "okay";
-};
-
 &pwr_regulators {
 	status = "okay";
 	vdd-supply = <&vdd>;
@@ -389,10 +385,6 @@
 };
 
 &rng {
-	status = "okay";
-};
-
-&saes {
 	status = "okay";
 };
 

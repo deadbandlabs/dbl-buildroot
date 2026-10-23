@@ -1,0 +1,5 @@
+# Verified-boot overrides, applied only when BR2_PACKAGE_DBL_VERIFIED_BOOT=y.
+# dbl-merge-if: BR2_PACKAGE_DBL_VERIFIED_BOOT=y
+
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/linux-verified.fragment"
+BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-verified.fragment"

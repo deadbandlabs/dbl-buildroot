@@ -176,6 +176,7 @@ let
   ## Build (stage 2)
 
   baseDefconfig = self + "/configs/${defconfigName}";
+  verifiedFragment = self + "/configs/myd_yf135_verified.fragment";
 
   # defconfig passed to mkBuildroot for lock generation, in mkBuildroot's
   # string form: `defconfig BR2_DEFCONFIG=<path>`
@@ -183,6 +184,7 @@ let
   lockDefconfig = "defconfig BR2_DEFCONFIG=${
     pkgs.runCommand "lock-defconfig" { } (
       mergeFragments "$out" baseDefconfig [
+        verifiedFragment
         configFragment
         toolchainFragment
       ]
@@ -250,6 +252,7 @@ let
     # mergeFragments drops null deltas.
     configurePhase =
       mergeFragments "merged_defconfig" baseDefconfig [
+        verifiedFragment
         configFragment
         externalToolchainFragment
         rootfsOverlayFragment
@@ -278,7 +281,11 @@ let
       # Programmer merge chain: base + parent CONFIG_FRAGMENT + programmer fragment
       let
         progFragmentPath = buildExternalSrc + "/${programmerFragment}";
-        deltas = (pkgs.lib.optional (configFragment != null) configFragment) ++ [
+        deltas = [
+          verifiedFragment
+        ]
+        ++ (pkgs.lib.optional (configFragment != null) configFragment)
+        ++ [
           progFragmentPath
           externalToolchainFragment
         ];

@@ -1,0 +1,2 @@
+# Kernel verified-boot fragment layered on top of board/myd-yf135/linux.config
+# via configs/myd_yf135_verified.fragment (BR2_PACKAGE_DBL_VERIFIED_BOOT=y)

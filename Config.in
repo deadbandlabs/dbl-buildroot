@@ -1,3 +1,16 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 source "$BR2_EXTERNAL_MYD_YF135_PATH/package/Config.in"
+
+config BR2_PACKAGE_DBL_VERIFIED_BOOT
+	bool "DBL verified boot"
+	help
+	  Adds the verified-boot kernel and U-Boot config fragments on top
+	  of the image: configs/myd_yf135_verified.fragment pulls in
+	  board/myd-yf135/linux-verified.fragment and uboot-verified.fragment.
+
+	  Set this in the defconfig or a parent fragment. Turning it on in
+	  menuconfig alone does nothing: the fragments are only merged when
+	  the merged defconfig already contains this setting.
+
+	  Default off
