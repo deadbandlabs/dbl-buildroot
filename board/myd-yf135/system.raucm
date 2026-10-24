@@ -7,4 +7,4 @@ description=DBL MYD-YF135 rootfs bundle for update verification
 format=plain
 
 [image.rootfs]
-filename=rootfs.ubifs
+filename=rootfs.img

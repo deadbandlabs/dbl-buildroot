@@ -36,6 +36,9 @@ FREE_POOL_PCT = 10.0
 KB = 1024
 MB = KB * 1024
 
+# rootfs_a / rootfs_b / rootfs_factory all hold rootfs.img (mkrootimg.sh)
+ROOTFS_SLOT_SIZE = 32 * MB
+
 
 @dataclass
 class Vol:
@@ -47,13 +50,13 @@ class Vol:
 
 
 VOLUMES = [
-    Vol("rootfs_a", 0, 45 * MB, "BR2_ROOTFS_UBIFS_PATH", "Active rootfs slot A"),
-    Vol("rootfs_b", 1, 45 * MB, "BR2_ROOTFS_UBIFS_PATH", "Active rootfs slot B"),
+    Vol("rootfs_a", 0, ROOTFS_SLOT_SIZE, "rootfs.img", "Active rootfs slot A"),
+    Vol("rootfs_b", 1, ROOTFS_SLOT_SIZE, "rootfs.img", "Active rootfs slot B"),
     Vol(
         "rootfs_factory",
         2,
-        35 * MB,
-        "BR2_ROOTFS_UBIFS_PATH",
+        ROOTFS_SLOT_SIZE,
+        "rootfs.img",
         "Immutable factory fallback",
     ),
     Vol(
@@ -61,7 +64,7 @@ VOLUMES = [
         3,
         None,
         "overlay.ubifs",
-        "Writable overlayfs upper (wiped on update)",
+        "Writable data vol: overlayfs upper",
     ),
     Vol("optee_ss", 4, 4 * MB, "optee_ss.ubifs", "OP-TEE secure storage"),
     # U-Boot env volumes
@@ -167,10 +170,7 @@ def vol_block(v: Vol, size: int) -> str:
         "mode=ubi",
     ]
     if v.image is not None:
-        token = (
-            v.image if v.image == "BR2_ROOTFS_UBIFS_PATH" else f"BINARIES_DIR/{v.image}"
-        )
-        lines.append(f"image={token}")
+        lines.append(f"image=BINARIES_DIR/{v.image}")
     lines += [
         f"vol_id={v.vol_id}",
         "vol_type=dynamic",
@@ -207,11 +207,7 @@ def emit_cfg(s, path):
 
 
 def apply_minimal(volumes):
-    # Debug iteration: skip writing rootfs_b and rootfs_factory payloads.
-    # Volume slots and sizes stay identical so vol_id assignments, RAUC,
-    # and overlay scripts behave the same; only the image= line is dropped.
-    # try_boot still tries B/factory on A failure; ubifsmount on the empty
-    # volumes fails fast and falls through to the U-Boot prompt.
+    # For Debug builds flash only rootfs_a (B + Factory skipped)
     skip = {"rootfs_b", "rootfs_factory"}
     return [
         Vol(v.name, v.vol_id, v.size, None if v.name in skip else v.image, v.desc)

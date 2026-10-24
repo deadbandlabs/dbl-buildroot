@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 # Layout:
-#   /             ubi0:rootfs_a/b/factory
+#   /             squashfs on /dev/dm-0 (dm linear past FIT in slot volume)
 #   /mnt/overlay  ubi0:overlay
 #   /etc /var     overlayfs (lower=ro rootfs, upper=/mnt/overlay/upper/<name>)
 #   /tmp /run     tmpfs (provided by systemd defaults)

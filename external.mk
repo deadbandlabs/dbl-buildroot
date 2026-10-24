@@ -17,6 +17,15 @@ DBL_PARENT_OPTEE_DTSI := $(wildcard $(addsuffix /parent-optee.dtsi,$(DBL_PARENT_
 DBL_PARENT_TF_A_DTSI := $(wildcard $(addsuffix /parent-tf-a.dtsi,$(DBL_PARENT_DTS_DIRS)))
 DBL_PARENT_TF_A_FW_CONFIG_DTSI := $(wildcard $(addsuffix /parent-tf-a-fw-config.dtsi,$(DBL_PARENT_DTS_DIRS)))
 
+# Optional board/parent-u-boot.env from parent external, e.g. to set
+# parent_boot_hook. Compiled into U-Boot: covered by verified boot.
+DBL_PARENT_DIRS := $(foreach name,$(filter-out MYD_YF135,$(BR2_EXTERNAL_NAMES)),\
+	$(BR2_EXTERNAL_$(name)_PATH)/board)
+DBL_PARENT_UBOOT_ENV := $(wildcard $(addsuffix /parent-u-boot.env,$(DBL_PARENT_DIRS)))
+ifneq ($(word 2,$(DBL_PARENT_UBOOT_ENV)),)
+$(error multiple externals provide parent-u-boot.env: $(DBL_PARENT_UBOOT_ENV))
+endif
+
 ifneq ($(word 2,$(DBL_PARENT_LINUX_DTSI)),)
 $(error multiple externals provide parent-linux.dtsi: $(DBL_PARENT_LINUX_DTSI))
 endif
@@ -60,6 +69,25 @@ ARM_TRUSTED_FIRMWARE_PRE_BUILD_HOOKS += ARM_TRUSTED_FIRMWARE_MYD_YF135_COPY_DTSI
 
 UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_COPY_DTSI
 
+# U-Boot env text, used for both uboot.env (flash) and compiled default env.
+# Without CONFIG_ENV_WRITEABLE_LIST U-Boot uses compiled env only when flash
+# env is invalid: flash must hold full script.
+# Append uboot-env-flags.txt only with CONFIG_ENV_WRITEABLE_LIST. Without it,
+# U-Boot warns on unknown "w" flag.
+# After env edits run `make uboot-rebuild`
+DBL_UBOOT_ENV_FILES := \
+	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/default-env.env \
+	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env.txt \
+	$(DBL_PARENT_UBOOT_ENV)
+define UBOOT_MYD_YF135_DEFAULT_ENV
+	cat $(DBL_UBOOT_ENV_FILES) > $(@D)/dbl-default-env.txt
+	if grep -q '^CONFIG_ENV_WRITEABLE_LIST=y' $(@D)/.config; then \
+		cat $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-flags.txt \
+			>> $(@D)/dbl-default-env.txt; \
+	fi
+endef
+UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_DEFAULT_ENV
+
 # Copy the board DTS into the kernel source tree and add its dtb to the ST Makefile
 #
 # CUSTOM_DTS_PATH would normally be used, but copies to arch/arm/boot/dts/.
@@ -86,11 +114,13 @@ LINUX_PRE_BUILD_HOOKS += LINUX_MYD_YF135_COPY_DTS
 # overlay.ubifs   empty UBIFS, mounted as overlayfs upper at runtime
 # optee_ss.ubifs  empty UBIFS, populated by OP-TEE on first use
 
-# Empty UBIFS images (mkfs.ubifs creates an empty fs).
-$(BINARIES_DIR)/overlay.ubifs: | host-mtd
-	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 630 -o $@
+# Empty UBIFS images. After resizing overlay or optee_ss volume, set -c to its
+# LEB count (printed by ubinize_check.py); fs can't grow past -c
+# Changes to -c rebuilds images
+$(BINARIES_DIR)/overlay.ubifs: $(BR2_EXTERNAL_MYD_YF135_PATH)/external.mk | host-mtd
+	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 869 -o $@
 
-$(BINARIES_DIR)/optee_ss.ubifs: | host-mtd
+$(BINARIES_DIR)/optee_ss.ubifs: $(BR2_EXTERNAL_MYD_YF135_PATH)/external.mk | host-mtd
 	$(HOST_DIR)/sbin/mkfs.ubifs -m 2048 -e 126976 -c 34 -o $@
 
 # U-Boot env binary, redundant variant. BR2_TARGET_UBOOT_ENVIMAGE does not
@@ -99,12 +129,22 @@ $(BINARIES_DIR)/optee_ss.ubifs: | host-mtd
 # volumes env-a and env-b at flash time (see ubinize.cfg); both start
 # ACTIVE, U-Boot picks the primary, first saveenv flips the secondary.
 # Size must match CONFIG_ENV_SIZE in uboot.config.
-$(BINARIES_DIR)/uboot.env: $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/default-env.env | host-uboot-tools
-	$(HOST_DIR)/bin/mkenvimage -s 0x4000 -r -o $@ $<
+$(BINARIES_DIR)/uboot.env: $(DBL_UBOOT_ENV_FILES) | host-uboot-tools
+	cat $(DBL_UBOOT_ENV_FILES) | $(HOST_DIR)/bin/mkenvimage -s 0x4000 -r -o $@ -
+
+# Rootfs slot image + RAUC bundle payload (mkrootimg.sh)
+# shortcut: `linux` and `rootfs-squashfs` are phony; rebuilds on every `make`
+$(BINARIES_DIR)/rootfs.img: linux rootfs-squashfs host-uboot-tools host-dtc
+	PATH=$(BR_PATH) $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/mkrootimg.sh \
+		$(BINARIES_DIR)/zImage \
+		$(BINARIES_DIR)/stm32mp135d-myd-yf135.dtb \
+		$(BINARIES_DIR)/rootfs.squashfs \
+		$@
 
 # Wire companion images into rootfs.ubi's prereqs so make builds them
 # before ubinize. Recipe stays in fs/ubi/ubi.mk; we only add deps here.
 $(BINARIES_DIR)/rootfs.ubi: \
+	$(BINARIES_DIR)/rootfs.img \
 	$(BINARIES_DIR)/overlay.ubifs \
 	$(BINARIES_DIR)/optee_ss.ubifs \
 	$(BINARIES_DIR)/uboot.env

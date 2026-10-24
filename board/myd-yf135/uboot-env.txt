@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# U-Boot boot script, compiled into default env (external.mk)
+#
+# Boot chain: A -> B -> factory -> USB DFU
+# BOOT_<slot>_LEFT decrements before each attempt; reset by `rauc-mark-good` service
+#
+# Slot volume = [ FIT | squashfs ] (mkrootimg.sh), bootargs set by FIT boot script
+#
+# `ver` (CONFIG_VERSION_VARIABLE) is provided to Linux to detect FIP fallback
+# using fw_printenv ver vs /etc/firmware/expected-bl33-version
+
+bootcmd=if test ${boot_device} = serial || test ${boot_device} = usb; then stm32prog ${boot_device} ${boot_instance}; else run try_boot; fi
+
+# = CONFIG_SYS_LOAD_ADDR. zImage runs in place (kernel_noload)
+fitaddr=0xc2000000
+
+# 128-bit systemd machine ID:
+# 0xdeadba7d + 96-bit die UID (OTP words 13-15)
+# 0xc0000000: scratch, unused until images load
+set_machine_id=if fuse readm 0 13 0xc0000000 3; then setexpr.l uid0 *0xc0000000; setexpr.l uid1 *0xc0000004; setexpr.l uid2 *0xc0000008; setexpr machine_id fmt %08x%08x%08x%08x deadba7d ${uid0} ${uid1} ${uid2}; setenv machine_id_arg systemd.machine_id=${machine_id}; setenv uid0; setenv uid1; setenv uid2; else setenv machine_id; setenv machine_id_arg; fi
+
+# Load FIT from ${slot_name}, source its script.
+# `ubi read` of empty volume succeeds without reading. mw clears header first:
+# previous slot's FIT then fails fdt check.
+load_slot=mw.l ${fitaddr} 0 0x400; ubi read ${fitaddr} ${slot_name} 0x1000 && fdt addr ${fitaddr} && fdt header get fitsize totalsize && ubi read ${fitaddr} ${slot_name} ${fitsize} && source ${fitaddr}#conf-1
+
+# Per-slot boot recipes: volume name, UBI vol id (ubiblock0_<id>), RAUC bootname
+boot_A=setenv slot_name rootfs_a; setenv slot_vol 0; setenv rauc_slot A; run load_slot
+boot_B=setenv slot_name rootfs_b; setenv slot_vol 1; setenv rauc_slot B; run load_slot
+boot_factory=setenv slot_name rootfs_factory; setenv slot_vol 2; setenv rauc_slot factory; run load_slot
+
+# Per-slot try wrappers: decrement counter, persist, run boot recipe.
+# `bootm` returns only on failure.
+try_A=if test ${BOOT_A_LEFT} -gt 0; then setexpr BOOT_A_LEFT ${BOOT_A_LEFT} - 1; saveenv; echo "Booting slot A (attempts left: ${BOOT_A_LEFT})"; run boot_A; echo "Slot A returned (boot failed)"; fi
+try_B=if test ${BOOT_B_LEFT} -gt 0; then setexpr BOOT_B_LEFT ${BOOT_B_LEFT} - 1; saveenv; echo "Booting slot B (attempts left: ${BOOT_B_LEFT})"; run boot_B; echo "Slot B returned (boot failed)"; fi
+
+# parent_boot_hook (optional, parent-u-boot.env) must read only hardware/OTP,
+# never flash env vars.
+# BOOT_ORDER comes from flash: values other than A and B ignored.
+try_boot=run set_machine_id; ubi part UBI; if test -n "${parent_boot_hook}"; then run parent_boot_hook; fi; for slot in ${BOOT_ORDER}; do if test "${slot}" = A || test "${slot}" = B; then run try_${slot}; fi; done; echo "BOOT_ORDER exhausted, falling back to factory"; run boot_factory; echo "Factory rootfs failed, dropping to DFU"; stm32prog usb 0

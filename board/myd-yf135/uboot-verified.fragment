@@ -1,2 +1,8 @@
 # U-Boot verified-boot fragment layered on top of board/myd-yf135/uboot.config
 # via configs/myd_yf135_verified.fragment (BR2_PACKAGE_DBL_VERIFIED_BOOT=y)
+
+# Env lockdown: U-Boot reads only vars listed in uboot-env-flags.txt from flash env
+# All others from compiled env only
+CONFIG_ENV_WRITEABLE_LIST=y
+# `env set -f` cannot bypass flags
+CONFIG_ENV_ACCESS_IGNORE_FORCE=y
