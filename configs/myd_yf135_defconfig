@@ -129,6 +129,8 @@ BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd
 #
 # Rootfs: squashfs, zstd, packed into rootfs.img.
 # mkrootimg.sh needs default 4 KiB pad.
+BR2_TARGET_ROOTFS_SQUASHFS=y
+BR2_TARGET_ROOTFS_SQUASHFS4_ZSTD=y
 # shortcut: BR2_TARGET_ROOTFS_UBI forces this on; rootfs.ubifs built but unused
 BR2_TARGET_ROOTFS_UBIFS=y
 BR2_TARGET_ROOTFS_UBIFS_LEBSIZE=126976
