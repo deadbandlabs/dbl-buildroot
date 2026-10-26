@@ -133,9 +133,15 @@ $(BINARIES_DIR)/uboot.env: $(DBL_UBOOT_ENV_FILES) | host-uboot-tools
 	cat $(DBL_UBOOT_ENV_FILES) | $(HOST_DIR)/bin/mkenvimage -s 0x4000 -r -o $@ -
 
 # Rootfs slot image + RAUC bundle payload (mkrootimg.sh)
+# Verified boot: dm-verity layout, see mkrootimg.sh
+ifeq ($(BR2_PACKAGE_DBL_VERIFIED_BOOT),y)
+MYD_YF135_ROOTIMG_OPTS = --verity
+MYD_YF135_ROOTIMG_DEPS = host-cryptsetup
+endif
+
 # shortcut: `linux` and `rootfs-squashfs` are phony; rebuilds on every `make`
-$(BINARIES_DIR)/rootfs.img: linux rootfs-squashfs host-uboot-tools host-dtc
-	PATH=$(BR_PATH) $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/mkrootimg.sh \
+$(BINARIES_DIR)/rootfs.img: linux rootfs-squashfs host-uboot-tools host-dtc $(MYD_YF135_ROOTIMG_DEPS)
+	PATH=$(BR_PATH) $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/mkrootimg.sh $(MYD_YF135_ROOTIMG_OPTS) \
 		$(BINARIES_DIR)/zImage \
 		$(BINARIES_DIR)/stm32mp135d-myd-yf135.dtb \
 		$(BINARIES_DIR)/rootfs.squashfs \

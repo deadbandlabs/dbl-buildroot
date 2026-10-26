@@ -3,3 +3,7 @@
 
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/linux-verified.fragment"
 BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-verified.fragment"
+# rauc-mark-good full root read (read-rootfs.conf)
+BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rootfs-overlay-verified"
+# veritysetup for dm-verity hash tree in rootfs.img
+BR2_PACKAGE_HOST_CRYPTSETUP=y

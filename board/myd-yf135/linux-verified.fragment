@@ -1,2 +1,6 @@
 # Kernel verified-boot fragment layered on top of board/myd-yf135/linux.config
 # via configs/myd_yf135_verified.fragment (BR2_PACKAGE_DBL_VERIFIED_BOOT=y)
+
+# dm-verity root, layout in mkrootimg.sh
+CONFIG_DM_VERITY=y
+CONFIG_CRYPTO_SHA256_ARM=y
