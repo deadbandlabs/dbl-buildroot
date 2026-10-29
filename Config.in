@@ -14,3 +14,15 @@ config BR2_PACKAGE_DBL_VERIFIED_BOOT
 	  the merged defconfig already contains this setting.
 
 	  Default off
+
+config BR2_PACKAGE_DBL_FIT_PUBKEYS
+	string "FIT signing public keys"
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  Space-separated paths to X.509 certificates (.crt, RSA-2048).
+	  U-Boot boots a rootfs FIT signed by any one of these keys.
+	  Signing key name = certificate file name without .crt.
+
+	  The build always signs with an initial throwaway key in
+	  <output>/fit-key/. When empty, U-Boot accepts only the throwaway key.
+	  Otherwise, re-sign images with a listed key using sign-rootimg.sh.

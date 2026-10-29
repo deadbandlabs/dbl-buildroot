@@ -133,15 +133,44 @@ $(BINARIES_DIR)/uboot.env: $(DBL_UBOOT_ENV_FILES) | host-uboot-tools
 	cat $(DBL_UBOOT_ENV_FILES) | $(HOST_DIR)/bin/mkenvimage -s 0x4000 -r -o $@ -
 
 # Rootfs slot image + RAUC bundle payload (mkrootimg.sh)
-# Verified boot: dm-verity layout, see mkrootimg.sh
 ifeq ($(BR2_PACKAGE_DBL_VERIFIED_BOOT),y)
-MYD_YF135_ROOTIMG_OPTS = --verity
-MYD_YF135_ROOTIMG_DEPS = host-cryptsetup
+
+# Not in images/: CI uploads it
+# NB: not removed by `make clean`; delete fit-key/ for a new key
+MYD_YF135_FIT_KEYDIR = $(BASE_DIR)/fit-key
+MYD_YF135_FIT_KEY = $(MYD_YF135_FIT_KEYDIR)/throwaway.key
+MYD_YF135_FIT_PUBKEYS = $(or $(call qstrip,$(BR2_PACKAGE_DBL_FIT_PUBKEYS)),$(MYD_YF135_FIT_KEYDIR)/throwaway.crt)
+
+$(MYD_YF135_FIT_KEY): | host-openssl
+	mkdir -p $(@D)
+	$(HOST_DIR)/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 36500 \
+		-subj /CN=dbl-fit-throwaway -keyout $@.tmp -out $(@D)/throwaway.crt
+	mv $@.tmp $@
+$(MYD_YF135_FIT_KEYDIR)/throwaway.crt: $(MYD_YF135_FIT_KEY) ;
+
+# Starts from dts/dt.dtb so removed keys don't linger
+# Runs before Buildroot installs u-boot.bin, to allow TF-A to pack keyed U-Boot into the FIP
+define UBOOT_MYD_YF135_FIT_PUBKEYS
+	cp $(@D)/dts/dt.dtb $(@D)/u-boot.dtb
+	$(foreach crt,$(MYD_YF135_FIT_PUBKEYS),
+		$(@D)/tools/fdt_add_pubkey -a sha256,rsa2048 -r conf \
+			-k $(dir $(crt)) -n $(basename $(notdir $(crt))) $(@D)/u-boot.dtb
+	)
+	$(HOST_DIR)/bin/fdtput -t s $(@D)/u-boot.dtb /signature required-mode any
+	cat $(@D)/u-boot-nodtb.bin $(@D)/u-boot.dtb > $(@D)/u-boot.bin
+endef
+UBOOT_POST_BUILD_HOOKS += UBOOT_MYD_YF135_FIT_PUBKEYS
+$(UBOOT_TARGET_BUILD): $(MYD_YF135_FIT_PUBKEYS) | host-dtc
+
+MYD_YF135_ROOTIMG_OPTS = --verity --sign-key $(MYD_YF135_FIT_KEY)
+MYD_YF135_ROOTIMG_DEPS = host-cryptsetup uboot $(MYD_YF135_FIT_KEY)
+# NB: buildroot host-uboot-tools is not compatible with current U-boot (2021.07)
+MYD_YF135_ROOTIMG_PATH = $(UBOOT_DIR)/tools:
 endif
 
 # shortcut: `linux` and `rootfs-squashfs` are phony; rebuilds on every `make`
 $(BINARIES_DIR)/rootfs.img: linux rootfs-squashfs host-uboot-tools host-dtc $(MYD_YF135_ROOTIMG_DEPS)
-	PATH=$(BR_PATH) $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/mkrootimg.sh $(MYD_YF135_ROOTIMG_OPTS) \
+	PATH=$(MYD_YF135_ROOTIMG_PATH)$(BR_PATH) $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/mkrootimg.sh $(MYD_YF135_ROOTIMG_OPTS) \
 		$(BINARIES_DIR)/zImage \
 		$(BINARIES_DIR)/stm32mp135d-myd-yf135.dtb \
 		$(BINARIES_DIR)/rootfs.squashfs \

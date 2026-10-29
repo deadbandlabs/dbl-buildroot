@@ -2,33 +2,38 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 #
-# Build rootfs slot image:
-#   [ FIT (kernel + DT + boot script) | pad to 4 KiB | squashfs ]
-#   --verity: [ FIT | pad to 4 KiB | squashfs | dm-verity hash tree ]
+# Build a rootfs slot image.
 #
-# At boot, the boot script maps the squashfs (past the FIT) to /dev/dm-0.
-# With --verity, the root is /dev/dm-1 instead: it checks every block of
-# dm-0 against a root hash stored in the FIT.
-# All of dm-1 is read by read-rootfs.conf before RAUC marks the slot good, and
-# any block that fails the check reboots the board, loading a fallback slot
-# after retries are exhaused.
+# Usage: mkrootimg.sh [--verity] [--sign-key <dir/name.key>] <zImage> <dtb> <rootfs.squashfs> <out.img>
+# Requires mkimage + dtc in PATH (+ veritysetup with --verity)
 #
-# NB: Loops until stable, offset depends on FIT size, and FIT contains offset
+# Layout:
+#   [ FIT (kernel + DT + boot script) | pad to 4 KiB | squashfs | verity tree (--verity) ]
+# Boot script contains the squashfs offset, FIT is rebuilt until its size stabilizes
 #
-# Usage: mkrootimg.sh [--verity] <zImage> <dtb> <rootfs.squashfs> <out.img>
-# Needs mkimage + dtc in PATH (+ veritysetup with --verity)
+# --verity: maps squashfs + tree to /dev/dm-0 and roots on /dev/dm-1,
+# checks every dm-0 block against script's root hash
+#
+# --sign-key: signs conf-1 (kernel + DT + script) with key-name-hint <name>,
+#   adds one spare 4 KiB block before the squashfs to re-sign in place with sign-rootimg.sh
 set -eu
 
-verity=0
-if [ "${1:-}" = --verity ]; then
-  verity=1
-  shift
-fi
-
-if [ "$#" -ne 4 ]; then
-  echo "Usage: $0 [--verity] <zImage> <dtb> <rootfs.squashfs> <out.img>" >&2
+usage() {
+  echo "Usage: $0 [--verity] [--sign-key <key>] <zImage> <dtb> <rootfs.squashfs> <out.img>" >&2
   exit 1
-fi
+}
+
+verity=0
+sign_key=
+while [ "$#" -gt 0 ]; do
+  case $1 in
+  --verity) verity=1; shift ;;
+  --sign-key) [ "$#" -ge 2 ] || usage; sign_key=$(realpath "$2"); shift 2 ;;
+  *) break ;;
+  esac
+done
+
+[ "$#" -eq 4 ] || usage
 
 kernel=$(realpath "$1")
 dtb=$(realpath "$2")
@@ -65,6 +70,14 @@ if [ "$verity" -eq 1 ]; then
   img_sectors=$(((sq_size + tree_size) / SECTOR))
   dm_extra=";vroot,,,ro,0 ${sq_sectors} verity 1 /dev/dm-0 /dev/dm-0 $ALIGN $ALIGN ${sq_blocks} ${sq_blocks} sha256 ${roothash} ${salt} 1 restart_on_corruption"
   root_dev=/dev/dm-1
+fi
+
+sig_node=
+spare=0
+if [ -n "$sign_key" ]; then
+  key_name=$(basename "$sign_key" .key)
+  sig_node="signature-1 { algo = \"sha256,rsa2048\"; key-name-hint = \"$key_name\"; sign-images = \"kernel\", \"fdt\", \"script\"; };"
+  spare=$ALIGN
 fi
 
 # $1 = squashfs offset in sectors
@@ -117,11 +130,16 @@ EOF
       kernel = "kernel-1";
       fdt = "fdt-1";
       script = "script-1";
+      $sig_node
     };
   };
 };
 EOF
-  mkimage -q -f "$work/rootfs.its" "$work/rootfs.itb"
+  if [ -n "$sign_key" ]; then
+    mkimage -q -f "$work/rootfs.its" -k "$(dirname "$sign_key")" "$work/rootfs.itb"
+  else
+    mkimage -q -f "$work/rootfs.its" "$work/rootfs.itb"
+  fi
 }
 
 off=0
@@ -129,7 +147,7 @@ i=0
 while :; do
   write_fit $((off / SECTOR))
   fit_size=$(stat -c %s "$work/rootfs.itb")
-  new=$(((fit_size + ALIGN - 1) / ALIGN * ALIGN))
+  new=$(((fit_size + spare + ALIGN - 1) / ALIGN * ALIGN))
   [ "$new" -eq "$off" ] && break
   off=$new
   i=$((i + 1))
