@@ -1,4 +1,5 @@
 # Programmer variant overrides applied on top of myd_yf135_defconfig.
 # Parsed by the Makefile target: make regen-programmer-defconfig
 
+BR2_PACKAGE_DBL_OTP_WRITE=y
 BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot.config $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-programmer.fragment"
