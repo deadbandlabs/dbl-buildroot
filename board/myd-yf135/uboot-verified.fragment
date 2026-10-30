@@ -1,0 +1,34 @@
+# U-Boot verified-boot fragment layered on top of board/myd-yf135/uboot.config
+# via configs/myd_yf135_verified.fragment (BR2_PACKAGE_DBL_VERIFIED_BOOT=y)
+
+# Env lockdown: U-Boot reads only vars listed in uboot-env-flags.txt from flash env
+# All others from compiled env only
+CONFIG_ENV_WRITEABLE_LIST=y
+CONFIG_ENV_ACCESS_IGNORE_FORCE=y
+
+# FIT signature check; pubkeys added to u-boot.dtb by external.mk.
+# RSA: FIT_SIGNATURE only implies it, which fragment merging ignores
+CONFIG_FIT_SIGNATURE=y
+CONFIG_RSA=y
+
+# Drop distro/standard boot: U-Boot boots only via uboot-env.txt
+# Unsetting DISTRO_DEFAULTS doesn't remove original options, explicit removals set here
+# CONFIG_DISTRO_DEFAULTS is not set
+# CONFIG_BOOTSTD is not set
+# CONFIG_EFI_LOADER is not set
+# CONFIG_USE_BOOTCOMMAND is not set
+# CONFIG_CMD_BOOTZ is not set
+# CONFIG_CMD_SYSBOOT is not set
+# CONFIG_SUPPORT_RAW_INITRD is not set
+# CONFIG_LEGACY_IMAGE_FORMAT is not set
+# CONFIG_CMD_PART is not set
+# CONFIG_USB_STORAGE is not set
+# CONFIG_ENV_VARS_UBOOT_CONFIG is not set
+CONFIG_HUSH_PARSER=y
+CONFIG_CMDLINE_EDITING=y
+CONFIG_AUTO_COMPLETE=y
+# Support loading files from SD cards (e.g. parent_boot_hook)
+CONFIG_CMD_FAT=y
+CONFIG_CMD_EXT4=y
+CONFIG_CMD_FS_GENERIC=y
+CONFIG_DOS_PARTITION=y

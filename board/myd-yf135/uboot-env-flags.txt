@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Vars U-Boot reads from flash env under lockdown (CONFIG_ENV_WRITEABLE_LIST)
+# Must come after var definitions: `.flags` applies only to vars already set
+# Format name:<type><access>; s = string, d = decimal, w = writable
+.flags=BOOT_ORDER:sw,BOOT_A_LEFT:dw,BOOT_B_LEFT:dw

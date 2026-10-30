@@ -26,7 +26,6 @@
 #include <dt-bindings/regulator/st,stm32mp13-regulator.h>
 
 #include "stm32mp135.dtsi"
-#include "stm32mp13xf.dtsi"
 #include "stm32mp13-pinctrl.dtsi"
 
 / {
@@ -101,7 +100,7 @@
 	status = "okay";
 };
 
-&cryp  { status = "okay"; };
+/* no &cryp on D */
 
 /* Console :: UART4 */
 &uart4 {

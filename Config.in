@@ -1,3 +1,59 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 source "$BR2_EXTERNAL_MYD_YF135_PATH/package/Config.in"
+
+config BR2_PACKAGE_DBL_VERIFIED_BOOT
+	bool "DBL verified boot"
+	help
+	  Adds the verified-boot kernel and U-Boot config fragments on top
+	  of the image: configs/myd_yf135_verified.fragment pulls in
+	  board/myd-yf135/linux-verified.fragment and uboot-verified.fragment.
+
+	  Set this in the defconfig or a parent fragment. Turning it on in
+	  menuconfig alone does nothing: the fragments are only merged when
+	  the merged defconfig already contains this setting.
+
+	  Default off
+
+config BR2_PACKAGE_DBL_FIT_PUBKEYS
+	string "FIT signing public keys"
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  Space-separated paths to X.509 certificates (.crt, RSA-2048).
+	  U-Boot boots a rootfs FIT signed by any one of these keys.
+	  Signing key name = certificate file name without .crt.
+
+	  The build always signs with an initial throwaway key in
+	  <output>/fit-key/. When empty, U-Boot accepts only the throwaway key.
+	  Otherwise, re-sign images with a listed key using sign-rootimg.sh.
+
+config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
+	string "dm-verity root hash signing certificates"
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  Path to a PEM file with one or more X.509 certificates (RSA).
+	  When set, the kernel checks dm-verity root hash signatures
+	  against certificates (CONFIG_DM_VERITY_VERIFY_ROOTHASH_SIG,
+	  CONFIG_SYSTEM_TRUSTED_KEYS), e.g. for signed systemd-sysext
+	  images.
+
+config BR2_PACKAGE_DBL_RAUC_KEYRING
+	string "RAUC keyring"
+	help
+	  PEM file with the certificates RAUC bundles must chain to,
+	  installed as /etc/rauc/keyring.pem.
+
+	  When empty, a throwaway certificate in <output>/rauc-key/
+	  (throwaway.crt, throwaway.key) is generated and installed.
+
+config BR2_PACKAGE_DBL_OTP_WRITE
+	bool "OTP fuse writes from Linux and U-Boot"
+	default y
+	help
+	  Allows Linux root and U-Boot `fuse prog` to burn OTP fuses
+	  (OP-TEE CFG_STM32_BSEC_WRITE). When off, writes are blocked.
+
+	  Use caution with fuse write, changes are permanent and an
+	  incorrect fuse can result in a bricked unit.
+
+	  Default on
