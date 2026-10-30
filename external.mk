@@ -203,7 +203,7 @@ $(MYD_YF135_RAUC_KEYDIR)/throwaway.crt: | host-openssl
 define MYD_YF135_RAUC_CONF
 	mkdir -p $(TARGET_DIR)/etc/rauc
 	cat $(DBL_RAUC_CONF_FILES) > $(TARGET_DIR)/etc/rauc/system.conf
-	cp $(MYD_YF135_RAUC_KEYRING) $(TARGET_DIR)/etc/rauc/keyring.pem
+	$(INSTALL) -D -m 0644 $(MYD_YF135_RAUC_KEYRING) $(TARGET_DIR)/etc/rauc/keyring.pem
 	$(if $(BR2_PACKAGE_DBL_VERIFIED_BOOT),
 		$(INSTALL) -D -m 755 $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rauc/pre-install \
 			$(TARGET_DIR)/usr/lib/rauc/pre-install)
