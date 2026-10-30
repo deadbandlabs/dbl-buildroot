@@ -27,6 +27,25 @@ config BR2_PACKAGE_DBL_FIT_PUBKEYS
 	  <output>/fit-key/. When empty, U-Boot accepts only the throwaway key.
 	  Otherwise, re-sign images with a listed key using sign-rootimg.sh.
 
+config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
+	string "dm-verity root hash signing certificates"
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  Path to a PEM file with one or more X.509 certificates (RSA).
+	  When set, the kernel checks dm-verity root hash signatures
+	  against certificates (CONFIG_DM_VERITY_VERIFY_ROOTHASH_SIG,
+	  CONFIG_SYSTEM_TRUSTED_KEYS), e.g. for signed systemd-sysext
+	  images.
+
+config BR2_PACKAGE_DBL_RAUC_KEYRING
+	string "RAUC keyring"
+	help
+	  PEM file with the certificates RAUC bundles must chain to,
+	  installed as /etc/rauc/keyring.pem.
+
+	  When empty, a throwaway certificate in <output>/rauc-key/
+	  (throwaway.crt, throwaway.key) is generated and installed.
+
 config BR2_PACKAGE_DBL_OTP_WRITE
 	bool "OTP fuse writes from Linux and U-Boot"
 	default y

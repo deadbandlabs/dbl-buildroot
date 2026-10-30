@@ -170,7 +170,46 @@ MYD_YF135_ROOTIMG_OPTS = --verity --sign-key $(MYD_YF135_FIT_KEY)
 MYD_YF135_ROOTIMG_DEPS = host-cryptsetup uboot $(MYD_YF135_FIT_KEY)
 # NB: buildroot host-uboot-tools is not compatible with current U-boot (2021.07)
 MYD_YF135_ROOTIMG_PATH = $(UBOOT_DIR)/tools:
+
+# After certificate changes run `make linux-reconfigure`
+ifneq ($(call qstrip,$(BR2_PACKAGE_DBL_VERITY_SIG_CERTS)),)
+define MYD_YF135_LINUX_VERITY_SIG
+	$(call KCONFIG_ENABLE_OPT,CONFIG_DM_VERITY_VERIFY_ROOTHASH_SIG)
+	$(call KCONFIG_SET_OPT,CONFIG_SYSTEM_TRUSTED_KEYS,"$(call qstrip,$(BR2_PACKAGE_DBL_VERITY_SIG_CERTS))")
+endef
+PACKAGES_LINUX_CONFIG_FIXUPS += $(MYD_YF135_LINUX_VERITY_SIG)$(sep)
 endif
+endif
+
+# RAUC /etc/rauc/system.conf is composed from
+# rauc/system.conf, + rauc/system-verified.conf + parent board/rauc-system.conf
+# Groups may repeat across files; repeated keys are rejected.
+DBL_PARENT_RAUC_CONF := $(wildcard $(addsuffix /rauc-system.conf,$(DBL_PARENT_DIRS)))
+DBL_RAUC_CONF_FILES := \
+	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rauc/system.conf \
+	$(if $(BR2_PACKAGE_DBL_VERIFIED_BOOT),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rauc/system-verified.conf) \
+	$(DBL_PARENT_RAUC_CONF)
+
+# Not in images/, like fit-key/
+MYD_YF135_RAUC_KEYDIR = $(BASE_DIR)/rauc-key
+MYD_YF135_RAUC_KEYRING = $(or $(call qstrip,$(BR2_PACKAGE_DBL_RAUC_KEYRING)),$(MYD_YF135_RAUC_KEYDIR)/throwaway.crt)
+
+$(MYD_YF135_RAUC_KEYDIR)/throwaway.crt: | host-openssl
+	mkdir -p $(@D)
+	$(HOST_DIR)/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 36500 \
+		-subj /CN=dbl-rauc-throwaway -keyout $(@D)/throwaway.key -out $@.tmp
+	mv $@.tmp $@
+
+define MYD_YF135_RAUC_CONF
+	mkdir -p $(TARGET_DIR)/etc/rauc
+	cat $(DBL_RAUC_CONF_FILES) > $(TARGET_DIR)/etc/rauc/system.conf
+	cp $(MYD_YF135_RAUC_KEYRING) $(TARGET_DIR)/etc/rauc/keyring.pem
+	$(if $(BR2_PACKAGE_DBL_VERIFIED_BOOT),
+		$(INSTALL) -D -m 755 $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rauc/pre-install \
+			$(TARGET_DIR)/usr/lib/rauc/pre-install)
+endef
+TARGET_FINALIZE_HOOKS += MYD_YF135_RAUC_CONF
+target-finalize: $(MYD_YF135_RAUC_KEYRING)
 
 # shortcut: `linux` and `rootfs-squashfs` are phony; rebuilds on every `make`
 $(BINARIES_DIR)/rootfs.img: linux rootfs-squashfs host-uboot-tools host-dtc $(MYD_YF135_ROOTIMG_DEPS)
