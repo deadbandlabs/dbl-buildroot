@@ -13,20 +13,16 @@ boot logs "nvmem node board-id not found" as an ERROR.
 Tested on STM32MP135.
 
 Change-Id: I02a354560fcc436c1e17fc083d5607bd6447a231
-Upstream: https://review.trustedfirmware.org/q/I02a354560fcc436c1e17fc083d5607bd6447a231
+Upstream: https://github.com/TrustedFirmware-A/trusted-firmware-a/commit/2178a5dd426510222b8ca87b31d097b0496fb13c
+[Backport to lts-v2.14: stm32mp_dt.h context, no dt_get_otp_by_phandle()]
 Signed-off-by: Austin Shirley <austin@deadband.dev>
 ---
- plat/st/common/include/stm32mp_dt.h |  1 +
- plat/st/common/stm32mp_dt.c         | 17 +++++++++++++++++
- plat/st/stm32mp1/stm32mp1_private.c |  5 +++++
- plat/st/stm32mp2/stm32mp2_private.c |  5 +++++
- 4 files changed, 28 insertions(+)
 
 diff --git a/plat/st/common/include/stm32mp_dt.h b/plat/st/common/include/stm32mp_dt.h
-index 2d11653650..06d74c3d98 100644
+index cbf6e3f..8a37fc1 100644
 --- a/plat/st/common/include/stm32mp_dt.h
 +++ b/plat/st/common/include/stm32mp_dt.h
-@@ -40,6 +40,7 @@ uint32_t dt_get_pwr_vdd_voltage(void);
+@@ -40,6 +40,7 @@
  struct rdev *dt_get_vdd_regulator(void);
  struct rdev *dt_get_cpu_regulator(void);
  const char *dt_get_board_model(void);
@@ -35,14 +31,13 @@ index 2d11653650..06d74c3d98 100644
  int fdt_get_gpio_bank_pin_count(unsigned int bank);
  
 diff --git a/plat/st/common/stm32mp_dt.c b/plat/st/common/stm32mp_dt.c
-index 282f53faf1..83b6fa597d 100644
+index 048011b..1390241 100644
 --- a/plat/st/common/stm32mp_dt.c
 +++ b/plat/st/common/stm32mp_dt.c
-@@ -317,6 +317,23 @@ const char *dt_get_board_model(void)
- 	return (const char *)fdt_getprop(fdt, node, "model", NULL);
+@@ -319,6 +319,25 @@
  }
  
-+/*******************************************************************************
+ /*******************************************************************************
 + * dt_has_otp_name: check for an optional OTP node in DT.
 + * name: sub-node name to look up.
 + * return value: true if the BSEC node has a sub-node with this name.
@@ -50,6 +45,8 @@ index 282f53faf1..83b6fa597d 100644
 +bool dt_has_otp_name(const char *name)
 +{
 +	int node;
++
++	assert(name != NULL);
 +
 +	node = fdt_node_offset_by_compatible(fdt, -1, DT_BSEC_COMPAT);
 +	if (node < 0) {
@@ -59,14 +56,15 @@ index 282f53faf1..83b6fa597d 100644
 +	return fdt_subnode_offset(fdt, node, name) >= 0;
 +}
 +
- /*******************************************************************************
++/*******************************************************************************
   * dt_find_otp_name: get OTP ID and length in DT.
   * name: sub-node name to look up.
+  * otp: pointer to read OTP number or NULL.
 diff --git a/plat/st/stm32mp1/stm32mp1_private.c b/plat/st/stm32mp1/stm32mp1_private.c
-index 45446dc6c5..374fa5c167 100644
+index dffd54c..da5f413 100644
 --- a/plat/st/stm32mp1/stm32mp1_private.c
 +++ b/plat/st/stm32mp1/stm32mp1_private.c
-@@ -493,6 +493,11 @@ void stm32mp_print_boardinfo(void)
+@@ -484,6 +484,11 @@
  {
  	uint32_t board_id = 0U;
  
@@ -79,10 +77,10 @@ index 45446dc6c5..374fa5c167 100644
  		return;
  	}
 diff --git a/plat/st/stm32mp2/stm32mp2_private.c b/plat/st/stm32mp2/stm32mp2_private.c
-index 56a0d2c9e6..672505e217 100644
+index 5e6c069..30b08a3 100644
 --- a/plat/st/stm32mp2/stm32mp2_private.c
 +++ b/plat/st/stm32mp2/stm32mp2_private.c
-@@ -331,6 +331,11 @@ void stm32mp_print_boardinfo(void)
+@@ -460,6 +460,11 @@
  {
  	uint32_t board_id = 0U;
  

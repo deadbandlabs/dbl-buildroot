@@ -13,42 +13,41 @@ as the HW_CONFIG file when BL33_CFG is unset.
 Tested on STM32MP135.
 
 Change-Id: Ic588cc7d580b20b1c3f3734b716190e6955d88f7
-Upstream: https://review.trustedfirmware.org/q/Ic588cc7d580b20b1c3f3734b716190e6955d88f7
+Upstream: https://github.com/TrustedFirmware-A/trusted-firmware-a/commit/57ea6e29d64a27e5f969802a14a366ce93863b2e
 Signed-off-by: Austin Shirley <austin@deadband.dev>
 ---
- docs/plat/st/stm32mp1.rst | 6 ++++++
- plat/st/common/common.mk  | 5 ++++-
- 2 files changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/docs/plat/st/stm32mp1.rst b/docs/plat/st/stm32mp1.rst
-index 39a43eebe2..917b45da8e 100644
---- a/docs/plat/st/stm32mp1.rst
-+++ b/docs/plat/st/stm32mp1.rst
-@@ -179,6 +179,12 @@ With OP-TEE:
-         BL32_EXTRA2=<optee_directory>/tee-pageable_v2.bin
-         fip
+diff --git a/docs/plat/st/stm32mpus.rst b/docs/plat/st/stm32mpus.rst
+index 995ae81..7e8ad3b 100644
+--- a/docs/plat/st/stm32mpus.rst
++++ b/docs/plat/st/stm32mpus.rst
+@@ -51,6 +51,11 @@
  
-+``BL33_CFG`` is optional. To keep the U-Boot DT inside BL33, set
-+``BL33=<u-boot_directory>/u-boot.bin`` (U-Boot with its appended DT), leave
-+``BL33_CFG`` unset and remove the ``hw-config`` node from the board FW_CONFIG.
-+U-Boot then uses its own DT, and the DT is covered by the BL33 hash rather than
-+the HW_CONFIG one.
-+
- Trusted Boot Board
- __________________
+ Other configuration flags:
  
++- | ``BL33_CFG``: optional HW_CONFIG device-tree blob, added to the FIP.
++  | When unset, BL33 uses its own embedded DT (e.g. ``u-boot.bin``, U-Boot with
++  | its appended DT), which is then covered by the BL33 hash. The ``hw-config``
++  | node must then be removed from the board FW_CONFIG.
++  | Default: unset
+ - | ``DTB_FILE_NAME``: to precise board device-tree blob to be used.
+   | Default: stm32mp157c-ev1.dtb
+ - | ``DWL_BUFFER_BASE``: the 'serial boot' load address of FIP,
 diff --git a/plat/st/common/common.mk b/plat/st/common/common.mk
-index 0bedb72246..075bf0555b 100644
+index d32f831..f4b71f7 100644
 --- a/plat/st/common/common.mk
 +++ b/plat/st/common/common.mk
-@@ -87,8 +87,11 @@ STM32_DEPS			+=	${STM32IMAGE}
+@@ -122,10 +122,13 @@
+ STM32_DEPS			+=	${STM32IMAGE}
+ 
  FIP_DEPS			+=	dtbs
- STM32MP_HW_CONFIG		:=	${BL33_CFG}
+-STM32MP_HW_CONFIG		:=	${BL33_CFG}
  
 -# Add the HW_CONFIG to FIP and specify the same to certtool
++# BL33_CFG is optional: without it, BL33 uses its own embedded DT.
++ifneq (${BL33_CFG},)
++STM32MP_HW_CONFIG		:=	${BL33_CFG}
 +# Add the HW_CONFIG to FIP and specify the same to certtool.
-+# It is optional: without it, BL33 uses its own embedded DT.
-+ifneq (${STM32MP_HW_CONFIG},)
  $(eval $(call TOOL_ADD_PAYLOAD,${STM32MP_HW_CONFIG},--hw-config))
 +endif
  
