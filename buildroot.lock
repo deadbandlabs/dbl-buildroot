@@ -323,6 +323,15 @@
       "https://sources.buildroot.net/linux-6.12.112.tar.xz"
     ]
   },
+  "lz4-1.10.0.tar.gz": {
+    "algo": "sha256",
+    "checksum": "537512904744b35e232912055ccf8ec66d768639ff3abe5788d90d792ec5f48b",
+    "uris": [
+      "https://github.com/lz4/lz4/archive/v1.10.0/lz4-1.10.0.tar.gz",
+      "https://sources.buildroot.net/lz4/lz4-1.10.0.tar.gz",
+      "https://sources.buildroot.net/lz4-1.10.0.tar.gz"
+    ]
+  },
   "lzo-2.10.tar.gz": {
     "algo": "sha256",
     "checksum": "c0f892943208266f9b6543b3ae308fab6284c5c90e627931446fb49b4221a072",
