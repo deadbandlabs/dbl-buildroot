@@ -27,9 +27,16 @@ verity=0
 sign_key=
 while [ "$#" -gt 0 ]; do
   case $1 in
-  --verity) verity=1; shift ;;
-  --sign-key) [ "$#" -ge 2 ] || usage; sign_key=$(realpath "$2"); shift 2 ;;
-  *) break ;;
+    --verity)
+      verity=1
+      shift
+      ;;
+    --sign-key)
+      [ "$#" -ge 2 ] || usage
+      sign_key=$(realpath "$2")
+      shift 2
+      ;;
+    *) break ;;
   esac
 done
 

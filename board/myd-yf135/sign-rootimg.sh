@@ -37,7 +37,7 @@ head -c "$fit_size" "$img" >"$work/rootfs.itb"
 
 # Squashfs offset (sectors) = last field of rimg's linear target in the boot script
 dumpimage -T flat_dt -p 2 -o "$work/boot.scr" "$work/rootfs.itb" >/dev/null
-off_sectors=$(sed -n 's/.*linear \/dev\/ubiblock0_${slot_vol} \([0-9]*\).*/\1/p' "$work/boot.scr")
+off_sectors=$(sed -n 's/.*linear \/dev\/ubiblock0_[^ ]* \([0-9]*\).*/\1/p' "$work/boot.scr")
 if [ -z "$off_sectors" ]; then
   echo "sign-rootimg: squashfs offset not found in FIT boot script" >&2
   exit 1

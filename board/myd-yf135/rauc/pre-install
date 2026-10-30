@@ -34,8 +34,8 @@ oldest=$(printf '%s\n%s\n' "$new" "$booted" | sort -V | head -n1)
 [ "$new" = "$booted" ] || [ "$oldest" = "$booted" ] && exit 0
 
 if [ "${DBL_ALLOW_DOWNGRADE:-0}" = 1 ]; then
-	echo "downgrade $booted -> $new allowed by DBL_ALLOW_DOWNGRADE"
-	exit 0
+  echo "downgrade $booted -> $new allowed by DBL_ALLOW_DOWNGRADE"
+  exit 0
 fi
 echo "<< error rootfs bundle $new is older than booted $booted, set DBL_ALLOW_DOWNGRADE=1 to install"
 exit 1
