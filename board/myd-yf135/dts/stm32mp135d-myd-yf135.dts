@@ -100,8 +100,6 @@
 	status = "okay";
 };
 
-/* no &cryp on D */
-
 /* Console :: UART4 */
 &uart4 {
 	pinctrl-names = "default";

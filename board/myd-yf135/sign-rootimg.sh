@@ -3,7 +3,7 @@
 # Copyright 2026 Deadband Inc.
 #
 # Re-sign the FIT of a finished rootfs.img (mkrootimg.sh --sign-key) in place
-# Squashfs and verity tree stay untouched; fails if in sufficient room
+# Squashfs and verity tree stay untouched; fails if insufficient room
 #
 # Usage: sign-rootimg.sh [-N <engine>] <rootfs.img> <u-boot.dtb> <keydir> <keyname>
 #   keydir: directory with <keyname>.key/.crt, or with -N pkcs11 a key prefix

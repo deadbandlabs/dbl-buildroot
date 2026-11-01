@@ -97,7 +97,7 @@ def merge(base_lines, delta_paths):
             lines = apply_delta(lines, load_overrides(path))
     final = set(lines)
     # Pass 2: apply all deltas in argument order, skipping conditional
-    # ones whose condition evaludate false on the pass-1 result.
+    # ones whose condition evaluate false on the pass-1 result.
     lines = base_lines
     for path, cond in deltas:
         if cond is None or cond in final:

@@ -12,7 +12,7 @@ Highlights:
 - Board changes isolated in `board/` and `configs/`
 - Small drift, easier release-to-release incremental upgrades
 - A/B firmware and root filesystem updates with factory fallback, via RAUC and a TF-A BL2 fallback walk
-- Out-of-tree patches only while under upstream review, see `board/myd-yf135/patches/`
+- Out-of-tree patches only until included in an upstream release, see `board/myd-yf135/patches/`
 - Nix and flakes for reproducible host tooling, plus hermetic full-image and SDK builds
 
 Hardware and driver functionality is limited to what is supported in upstream Linux, U-Boot, TF-A, and OP-TEE.
