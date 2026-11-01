@@ -27,12 +27,10 @@
 	dtb-registry {
 		compatible = "fconf,dyn_cfg-dtb_registry";
 
-		hw-config {
-			load-address = <0x0 STM32MP_HW_CONFIG_BASE>;
-			max-size = <STM32MP_HW_CONFIG_MAX_SIZE>;
-			id = <HW_CONFIG_ID>;
-		};
-
+		/*
+		 * No hw-config: U-Boot uses its appended DT (BL33 = u-boot.bin),
+		 * ensuring DT is covered by the BL33 hash
+		 */
 		nt_fw {
 			load-address = <0x0 STM32MP_BL33_BASE>;
 			max-size = <STM32MP_BL33_MAX_SIZE>;

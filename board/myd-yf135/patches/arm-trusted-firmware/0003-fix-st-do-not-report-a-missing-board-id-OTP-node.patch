@@ -1,0 +1,94 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Austin Shirley <austin@deadband.dev>
+Date: Thu, 22 Oct 2026 11:30:38 -0600
+Subject: [PATCH 3/3] fix(st): do not report a missing board-id OTP node
+
+Check for the board_id node first and skip the board information
+quietly when it is absent.
+
+The board-id OTP is optional: several boards have no board-id node,
+and printing board information is the only use. For them, every
+boot logs "nvmem node board-id not found" as an ERROR.
+
+Tested on STM32MP135.
+
+Change-Id: I02a354560fcc436c1e17fc083d5607bd6447a231
+Upstream: https://github.com/TrustedFirmware-A/trusted-firmware-a/commit/2178a5dd426510222b8ca87b31d097b0496fb13c
+[Backport to lts-v2.14: stm32mp_dt.h context, no dt_get_otp_by_phandle()]
+Signed-off-by: Austin Shirley <austin@deadband.dev>
+---
+
+diff --git a/plat/st/common/include/stm32mp_dt.h b/plat/st/common/include/stm32mp_dt.h
+index cbf6e3f..8a37fc1 100644
+--- a/plat/st/common/include/stm32mp_dt.h
++++ b/plat/st/common/include/stm32mp_dt.h
+@@ -40,6 +40,7 @@
+ struct rdev *dt_get_vdd_regulator(void);
+ struct rdev *dt_get_cpu_regulator(void);
+ const char *dt_get_board_model(void);
++bool dt_has_otp_name(const char *name);
+ int dt_find_otp_name(const char *name, uint32_t *otp, uint32_t *otp_len);
+ int fdt_get_gpio_bank_pin_count(unsigned int bank);
+ 
+diff --git a/plat/st/common/stm32mp_dt.c b/plat/st/common/stm32mp_dt.c
+index 048011b..1390241 100644
+--- a/plat/st/common/stm32mp_dt.c
++++ b/plat/st/common/stm32mp_dt.c
+@@ -319,6 +319,25 @@
+ }
+ 
+ /*******************************************************************************
++ * dt_has_otp_name: check for an optional OTP node in DT.
++ * name: sub-node name to look up.
++ * return value: true if the BSEC node has a sub-node with this name.
++ ******************************************************************************/
++bool dt_has_otp_name(const char *name)
++{
++	int node;
++
++	assert(name != NULL);
++
++	node = fdt_node_offset_by_compatible(fdt, -1, DT_BSEC_COMPAT);
++	if (node < 0) {
++		return false;
++	}
++
++	return fdt_subnode_offset(fdt, node, name) >= 0;
++}
++
++/*******************************************************************************
+  * dt_find_otp_name: get OTP ID and length in DT.
+  * name: sub-node name to look up.
+  * otp: pointer to read OTP number or NULL.
+diff --git a/plat/st/stm32mp1/stm32mp1_private.c b/plat/st/stm32mp1/stm32mp1_private.c
+index dffd54c..da5f413 100644
+--- a/plat/st/stm32mp1/stm32mp1_private.c
++++ b/plat/st/stm32mp1/stm32mp1_private.c
+@@ -484,6 +484,11 @@
+ {
+ 	uint32_t board_id = 0U;
+ 
++	/* The board ID OTP is optional */
++	if (!dt_has_otp_name(BOARD_ID_OTP)) {
++		return;
++	}
++
+ 	if (stm32_get_otp_value(BOARD_ID_OTP, &board_id) != 0) {
+ 		return;
+ 	}
+diff --git a/plat/st/stm32mp2/stm32mp2_private.c b/plat/st/stm32mp2/stm32mp2_private.c
+index 5e6c069..30b08a3 100644
+--- a/plat/st/stm32mp2/stm32mp2_private.c
++++ b/plat/st/stm32mp2/stm32mp2_private.c
+@@ -460,6 +460,11 @@
+ {
+ 	uint32_t board_id = 0U;
+ 
++	/* The board ID OTP is optional */
++	if (!dt_has_otp_name(BOARD_ID_OTP)) {
++		return;
++	}
++
+ 	if (stm32_get_otp_value(BOARD_ID_OTP, &board_id) != 0) {
+ 		return;
+ 	}

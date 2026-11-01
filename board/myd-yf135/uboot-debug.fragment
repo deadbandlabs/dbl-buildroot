@@ -4,3 +4,9 @@
 CONFIG_LOG=y
 CONFIG_LOGLEVEL=7
 CONFIG_BOOTDELAY=3
+
+# Debug: disable env lockdown (uboot-verified.fragment)
+# Whole env editable from Linux (fw_setenv) and U-Boot console
+# CONFIG_ENV_WRITEABLE_LIST is not set
+# CONFIG_ENV_APPEND is not set
+# CONFIG_ENV_ACCESS_IGNORE_FORCE is not set

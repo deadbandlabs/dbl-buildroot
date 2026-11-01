@@ -1,0 +1,41 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# RAUC pre-install handler to refuse rootfs bundles older than the booted slot.
+# Guards against accidental updates only, not strict.
+#
+# Usage: called by RAUC ([handlers] pre-install, rauc/system-verified.conf).
+#   Set DBL_ALLOW_DOWNGRADE=1 rauc install ... to allow an older bundle
+#
+# Only checks [image.rootfs] bundles. Versions compared with `sort -V`.
+# A missing version or version not starting with a digit is allowed.
+
+set -eu
+
+manifest="$RAUC_BUNDLE_MOUNT_POINT/manifest.raucm"
+grep -qx '\[image\.rootfs\]' "$manifest" || exit 0
+
+new=$(awk '
+	/^\[/ { in_update = ($0 == "[update]"); next }
+	in_update && index($0, "version=") == 1 { print substr($0, 9); exit }
+' "$manifest")
+
+booted=$(rauc status --detailed --output-format=shell | tr -d "'" | awk -F= '
+	{ n = $1; sub(/.*_/, "", n) }
+	$1 == "RAUC_SYSTEM_BOOTED_BOOTNAME" { b = $2 }
+	$1 ~ /^RAUC_SLOT_BOOTNAME_[0-9]+$/ { bn[n] = $2 }
+	$1 ~ /^RAUC_SLOT_STATUS_BUNDLE_VERSION_[0-9]+$/ { v[n] = $2 }
+	END { for (n in bn) if (bn[n] == b) print v[n] }
+')
+
+case "$new" in [0-9]*) ;; *) exit 0 ;; esac
+case "$booted" in [0-9]*) ;; *) exit 0 ;; esac
+oldest=$(printf '%s\n%s\n' "$new" "$booted" | sort -V | head -n1)
+[ "$new" = "$booted" ] || [ "$oldest" = "$booted" ] && exit 0
+
+if [ "${DBL_ALLOW_DOWNGRADE:-0}" = 1 ]; then
+  echo "downgrade $booted -> $new allowed by DBL_ALLOW_DOWNGRADE"
+  exit 0
+fi
+echo "<< error rootfs bundle $new is older than booted $booted, set DBL_ALLOW_DOWNGRADE=1 to install"
+exit 1

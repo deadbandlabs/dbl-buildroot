@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# Replaces rootfs-overlay/etc/fstab. /etc stays read-only; nothing on the data
+# volume runs. machine-id-overlay.service is masked (needs a writable /etc).
+#   /             squashfs on /dev/dm-1 (see mkrootimg.sh)
+#   /mnt/overlay  ubi0:overlay
+#   /var          overlayfs, upper=/mnt/overlay/upper/var (overlay-prepare.service)
+
+ubi0:overlay  /mnt/overlay  ubifs    noexec,nosuid,nodev                                                                                                                                   0 0
+
+overlay  /var  overlay  noexec,nosuid,nodev,lowerdir=/var,upperdir=/mnt/overlay/upper/var,workdir=/mnt/overlay/work/var,x-systemd.requires=/mnt/overlay,x-systemd.after=overlay-prepare.service  0 0

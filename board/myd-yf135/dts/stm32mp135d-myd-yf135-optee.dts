@@ -19,7 +19,6 @@
 #include <dt-bindings/regulator/st,stm32mp13-regulator.h>
 
 #include "stm32mp135.dtsi"
-#include "stm32mp13xf.dtsi"
 #include "stm32mp13-pinctrl.dtsi"
 
 / {
@@ -115,10 +114,6 @@
 	status = "okay";
 };
 
-&pka {
-	status = "okay";
-};
-
 &pwr_regulators {
 	vdd-supply = <&vdd>;
 	vdd_3v3_usbfs-supply = <&vdd_usb>;
@@ -127,10 +122,6 @@
 &rng {
 	status = "okay";
 	clock-error-detect;
-};
-
-&saes {
-	status = "okay";
 };
 
 &sdmmc1_io {

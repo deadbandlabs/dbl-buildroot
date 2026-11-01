@@ -23,6 +23,8 @@ DEBUG_DEFCONFIG      := $(O)/myd_yf135_debug_defconfig
 DEBUG_FRAGMENT       := $(CURDIR)/configs/myd_yf135_debug.fragment
 PROGRAMMER_DEFCONFIG := $(O)/myd_yf135_programmer_defconfig
 PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myd_yf135_programmer.fragment
+# Gated by BR2_PACKAGE_DBL_VERIFIED_BOOT inside merge-defconfig.py (dbl-merge-if)
+VERIFIED_FRAGMENT    := $(CURDIR)/configs/myd_yf135_verified.fragment
 _HOST_PYTHON3        := $(RELEASE_O)/host/bin/python3
 _PYTHON3             := $(if $(wildcard $(_HOST_PYTHON3)),$(_HOST_PYTHON3),python3)
 MERGE_DEFCONFIG      := $(_PYTHON3) $(CURDIR)/support/build/merge-defconfig.py
@@ -107,16 +109,19 @@ _UPDATE_LATEST  := true
 endif
 
 # Compose the merge chain for this mode:
-#   release    = RELEASE_DEFCONFIG + CONFIG_FRAGMENT
-#   debug      = RELEASE_DEFCONFIG + CONFIG_FRAGMENT + DEBUG_FRAGMENT + CONFIG_FRAGMENT_DEBUG
-#   programmer = RELEASE_DEFCONFIG + PROGRAMMER_FRAGMENT
-# Empty/unset slots are filtered out. With no deltas, fall back to a plain `defconfig` call.
-_MERGE_DELTAS :=
+#   release    = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT
+#   debug      = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + DEBUG_FRAGMENT + CONFIG_FRAGMENT_DEBUG
+#   programmer = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + PROGRAMMER_FRAGMENT
+#                (same chain as the nix programmer build, which is what ships)
+# VERIFIED_FRAGMENT only applies when the merged result sets BR2_PACKAGE_DBL_VERIFIED_BOOT=y.
+# Empty/unset slots are filtered out.
+_MERGE_DELTAS := $(VERIFIED_FRAGMENT)
 ifeq ($(MODE),debug)
   _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
   _MERGE_DELTAS += $(DEBUG_FRAGMENT)
   _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT_DEBUG))
 else ifeq ($(MODE),programmer)
+  _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
   _MERGE_DELTAS += $(PROGRAMMER_FRAGMENT)
 else
   _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
@@ -139,11 +144,7 @@ else
   _WRITE_ROOTFS_OVERLAY = true
 endif
 
-ifneq ($(_MERGE_DELTAS),)
 _APPLY_DEFCONFIG = $(_WRITE_TC_PATH) && $(_WRITE_ROOTFS_OVERLAY) && $(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
-else
-_APPLY_DEFCONFIG = $(BR2_MAKE) myd_yf135_defconfig
-endif
 
 .DEFAULT_GOAL := all
 
@@ -167,11 +168,11 @@ help:
 # build time.
 regen-debug-defconfig:
 	@mkdir -p $(O)
-	$(MERGE_DEFCONFIG) $(DEBUG_DEFCONFIG) $(RELEASE_DEFCONFIG) $(strip $(CONFIG_FRAGMENT)) $(DEBUG_FRAGMENT) $(strip $(CONFIG_FRAGMENT_DEBUG))
+	$(MERGE_DEFCONFIG) $(DEBUG_DEFCONFIG) $(RELEASE_DEFCONFIG) $(VERIFIED_FRAGMENT) $(strip $(CONFIG_FRAGMENT)) $(DEBUG_FRAGMENT) $(strip $(CONFIG_FRAGMENT_DEBUG))
 
 regen-programmer-defconfig:
 	@mkdir -p $(O)
-	$(MERGE_DEFCONFIG) $(PROGRAMMER_DEFCONFIG) $(RELEASE_DEFCONFIG) $(PROGRAMMER_FRAGMENT)
+	$(MERGE_DEFCONFIG) $(PROGRAMMER_DEFCONFIG) $(RELEASE_DEFCONFIG) $(VERIFIED_FRAGMENT) $(strip $(CONFIG_FRAGMENT)) $(PROGRAMMER_FRAGMENT)
 
 # Sync the toolchain defconfig's tracked symbol values from the main defconfig (run in pre-commit)
 regen-toolchain-defconfig:
