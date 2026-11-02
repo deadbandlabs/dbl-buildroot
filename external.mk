@@ -63,6 +63,12 @@ ifneq ($(BR2_PACKAGE_DBL_OTP_WRITE),y)
 OPTEE_OS_MAKE_OPTS += CFG_STM32_BSEC_WRITE=n
 endif
 
+# No loadable TAs: in-tree TAs are signed with OP-TEE's public default key,
+# which may be loaded by root. Early TAs (built into OP-TEE) remain.
+ifneq ($(BR2_TARGET_OPTEE_OS_SERVICES),y)
+OPTEE_OS_MAKE_OPTS += CFG_REE_FS_TA=n CFG_SECSTOR_TA=n CFG_EARLY_TA=y
+endif
+
 define ARM_TRUSTED_FIRMWARE_MYD_YF135_COPY_DTSI
 	cp $(or $(DBL_PARENT_TF_A_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-tf-a.dtsi) \
 		$(@D)/fdts/parent-tf-a.dtsi
