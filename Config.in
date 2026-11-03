@@ -19,13 +19,15 @@ config BR2_PACKAGE_DBL_FIT_PUBKEYS
 	string "FIT signing public keys"
 	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
 	help
-	  Space-separated paths to X.509 certificates (.crt, RSA-2048).
+	  Space-separated paths to X.509 certificates (.crt, RSA-3072).
 	  U-Boot boots a rootfs FIT signed by any one of these keys.
+	  List a primary and a backup to switch keys.
 	  Signing key name = certificate file name without .crt.
 
-	  The build always signs with an initial throwaway key in
-	  <output>/fit-key/. When empty, U-Boot accepts only the throwaway key.
-	  Otherwise, re-sign images with a listed key using sign-rootimg.sh.
+	  The build signs with the PUBLIC, INSECURE test key in
+	  board/myd-yf135/insecure-test-key/. When empty, U-Boot accepts
+	  only that key. Anyone can sign images for such a device.
+	  Re-sign images with a listed key using sign-rootimg.sh.
 
 config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
 	string "dm-verity root hash signing certificates"
@@ -43,8 +45,9 @@ config BR2_PACKAGE_DBL_RAUC_KEYRING
 	  PEM file with the certificates RAUC bundles must chain to,
 	  installed as /etc/rauc/keyring.pem.
 
-	  When empty, a throwaway certificate in <output>/rauc-key/
-	  (throwaway.crt, throwaway.key) is generated and installed.
+	  When empty, the PUBLIC, INSECURE test certificate in
+	  board/myd-yf135/insecure-test-key/ is installed.
+	  Anyone can sign bundles for such a device.
 
 config BR2_PACKAGE_DBL_OTP_WRITE
 	bool "OTP fuse writes from Linux and U-Boot"

@@ -33,12 +33,23 @@ path = [
   "board/myd-yf135/linux.config",
   "board/myd-yf135/rootfs-overlay/boot/extlinux/extlinux.conf",
   "README.md",
+  "board/myd-yf135/insecure-test-key/README.md",
   "CONTRIBUTING.md",
   "SECURITY.md",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
 SPDX-License-Identifier = "GPL-2.0-or-later"
+
+# Public, insecure test key material
+[[annotations]]
+path = [
+  "board/myd-yf135/insecure-test-key/insecure-test-key.key",
+  "board/myd-yf135/insecure-test-key/insecure-test-key.crt",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Deadband Inc."
+SPDX-License-Identifier = "CC0-1.0"
 
 # Carry patches for upstream projects take the license of the patched project
 [[annotations]]

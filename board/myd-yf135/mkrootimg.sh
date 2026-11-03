@@ -4,7 +4,7 @@
 #
 # Build a rootfs slot image.
 #
-# Usage: mkrootimg.sh [--verity] [--sign-key <dir/name.key>] <zImage> <dtb> <rootfs.squashfs> <out.img>
+# Usage: mkrootimg.sh [--verity] [--sign-key <dir/name.key> [--sign-algo <algo>]] <zImage> <dtb> <rootfs.squashfs> <out.img>
 # Requires mkimage + dtc in PATH (+ veritysetup with --verity)
 #
 # Layout:
@@ -16,15 +16,17 @@
 #
 # --sign-key: signs conf-1 (kernel + DT + script) with key-name-hint <name>,
 #   adds one spare 4 KiB block before the squashfs to re-sign in place with sign-rootimg.sh
+# --sign-algo: FIT signature algo (default sha256,rsa3072)
 set -eu
 
 usage() {
-  echo "Usage: $0 [--verity] [--sign-key <key>] <zImage> <dtb> <rootfs.squashfs> <out.img>" >&2
+  echo "Usage: $0 [--verity] [--sign-key <key> [--sign-algo <algo>]] <zImage> <dtb> <rootfs.squashfs> <out.img>" >&2
   exit 1
 }
 
 verity=0
 sign_key=
+sign_algo=sha256,rsa3072
 while [ "$#" -gt 0 ]; do
   case $1 in
     --verity)
@@ -34,6 +36,11 @@ while [ "$#" -gt 0 ]; do
     --sign-key)
       [ "$#" -ge 2 ] || usage
       sign_key=$(realpath "$2")
+      shift 2
+      ;;
+    --sign-algo)
+      [ "$#" -ge 2 ] || usage
+      sign_algo=$2
       shift 2
       ;;
     *) break ;;
@@ -83,7 +90,7 @@ sig_node=
 spare=0
 if [ -n "$sign_key" ]; then
   key_name=$(basename "$sign_key" .key)
-  sig_node="signature-1 { algo = \"sha256,rsa2048\"; key-name-hint = \"$key_name\"; sign-images = \"kernel\", \"fdt\", \"script\"; };"
+  sig_node="signature-1 { algo = \"$sign_algo\"; key-name-hint = \"$key_name\"; sign-images = \"kernel\", \"fdt\", \"script\"; };"
   spare=$ALIGN
 fi
 

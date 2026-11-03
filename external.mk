@@ -142,28 +142,23 @@ $(BINARIES_DIR)/optee_ss.ubifs: $(BR2_EXTERNAL_MYD_YF135_PATH)/external.mk | hos
 $(BINARIES_DIR)/uboot.env: $(DBL_UBOOT_ENV_FILES) | host-uboot-tools
 	cat $(DBL_UBOOT_ENV_FILES) | $(HOST_DIR)/bin/mkenvimage -s 0x4000 -r -o $@ -
 
+# PUBLIC, INSECURE test key (see board/myd-yf135/insecure-test-key/README.md)
+# Parents must set their own keys using BR2_PACKAGE_DBL_{FIT_PUBKEYS,RAUC_KEYRING}
+MYD_YF135_TEST_KEY = $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/insecure-test-key/insecure-test-key
+
 # Rootfs slot image + RAUC bundle payload (mkrootimg.sh)
 ifeq ($(BR2_PACKAGE_DBL_VERIFIED_BOOT),y)
 
-# Not in images/: CI uploads it
-# NB: not removed by `make clean`; delete fit-key/ for a new key
-MYD_YF135_FIT_KEYDIR = $(BASE_DIR)/fit-key
-MYD_YF135_FIT_KEY = $(MYD_YF135_FIT_KEYDIR)/throwaway.key
-MYD_YF135_FIT_PUBKEYS = $(or $(call qstrip,$(BR2_PACKAGE_DBL_FIT_PUBKEYS)),$(MYD_YF135_FIT_KEYDIR)/throwaway.crt)
-
-$(MYD_YF135_FIT_KEY): | host-openssl
-	mkdir -p $(@D)
-	$(HOST_DIR)/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 36500 \
-		-subj /CN=dbl-fit-throwaway -keyout $@.tmp -out $(@D)/throwaway.crt
-	mv $@.tmp $@
-$(MYD_YF135_FIT_KEYDIR)/throwaway.crt: $(MYD_YF135_FIT_KEY) ;
+MYD_YF135_FIT_ALGO = sha256,rsa3072
+MYD_YF135_FIT_KEY = $(MYD_YF135_TEST_KEY).key
+MYD_YF135_FIT_PUBKEYS = $(or $(call qstrip,$(BR2_PACKAGE_DBL_FIT_PUBKEYS)),$(MYD_YF135_TEST_KEY).crt)
 
 # Starts from dts/dt.dtb so removed keys don't linger
 # Runs before Buildroot installs u-boot.bin, to allow TF-A to pack keyed U-Boot into the FIP
 define UBOOT_MYD_YF135_FIT_PUBKEYS
 	cp $(@D)/dts/dt.dtb $(@D)/u-boot.dtb
 	$(foreach crt,$(MYD_YF135_FIT_PUBKEYS),
-		$(@D)/tools/fdt_add_pubkey -a sha256,rsa2048 -r conf \
+		$(@D)/tools/fdt_add_pubkey -a $(MYD_YF135_FIT_ALGO) -r conf \
 			-k $(dir $(crt)) -n $(basename $(notdir $(crt))) $(@D)/u-boot.dtb
 	)
 	$(HOST_DIR)/bin/fdtput -t s $(@D)/u-boot.dtb /signature required-mode any
@@ -172,7 +167,7 @@ endef
 UBOOT_POST_BUILD_HOOKS += UBOOT_MYD_YF135_FIT_PUBKEYS
 $(UBOOT_TARGET_BUILD): $(MYD_YF135_FIT_PUBKEYS) | host-dtc
 
-MYD_YF135_ROOTIMG_OPTS = --verity --sign-key $(MYD_YF135_FIT_KEY)
+MYD_YF135_ROOTIMG_OPTS = --verity --sign-key $(MYD_YF135_FIT_KEY) --sign-algo $(MYD_YF135_FIT_ALGO)
 MYD_YF135_ROOTIMG_DEPS = host-cryptsetup uboot $(MYD_YF135_FIT_KEY)
 # NB: buildroot host-uboot-tools is not compatible with current U-boot (2021.07)
 MYD_YF135_ROOTIMG_PATH = $(UBOOT_DIR)/tools:
@@ -196,15 +191,7 @@ DBL_RAUC_CONF_FILES := \
 	$(if $(BR2_PACKAGE_DBL_VERIFIED_BOOT),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rauc/system-verified.conf) \
 	$(DBL_PARENT_RAUC_CONF)
 
-# Not in images/, like fit-key/
-MYD_YF135_RAUC_KEYDIR = $(BASE_DIR)/rauc-key
-MYD_YF135_RAUC_KEYRING = $(or $(call qstrip,$(BR2_PACKAGE_DBL_RAUC_KEYRING)),$(MYD_YF135_RAUC_KEYDIR)/throwaway.crt)
-
-$(MYD_YF135_RAUC_KEYDIR)/throwaway.crt: | host-openssl
-	mkdir -p $(@D)
-	$(HOST_DIR)/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 36500 \
-		-subj /CN=dbl-rauc-throwaway -keyout $(@D)/throwaway.key -out $@.tmp
-	mv $@.tmp $@
+MYD_YF135_RAUC_KEYRING = $(or $(call qstrip,$(BR2_PACKAGE_DBL_RAUC_KEYRING)),$(MYD_YF135_TEST_KEY).crt)
 
 define MYD_YF135_RAUC_CONF
 	mkdir -p $(TARGET_DIR)/etc/rauc
