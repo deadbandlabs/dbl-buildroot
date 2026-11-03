@@ -5,7 +5,10 @@
 #   /             squashfs on /dev/dm-1 (see mkrootimg.sh)
 #   /mnt/overlay  ubi0:overlay
 #   /var          overlayfs, upper=/mnt/overlay/upper/var (overlay-prepare.service)
+#   /mnt/tee      ubi0:optee_ss, OP-TEE secure storage (tee-supplicant.service)
 
 ubi0:overlay  /mnt/overlay  ubifs    noexec,nosuid,nodev                                                                                                                                   0 0
 
 overlay  /var  overlay  noexec,nosuid,nodev,lowerdir=/var,upperdir=/mnt/overlay/upper/var,workdir=/mnt/overlay/work/var,x-systemd.requires=/mnt/overlay,x-systemd.after=overlay-prepare.service  0 0
+
+ubi0:optee_ss  /mnt/tee  ubifs  noexec,nosuid,nodev,nofail  0 0

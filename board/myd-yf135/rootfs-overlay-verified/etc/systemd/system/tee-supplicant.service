@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# OP-TEE REE FS secure storage backend
+
+[Unit]
+Description=OP-TEE supplicant
+DefaultDependencies=no
+RequiresMountsFor=/mnt/tee
+Conflicts=shutdown.target
+Before=sysinit.target shutdown.target
+
+[Service]
+Type=notify
+ExecStart=/usr/sbin/tee-supplicant
+
+[Install]
+WantedBy=sysinit.target
