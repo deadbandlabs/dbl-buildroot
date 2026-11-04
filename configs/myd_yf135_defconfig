@@ -74,10 +74,7 @@ BR2_LINUX_KERNEL_NEEDS_HOST_OPENSSL=y
 # BUILD_STRING: version in BL2 banner (else "custom")
 # STM32MP13=1:        selects MP13x series (single A7, no M4)
 # STM32MP_SPI_NAND=1: SPI-NAND boot via QSPI (production)
-# SDMMC boot is enabled only in debug fragment for bring-up/recovery.
-# !! TRUSTED_BOARD_BOOT / GENERATE_COT currently omitted !!
-# requires mbedtls source tree at build time; re-enable once key infrastructure is ready
-# TODO: See board/myd-yf135/README.secure-boot
+# Trusted Board Boot: verified boot only (external.mk)
 #
 BR2_TARGET_ARM_TRUSTED_FIRMWARE=y
 BR2_TARGET_ARM_TRUSTED_FIRMWARE_CUSTOM_TARBALL=y

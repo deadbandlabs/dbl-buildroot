@@ -11,6 +11,7 @@ can set its own keys.
 - `insecure-test-key.key`: RSA-3072 private key
 - `insecure-test-key.crt`: self-signed certificate,
   `CN=dbl-INSECURE-test-key-DO-NOT-TRUST`
+- `insecure-tbb-key.pem`: ECDSA P-256 private key for TF-A TBB
 
 U-Boot names the verifying key at boot. A test-signed image shows
 `sha256,rsa3072:insecure-test-key+` in the boot log.
@@ -28,5 +29,8 @@ Ship your own keys. Set in your parent fragment:
   certificates.
 - `BR2_PACKAGE_DBL_VERITY_SIG_CERTS`: certificates for signed sysext
   images.
+
+TBB has no build option for product keys. Re-sign release FIPs
+with TF-A `cert_create` (supports PKCS#11) and `fiptool update`.
 
 Do not list this certificate in a product build.

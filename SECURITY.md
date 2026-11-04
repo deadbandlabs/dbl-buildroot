@@ -59,13 +59,13 @@ The STM32MP135D supports two hardware security features:
 - OTP (one-time programmable) fuses, which can lock boot sources, disable JTAG, and similar.
 - Secure boot through TF-A and OP-TEE, which provides a verified boot chain.
 
-Neither is enabled by default, and secure boot (`TRUSTED_BOARD_BOOT`) is not yet integrated. Enabling it requires an understanding of the OTP and fuse implications (fuse programming is permanent), secure key management (ECDSA keys for the boot chain), and testing with secure boot enabled in all variants (release, debug, and so on). Consult the ST documentation and the TF-A and OP-TEE security guidelines before enabling it.
+Neither is enabled by default. Verified-boot builds (`BR2_PACKAGE_DBL_VERIFIED_BOOT`) build TF-A with Trusted Board Boot (`TRUSTED_BOARD_BOOT`), but the root of trust only takes effect once the FSBL is signed and the key hash is fused in OTP. Enabling that requires an understanding of the OTP and fuse implications (fuse programming is permanent), secure key management (ECDSA keys for the boot chain), and testing with secure boot enabled in all variants (release, debug, and so on). Consult the ST documentation and the TF-A and OP-TEE security guidelines before enabling it.
 
 ## Signing keys
 
-Builds sign the rootfs FIT and trust RAUC bundles with a **public, insecure test key** shipped in `board/myd-yf135/insecure-test-key/`. Anyone can sign images and bundles that such a build accepts.
+Builds sign the rootfs FIT, the TF-A Trusted Board Boot certificates and trust RAUC bundles with **public, insecure test keys** shipped in `board/myd-yf135/insecure-test-key/`. Anyone can sign images and bundles that such a build accepts.
 
-Products must set their own certificates (`BR2_PACKAGE_DBL_FIT_PUBKEYS`, `BR2_PACKAGE_DBL_RAUC_KEYRING`, `BR2_PACKAGE_DBL_VERITY_SIG_CERTS`) and re-sign release images with `board/myd-yf135/sign-rootimg.sh`. A device running a test-signed image shows `sha256,rsa3072:insecure-test-key+` in the U-Boot log.
+Products must set their own certificates (`BR2_PACKAGE_DBL_FIT_PUBKEYS`, `BR2_PACKAGE_DBL_RAUC_KEYRING`, `BR2_PACKAGE_DBL_VERITY_SIG_CERTS`) and re-sign release images with `board/myd-yf135/sign-rootimg.sh` (FIT) and TF-A `cert_create` + `fiptool update` (FIP). A device running a test-signed image shows `sha256,rsa3072:insecure-test-key+` in the U-Boot log.
 
 ## Safe harbour and acknowledgements
 

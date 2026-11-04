@@ -167,6 +167,27 @@ endef
 UBOOT_POST_BUILD_HOOKS += UBOOT_MYD_YF135_FIT_PUBKEYS
 $(UBOOT_TARGET_BUILD): $(MYD_YF135_FIT_PUBKEYS) | host-dtc
 
+# TF-A Trusted Board Boot: Every certificate is signed with the test key;
+# re-sign release FIPs with cert_create + fiptool update
+MYD_YF135_TBB_KEY = $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/insecure-test-key/insecure-tbb-key.pem
+$(ARM_TRUSTED_FIRMWARE_TARGET_BUILD): $(MYD_YF135_TBB_KEY) | dbl-tf-a-mbedtls $(BR2_CMAKE_HOST_DEPENDENCY)
+define ARM_TRUSTED_FIRMWARE_MYD_YF135_CHECK_TBB_KEYS
+	want=$$($(HOST_DIR)/bin/openssl pkey -in $(MYD_YF135_TBB_KEY) -pubout) && \
+	for crt in $(ARM_TRUSTED_FIRMWARE_IMG_DIR)/*.crt; do \
+		got=$$($(HOST_DIR)/bin/openssl x509 -inform DER -in $$crt -noout -pubkey) && \
+		[ "$$got" = "$$want" ] || { echo "TBB: $$crt not signed for the test key" >&2; exit 1; }; \
+	done
+endef
+ARM_TRUSTED_FIRMWARE_POST_BUILD_HOOKS += ARM_TRUSTED_FIRMWARE_MYD_YF135_CHECK_TBB_KEYS
+ARM_TRUSTED_FIRMWARE_MAKE_OPTS += \
+	TRUSTED_BOARD_BOOT=1 GENERATE_COT=1 \
+	MBEDTLS_DIR=$(DBL_TF_A_MBEDTLS_DIR) \
+	ROT_KEY=$(MYD_YF135_TBB_KEY) \
+	TRUSTED_WORLD_KEY=$(MYD_YF135_TBB_KEY) \
+	NON_TRUSTED_WORLD_KEY=$(MYD_YF135_TBB_KEY) \
+	BL32_KEY=$(MYD_YF135_TBB_KEY) \
+	BL33_KEY=$(MYD_YF135_TBB_KEY)
+
 MYD_YF135_ROOTIMG_OPTS = --verity --sign-key $(MYD_YF135_FIT_KEY) --sign-algo $(MYD_YF135_FIT_ALGO)
 MYD_YF135_ROOTIMG_DEPS = host-cryptsetup uboot $(MYD_YF135_FIT_KEY)
 # NB: buildroot host-uboot-tools is not compatible with current U-boot (2021.07)

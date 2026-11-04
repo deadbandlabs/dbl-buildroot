@@ -4,10 +4,14 @@ source "$BR2_EXTERNAL_MYD_YF135_PATH/package/Config.in"
 
 config BR2_PACKAGE_DBL_VERIFIED_BOOT
 	bool "DBL verified boot"
+	select BR2_PACKAGE_DBL_TF_A_MBEDTLS
 	help
 	  Adds the verified-boot kernel and U-Boot config fragments on top
 	  of the image: configs/myd_yf135_verified.fragment pulls in
 	  board/myd-yf135/linux-verified.fragment and uboot-verified.fragment.
+
+	  Builds TF-A with Trusted Board Boot: fip.bin carries certificates
+	  signed with the insecure test key. TBB BL2 refuses unsigned FIPs.
 
 	  Set this in the defconfig or a parent fragment. Turning it on in
 	  menuconfig alone does nothing: the fragments are only merged when

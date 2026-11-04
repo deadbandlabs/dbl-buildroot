@@ -46,6 +46,7 @@ SPDX-License-Identifier = "GPL-2.0-or-later"
 path = [
   "board/myd-yf135/insecure-test-key/insecure-test-key.key",
   "board/myd-yf135/insecure-test-key/insecure-test-key.crt",
+  "board/myd-yf135/insecure-test-key/insecure-tbb-key.pem",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
@@ -57,3 +58,10 @@ path = "board/myd-yf135/patches/arm-trusted-firmware/*.patch"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
 SPDX-License-Identifier = "BSD-3-Clause"
+
+# Package hash files are factual upstream checksum data, not authored code
+[[annotations]]
+path = "package/**/*.hash"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Deadband Inc."
+SPDX-License-Identifier = "CC0-1.0"
