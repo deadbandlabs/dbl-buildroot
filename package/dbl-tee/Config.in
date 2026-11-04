@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+config BR2_PACKAGE_DBL_TEE
+	bool
+	depends on BR2_TARGET_OPTEE_OS
+	select BR2_PACKAGE_OPTEE_CLIENT
+	help
+	  DBL early TAs, built into OP-TEE (no TA is loaded from the
+	  filesystem), and the dbl-tee command line client:
+	  - consent: reports whether OP-TEE is a consent build
+	  - deviceid: per-chip attestation key
