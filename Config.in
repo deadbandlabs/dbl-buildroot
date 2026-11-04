@@ -33,6 +33,13 @@ config BR2_PACKAGE_DBL_FIT_PUBKEYS
 	  only that key. Anyone can sign images for such a device.
 	  Re-sign images with a listed key using sign-rootimg.sh.
 
+config BR2_PACKAGE_DBL_CONSENT
+	bool "Consent/programmer build"
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  Run U-Boot only when the boot pins select USB DFU boot.
+	  OP-TEE leaves the SOM EEPROM write-protect pin non-secure.
+
 config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
 	string "dm-verity root hash signing certificates"
 	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT

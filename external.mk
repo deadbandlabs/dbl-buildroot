@@ -63,6 +63,11 @@ ifneq ($(BR2_PACKAGE_DBL_OTP_WRITE),y)
 OPTEE_OS_MAKE_OPTS += CFG_STM32_BSEC_WRITE=n
 endif
 
+# Consent build additions
+ifeq ($(BR2_PACKAGE_DBL_CONSENT),y)
+OPTEE_OS_MAKE_OPTS += CPPFLAGS="$(TARGET_CPPFLAGS) -DDBL_CONSENT"
+endif
+
 # No loadable TAs: in-tree TAs are signed with OP-TEE's public default key,
 # which may be loaded by root. Early TAs (built into OP-TEE) remain.
 ifneq ($(BR2_TARGET_OPTEE_OS_SERVICES),y)
@@ -90,7 +95,9 @@ DBL_UBOOT_ENV_FILES := \
 	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env.txt \
 	$(DBL_PARENT_UBOOT_ENV)
 define UBOOT_MYD_YF135_DEFAULT_ENV
-	cat $(DBL_UBOOT_ENV_FILES) > $(@D)/dbl-default-env.txt
+	cat $(DBL_UBOOT_ENV_FILES) \
+		$(if $(BR2_PACKAGE_DBL_CONSENT),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-consent.txt) \
+		> $(@D)/dbl-default-env.txt
 	if grep -q '^CONFIG_ENV_WRITEABLE_LIST=y' $(@D)/.config; then \
 		cat $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-flags.txt \
 			>> $(@D)/dbl-default-env.txt; \

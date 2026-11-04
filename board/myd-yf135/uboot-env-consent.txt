@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Consent/programmer U-Boot env (BR2_PACKAGE_DBL_CONSENT), appended after
+# uboot-env.txt and parent-u-boot.env: definitions here replace theirs.
+#
+# U-Boot continues only when the boot pins select USB DFU
+# (SYSCFG_BOOTR BOOT[2:0] = 000). Unset, unreadable, or otherwise resets.
+consent_gate=setenv dfu_pins; setexpr.l dfu_pins *0x50020000; setexpr dfu_pins ${dfu_pins} % 8; if test x${dfu_pins} = x0; then echo "consent: boot pins USB DFU"; else echo "consent: boot pins not USB DFU, resetting"; reset; fi
+preboot=run consent_gate
+bootcmd=run consent_gate; stm32prog ${boot_device} ${boot_instance}

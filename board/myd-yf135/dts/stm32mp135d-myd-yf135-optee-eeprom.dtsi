@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
+// Copyright 2026 Deadband Inc.
+/*
+ * SOM EEPROM write-protect: PA14 (high = protected, SOM pull-up).
+ *
+ * Make PA14 secure-only, preventing Linux from modifying pin state.
+ * Consent builds may write EEPROM (BR2_PACKAGE_DBL_CONSENT -> -DDBL_CONSENT)
+ */
+
+#include <dt-bindings/gpio/stm32mp_gpio.h>
+
+#ifndef DBL_CONSENT
+&gpioa {
+	st,protreg = <TZPROT(14)>;
+};
+#endif
