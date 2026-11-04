@@ -6,7 +6,7 @@
   pkgs,
   buildroot,
   cmake-compat,
-  stm32cubeprog,
+  stm32cubeprog ? null,
   certEnv ? "",
   # Downstream-injected packages added to the default shell
   extraPackages ? [ ],
@@ -67,6 +67,22 @@ let
     fi
     exec ${pkgs.gnumake}/bin/make "$@"
   '';
+
+  flashDfu = pkgs.writeShellApplication {
+    name = "flash-dfu";
+    runtimeInputs = with pkgs; [
+      dfu-util
+      gawk
+      coreutils
+    ];
+    text = builtins.readFile ../support/flash-dfu.sh;
+  };
+
+  stm32Sign = pkgs.writeShellApplication {
+    name = "stm32-sign";
+    runtimeInputs = [ pkgs.openssl ];
+    text = ''exec ${pkgs.python3}/bin/python3 ${../support/stm32-sign.py} "$@"'';
+  };
 
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
@@ -136,7 +152,6 @@ let
     # Signing/secure-boot tooling
     openssl
 
-    # dfu-util for writing rootfs.ubi to SPI-NAND via U-Boot DFU without STM32Cube
     dfu-util
   ];
 
@@ -171,6 +186,10 @@ in
         brShellArgs.packages
         ++ pkgs.lib.optional (stm32cubeprog != null) stm32cubeprog
         ++ [
+          # flash-dfu: flash a board over USB DFU (support/flash-dfu.sh)
+          flashDfu
+          # stm32-sign: sign STM32MP13 FSBL headers (support/stm32-sign.py)
+          stm32Sign
 
           # act: run GitHub Actions workflows locally (via podman rootless)
           pkgs.act

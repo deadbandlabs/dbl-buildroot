@@ -66,6 +66,9 @@ in
         "aarch64-linux"
       ],
       extraDevShellPackages ? [ ],
+      # Add STM32CubeProgrammer (x86_64-linux build only) to the default dev shell
+      # Optional: see nix/stm32cubeprog.nix
+      stm32cubeprog ? false,
     }:
     let
       lib = nixpkgs.lib;
@@ -79,8 +82,7 @@ in
             config.allowUnfreePredicate = pkg: pkg.pname == "stm32cubeprog";
           };
 
-          stm32cubeprog =
-            if pkgs.stdenv.hostPlatform.isx86_64 then pkgs.callPackage ./nix/stm32cubeprog.nix { } else null;
+          cubeprog = pkgs.callPackage ./nix/stm32cubeprog.nix { };
           cmake-compat = pkgs.callPackage ./nix/cmake-compat.nix { };
 
           # Shared CA cert env for Nix-provided wget/curl/git (no system CA bundle)
@@ -124,10 +126,10 @@ in
             inherit
               pkgs
               cmake-compat
-              stm32cubeprog
               certEnv
               ;
             inherit buildroot;
+            stm32cubeprog = if stm32cubeprog then cubeprog else null;
             extraPackages = extraDevShellPackages;
             # Share the cached toolchain with make builds in the dev/ci shells
             toolchainSdk = buildPkgs.toolchain;
@@ -142,8 +144,8 @@ in
               toolchain
               toolchain-lockfile
               ;
-          }
-          // lib.optionalAttrs (stm32cubeprog != null) { inherit stm32cubeprog; };
+            stm32cubeprog = cubeprog;
+          };
           devShells.${system} = shells;
         };
     in
