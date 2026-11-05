@@ -3,7 +3,8 @@
 /*
  * Unit keys: eight P-256 keys (slots 0-7) per chip, derived from the hardware
  * unique key (dbl_key.h). Their hashes form the STM32 ROM public key table.
- * A slot key signs FSBLs (ROM check) and TF-A trusted key certificates.
+ * A slot key signs FSBLs (ROM check) and the two TF-A root certificates
+ * (trusted key certificate, STM32MP config certificate).
  *
  * Built only into the consent OP-TEE.
  *
@@ -24,6 +25,7 @@
 #include <mbedtls/x509_crt.h>
 #include <string.h>
 #include <tee_internal_api.h>
+#include <util.h>
 
 /* Derivation input: label || slot || counter (dbl_key.h adds the counter) */
 #define DERIVE_LABEL	"dbl-unitkey-v1"
@@ -46,10 +48,16 @@
 #define OID_TFW_NVCOUNTER	"\x2b\x06\x01\x04\x01\xa0\x20\x90\x34\x01"
 #define OID_TRUSTED_WORLD_PK	"\x2b\x06\x01\x04\x01\xa0\x20\x90\x34\x82\x2e"
 #define OID_NON_TRUSTED_WORLD_PK "\x2b\x06\x01\x04\x01\xa0\x20\x90\x34\x82\x2f"
+#define OID_HW_CONFIG_HASH	"\x2b\x06\x01\x04\x01\xa0\x20\x90\x34\x81\x4b"
+#define OID_FW_CONFIG_HASH	"\x2b\x06\x01\x04\x01\xa0\x20\x90\x34\x81\x4c"
 #define TKC_CN			"CN=Trusted Key Certificate"
+/* STM32MP config certificate (TF-A plat/st/stm32mp1/stm32mp1_tbb_cert.c) */
+#define CFG_CN			"CN=STM32MP config FW Certificate"
 /* Fixed validity: TF-A doesn't check it; output stays reproducible */
-#define TKC_NOT_BEFORE		"20260101000000"
-#define TKC_NOT_AFTER		"20460101000000"
+#define CERT_NOT_BEFORE		"20260101000000"
+#define CERT_NOT_AFTER		"20460101000000"
+/* DigestInfo DER of a SHA-256 hash: 19-byte prefix + hash */
+#define DIGEST_INFO_LEN		51
 /* SubjectPublicKeyInfo DER of a P-256 key: 91 bytes */
 #define SPKI_P256_LEN		91
 
@@ -299,35 +307,33 @@ static TEE_Result world_spki(const void *pt, size_t len,
 	return ret ? TEE_ERROR_BAD_PARAMETERS : TEE_SUCCESS;
 }
 
-static TEE_Result sign_tkc(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
+/* One critical TBBR extension */
+struct tbb_ext {
+	const char *oid;
+	size_t oid_len;
+	const uint8_t *val;
+	size_t val_len;
+};
+
+/*
+ * Self-signed TBBR root certificate (cert_create layout): issuer = subject =
+ * cn, slot key, NV counter 0 plus exts, DER to out (at most DBL_CERT_MAX)
+ */
+static TEE_Result root_cert(uint32_t slot, const char *cn,
+			    const struct tbb_ext *exts, size_t n_ext,
+			    TEE_Param *out)
 {
 	/* TrustedWorldNVCounter: INTEGER 0 */
 	static const uint8_t nvctr[] = { 0x02, 0x01, 0x00 };
-	uint8_t tw[SPKI_P256_LEN] = { };
-	uint8_t ntw[SPKI_P256_LEN] = { };
 	uint8_t serial[8] = { };
 	mbedtls_x509write_cert crt;
 	mbedtls_pk_context pk;
 	uint8_t *der = NULL;
-	uint32_t slot = params[0].value.a;
 	TEE_Result res = TEE_ERROR_GENERIC;
+	size_t i = 0;
 	int len = 0;
 
-	if (pt != TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
-				  TEE_PARAM_TYPE_MEMREF_INPUT,
-				  TEE_PARAM_TYPE_MEMREF_INPUT,
-				  TEE_PARAM_TYPE_MEMREF_OUTPUT))
-		return TEE_ERROR_BAD_PARAMETERS;
-	if (slot >= DBL_UNITKEY_SLOTS)
-		return TEE_ERROR_BAD_PARAMETERS;
-	res = world_spki(params[1].memref.buffer, params[1].memref.size, tw);
-	if (!res)
-		res = world_spki(params[2].memref.buffer,
-				 params[2].memref.size, ntw);
-	if (res)
-		return res;
-
-	der = TEE_Malloc(DBL_TKC_MAX, TEE_MALLOC_FILL_ZERO);
+	der = TEE_Malloc(DBL_CERT_MAX, TEE_MALLOC_FILL_ZERO);
 	if (!der)
 		return TEE_ERROR_OUT_OF_MEMORY;
 	mbedtls_x509write_crt_init(&crt);
@@ -347,50 +353,117 @@ static TEE_Result sign_tkc(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 	serial[0] &= 0x7f;
 	serial[0] |= 0x01;
 
+	res = TEE_ERROR_GENERIC;
 	mbedtls_x509write_crt_set_version(&crt, MBEDTLS_X509_CRT_VERSION_3);
 	mbedtls_x509write_crt_set_md_alg(&crt, MBEDTLS_MD_SHA256);
 	mbedtls_x509write_crt_set_subject_key(&crt, &pk);
 	mbedtls_x509write_crt_set_issuer_key(&crt, &pk);
 	if (mbedtls_x509write_crt_set_serial_raw(&crt, serial,
 						 sizeof(serial)) ||
-	    mbedtls_x509write_crt_set_subject_name(&crt, TKC_CN) ||
-	    mbedtls_x509write_crt_set_issuer_name(&crt, TKC_CN) ||
-	    mbedtls_x509write_crt_set_validity(&crt, TKC_NOT_BEFORE,
-					       TKC_NOT_AFTER) ||
+	    mbedtls_x509write_crt_set_subject_name(&crt, cn) ||
+	    mbedtls_x509write_crt_set_issuer_name(&crt, cn) ||
+	    mbedtls_x509write_crt_set_validity(&crt, CERT_NOT_BEFORE,
+					       CERT_NOT_AFTER) ||
 	    mbedtls_x509write_crt_set_subject_key_identifier(&crt) ||
 	    mbedtls_x509write_crt_set_authority_key_identifier(&crt) ||
 	    mbedtls_x509write_crt_set_basic_constraints(&crt, 0, -1) ||
 	    mbedtls_x509write_crt_set_extension(&crt, OID_TFW_NVCOUNTER,
-		MBEDTLS_OID_SIZE(OID_TFW_NVCOUNTER), 1, nvctr, sizeof(nvctr)) ||
-	    mbedtls_x509write_crt_set_extension(&crt, OID_TRUSTED_WORLD_PK,
-		MBEDTLS_OID_SIZE(OID_TRUSTED_WORLD_PK), 1, tw, sizeof(tw)) ||
-	    mbedtls_x509write_crt_set_extension(&crt, OID_NON_TRUSTED_WORLD_PK,
-		MBEDTLS_OID_SIZE(OID_NON_TRUSTED_WORLD_PK), 1, ntw,
-		sizeof(ntw))) {
-		res = TEE_ERROR_GENERIC;
+		MBEDTLS_OID_SIZE(OID_TFW_NVCOUNTER), 1, nvctr, sizeof(nvctr)))
 		goto out;
-	}
+	for (i = 0; i < n_ext; i++)
+		if (mbedtls_x509write_crt_set_extension(&crt, exts[i].oid,
+				exts[i].oid_len, 1, exts[i].val,
+				exts[i].val_len))
+			goto out;
 
 	/* Writes at the end of the buffer, returns the length */
-	len = mbedtls_x509write_crt_der(&crt, der, DBL_TKC_MAX, dbl_key_rng,
+	len = mbedtls_x509write_crt_der(&crt, der, DBL_CERT_MAX, dbl_key_rng,
 					NULL);
-	if (len <= 0) {
-		res = TEE_ERROR_GENERIC;
+	if (len <= 0)
 		goto out;
-	}
-	if (params[3].memref.size < (size_t)len) {
-		params[3].memref.size = len;
+	if (out->memref.size < (size_t)len) {
+		out->memref.size = len;
 		res = TEE_ERROR_SHORT_BUFFER;
 		goto out;
 	}
-	memcpy(params[3].memref.buffer, der + DBL_TKC_MAX - len, len);
-	params[3].memref.size = len;
+	memcpy(out->memref.buffer, der + DBL_CERT_MAX - len, len);
+	out->memref.size = len;
 	res = TEE_SUCCESS;
 out:
 	mbedtls_x509write_crt_free(&crt);
 	mbedtls_pk_free(&pk);
 	TEE_Free(der);
 	return res;
+}
+
+static TEE_Result sign_tkc(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
+{
+	uint8_t tw[SPKI_P256_LEN] = { };
+	uint8_t ntw[SPKI_P256_LEN] = { };
+	uint32_t slot = params[0].value.a;
+	TEE_Result res = TEE_ERROR_GENERIC;
+	const struct tbb_ext exts[] = {
+		{ OID_TRUSTED_WORLD_PK, MBEDTLS_OID_SIZE(OID_TRUSTED_WORLD_PK),
+		  tw, sizeof(tw) },
+		{ OID_NON_TRUSTED_WORLD_PK,
+		  MBEDTLS_OID_SIZE(OID_NON_TRUSTED_WORLD_PK), ntw, sizeof(ntw) },
+	};
+
+	if (pt != TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+				  TEE_PARAM_TYPE_MEMREF_INPUT,
+				  TEE_PARAM_TYPE_MEMREF_INPUT,
+				  TEE_PARAM_TYPE_MEMREF_OUTPUT))
+		return TEE_ERROR_BAD_PARAMETERS;
+	if (slot >= DBL_UNITKEY_SLOTS)
+		return TEE_ERROR_BAD_PARAMETERS;
+	res = world_spki(params[1].memref.buffer, params[1].memref.size, tw);
+	if (!res)
+		res = world_spki(params[2].memref.buffer,
+				 params[2].memref.size, ntw);
+	if (res)
+		return res;
+
+	return root_cert(slot, TKC_CN, exts, ARRAY_SIZE(exts), &params[3]);
+}
+
+/* DigestInfo DER: SEQUENCE { AlgorithmIdentifier sha256, OCTET STRING hash } */
+static void digest_info(uint8_t out[DIGEST_INFO_LEN], const uint8_t hash[32])
+{
+	static const uint8_t prefix[] = {
+		0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+		0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20,
+	};
+
+	memcpy(out, prefix, sizeof(prefix));
+	memcpy(out + sizeof(prefix), hash, 32);
+}
+
+static TEE_Result sign_cfg(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
+{
+	/* hw_config isn't used (TF-A patch): cert_create writes a zero hash */
+	static const uint8_t zero[32] = { };
+	uint8_t hw[DIGEST_INFO_LEN] = { };
+	uint8_t fw[DIGEST_INFO_LEN] = { };
+	uint32_t slot = params[0].value.a;
+	const struct tbb_ext exts[] = {
+		{ OID_HW_CONFIG_HASH, MBEDTLS_OID_SIZE(OID_HW_CONFIG_HASH),
+		  hw, sizeof(hw) },
+		{ OID_FW_CONFIG_HASH, MBEDTLS_OID_SIZE(OID_FW_CONFIG_HASH),
+		  fw, sizeof(fw) },
+	};
+
+	if (pt != TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
+				  TEE_PARAM_TYPE_MEMREF_INPUT,
+				  TEE_PARAM_TYPE_MEMREF_OUTPUT,
+				  TEE_PARAM_TYPE_NONE))
+		return TEE_ERROR_BAD_PARAMETERS;
+	if (slot >= DBL_UNITKEY_SLOTS || params[1].memref.size != 32)
+		return TEE_ERROR_BAD_PARAMETERS;
+	digest_info(hw, zero);
+	/* Copy first: the client can change shared memory at any time */
+	digest_info(fw, params[1].memref.buffer);
+
+	return root_cert(slot, CFG_CN, exts, ARRAY_SIZE(exts), &params[2]);
 }
 
 TEE_Result TA_CreateEntryPoint(void)
@@ -424,6 +497,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx __unused, uint32_t cmd,
 		return sign_fsbl(param_types, params);
 	case DBL_UNITKEY_CMD_SIGN_TKC:
 		return sign_tkc(param_types, params);
+	case DBL_UNITKEY_CMD_SIGN_CFG:
+		return sign_cfg(param_types, params);
 	default:
 		return TEE_ERROR_NOT_SUPPORTED;
 	}

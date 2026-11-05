@@ -78,10 +78,19 @@
  * [in]  value[0].a  slot
  * [in]  memref[1]   trusted world public key, SEC1 uncompressed (65 bytes)
  * [in]  memref[2]   non-trusted world public key, SEC1 uncompressed
- * [out] memref[3]   DER certificate, at most DBL_TKC_MAX bytes
+ * [out] memref[3]   DER certificate, at most DBL_CERT_MAX bytes
  */
 #define DBL_UNITKEY_CMD_SIGN_TKC	2
 
-#define DBL_TKC_MAX			1024
+/*
+ * TF-A STM32MP config certificate (TBBR root, covers fw_config), self-signed
+ * by a slot key. hw_config hash is zero (not used).
+ * [in]  value[0].a  slot
+ * [in]  memref[1]   SHA-256 of fw_config (32 bytes)
+ * [out] memref[2]   DER certificate, at most DBL_CERT_MAX bytes
+ */
+#define DBL_UNITKEY_CMD_SIGN_CFG	3
+
+#define DBL_CERT_MAX			1024
 
 #endif /* DBL_TEE_H */

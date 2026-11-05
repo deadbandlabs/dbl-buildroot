@@ -14,6 +14,9 @@
  *   dbl-tee sign-tkc SLOT TW_HEX NTW_HEX OUT
  *                              TF-A trusted key certificate (DER) for the
  *                              world public keys (hex SEC1 uncompressed)
+ *   dbl-tee sign-cfg SLOT FWCFG_SHA256_HEX OUT
+ *                              TF-A STM32MP config certificate (DER) for
+ *                              the fw_config hash (sha256sum fw-config.bin)
  *
  * OP-TEE without the consent TA reports stock
  */
@@ -276,7 +279,7 @@ static int cmd_sign_tkc(const char *slot_s, const char *tw_hex,
 	const TEEC_UUID uuid = DBL_UNITKEY_UUID;
 	uint8_t tw[65] = { };
 	uint8_t ntw[65] = { };
-	uint8_t der[DBL_TKC_MAX] = { };
+	uint8_t der[DBL_CERT_MAX] = { };
 	size_t tw_len = 0;
 	size_t ntw_len = 0;
 	TEEC_Operation op = { };
@@ -315,6 +318,44 @@ static int cmd_sign_tkc(const char *slot_s, const char *tw_hex,
 	return write_file(out_path, der, op.params[3].tmpref.size);
 }
 
+static int cmd_sign_cfg(const char *slot_s, const char *hash_hex,
+			const char *out_path)
+{
+	const TEEC_UUID uuid = DBL_UNITKEY_UUID;
+	uint8_t hash[32] = { };
+	uint8_t der[DBL_CERT_MAX] = { };
+	size_t hash_len = 0;
+	TEEC_Operation op = { };
+	uint32_t origin = 0;
+	uint32_t slot = 0;
+	TEEC_Result res = TEEC_ERROR_GENERIC;
+
+	if (parse_u32(slot_s, &slot) || slot >= DBL_UNITKEY_SLOTS ||
+	    parse_hex(hash_hex, hash, sizeof(hash), &hash_len) ||
+	    hash_len != sizeof(hash)) {
+		fprintf(stderr, "dbl-tee: SLOT 0-%d, hash 32 bytes hex\n",
+			DBL_UNITKEY_SLOTS - 1);
+		return 2;
+	}
+
+	res = open_ta(&uuid);
+	if (res != TEEC_SUCCESS)
+		return fail("open unitkey TA", res);
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT,
+					 TEEC_MEMREF_TEMP_INPUT,
+					 TEEC_MEMREF_TEMP_OUTPUT, TEEC_NONE);
+	op.params[0].value.a = slot;
+	op.params[1].tmpref.buffer = hash;
+	op.params[1].tmpref.size = sizeof(hash);
+	op.params[2].tmpref.buffer = der;
+	op.params[2].tmpref.size = sizeof(der);
+	res = TEEC_InvokeCommand(&sess, DBL_UNITKEY_CMD_SIGN_CFG, &op, &origin);
+	close_ta();
+	if (res != TEEC_SUCCESS)
+		return fail("sign cfg", res);
+	return write_file(out_path, der, op.params[2].tmpref.size);
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc == 2 && !strcmp(argv[1], "mode"))
@@ -329,6 +370,8 @@ int main(int argc, char *argv[])
 		return cmd_sign_fsbl(argv[2], argv[3], argv[4], argv[5]);
 	if (argc == 6 && !strcmp(argv[1], "sign-tkc"))
 		return cmd_sign_tkc(argv[2], argv[3], argv[4], argv[5]);
+	if (argc == 5 && !strcmp(argv[1], "sign-cfg"))
+		return cmd_sign_cfg(argv[2], argv[3], argv[4]);
 
 	fprintf(stderr,
 		"usage: dbl-tee mode\n"
@@ -336,6 +379,7 @@ int main(int argc, char *argv[])
 		"       dbl-tee attest NONCE_HEX\n"
 		"       dbl-tee unitkey-pubkeys\n"
 		"       dbl-tee sign-fsbl PK_IDX IMAGE_VERSION IN OUT\n"
-		"       dbl-tee sign-tkc SLOT TW_HEX NTW_HEX OUT\n");
+		"       dbl-tee sign-tkc SLOT TW_HEX NTW_HEX OUT\n"
+		"       dbl-tee sign-cfg SLOT FWCFG_SHA256_HEX OUT\n");
 	return 2;
 }
