@@ -188,6 +188,21 @@ define ARM_TRUSTED_FIRMWARE_MYD_YF135_CHECK_TBB_KEYS
 	done
 endef
 ARM_TRUSTED_FIRMWARE_POST_BUILD_HOOKS += ARM_TRUSTED_FIRMWARE_MYD_YF135_CHECK_TBB_KEYS
+
+# Target fiptool for rauc/fip-install (unit certificate splice)
+MYD_YF135_FIPTOOL_DIR = $(ARM_TRUSTED_FIRMWARE_DIR)/tools/fiptool
+define ARM_TRUSTED_FIRMWARE_MYD_YF135_TARGET_FIPTOOL
+	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_LDFLAGS) -std=c99 \
+		-D_GNU_SOURCE -D_XOPEN_SOURCE=700 -DSTATIC=0 -DUSING_OPENSSL3=1 \
+		-DPLAT_DEF_FIP_UUID -I$(@D)/include/tools_share \
+		-I$(@D)/plat/st/common/include -I$(MYD_YF135_FIPTOOL_DIR) \
+		-o $(@D)/fiptool-target $(MYD_YF135_FIPTOOL_DIR)/fiptool.c \
+		$(MYD_YF135_FIPTOOL_DIR)/tbbr_config.c \
+		$(MYD_YF135_FIPTOOL_DIR)/plat_fiptool/st/plat_def_uuid_config.c -lcrypto
+	$(INSTALL) -D -m 0755 $(@D)/fiptool-target $(TARGET_DIR)/usr/bin/fiptool
+endef
+ARM_TRUSTED_FIRMWARE_POST_BUILD_HOOKS += ARM_TRUSTED_FIRMWARE_MYD_YF135_TARGET_FIPTOOL
+$(ARM_TRUSTED_FIRMWARE_TARGET_BUILD): | openssl
 ARM_TRUSTED_FIRMWARE_MAKE_OPTS += \
 	TRUSTED_BOARD_BOOT=1 GENERATE_COT=1 \
 	MBEDTLS_DIR=$(DBL_TF_A_MBEDTLS_DIR) \
@@ -229,7 +244,9 @@ define MYD_YF135_RAUC_CONF
 	$(INSTALL) -D -m 0644 $(MYD_YF135_RAUC_KEYRING) $(TARGET_DIR)/etc/rauc/keyring.pem
 	$(if $(BR2_PACKAGE_DBL_VERIFIED_BOOT),
 		$(INSTALL) -D -m 755 $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rauc/pre-install \
-			$(TARGET_DIR)/usr/lib/rauc/pre-install)
+			$(TARGET_DIR)/usr/lib/rauc/pre-install
+		$(INSTALL) -D -m 755 $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rauc/fip-install \
+			$(TARGET_DIR)/usr/lib/rauc/fip-install)
 endef
 TARGET_FINALIZE_HOOKS += MYD_YF135_RAUC_CONF
 target-finalize: $(MYD_YF135_RAUC_KEYRING)

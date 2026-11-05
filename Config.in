@@ -6,6 +6,11 @@ config BR2_PACKAGE_DBL_VERIFIED_BOOT
 	bool "DBL verified boot"
 	select BR2_PACKAGE_DBL_TF_A_MBEDTLS
 	select BR2_PACKAGE_DBL_TEE
+	select BR2_PACKAGE_OPENSSL
+	select BR2_PACKAGE_MTD
+	select BR2_PACKAGE_MTD_NANDDUMP
+	select BR2_PACKAGE_MTD_NANDWRITE
+	select BR2_PACKAGE_MTD_FLASH_ERASE
 	help
 	  Adds the verified-boot kernel and U-Boot config fragments on top
 	  of the image: configs/myd_yf135_verified.fragment pulls in
