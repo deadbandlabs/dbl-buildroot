@@ -51,6 +51,18 @@ config BR2_PACKAGE_DBL_CONSENT_BOOT
 	  U-Boot boots the factory rootfs instead of the USB programmer.
 	  OP-TEE includes the unitkey TA.
 
+config BR2_PACKAGE_DBL_NAND_LOCK
+	bool "Lock FSBLs and fip-factory in NAND"
+	default y
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  U-Boot write-protects fsbl1, fsbl2 and fip-factory before
+	  Linux starts (uboot-env.txt nand_lock). Only a power cycle
+	  removes the lock: USB DFU flashing after a reset without
+	  power-off fails on these partitions.
+
+	  Default on
+
 config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
 	string "dm-verity root hash signing certificates"
 	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
