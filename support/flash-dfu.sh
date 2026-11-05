@@ -20,6 +20,10 @@ dfu() {
   dfu-util -w -d 0483:df11 "$@" </dev/null
 }
 
+say() {
+  echo "flash-dfu: $*"
+}
+
 # Detach starts the next stage
 # Wait for the device to re-enumerate after dropping
 next() {
@@ -36,29 +40,37 @@ ram_row() {
   awk -F'\t' -v id="$1" '$2 == id && $5 == "none" { print $7 }' "$layout"
 }
 
+say "layout $PWD/$layout"
+say "waiting for USB DFU device 0483:df11 (DFU button held at plug-in)"
+say "FSBL -> RAM: $(ram_row 0x01)"
 dfu -a 0 -D "$(ram_row 0x01)"
 next
+say "FIP -> RAM: $(ram_row 0x03)"
 dfu -a 0 -D "$(ram_row 0x03)"
 
 # For RAM-only rows (consent.tsv): detach without waiting for DFU device
 if ! awk -F'\t' '!/^#/ && NF >= 7 && $5 != "none" { found = 1 } END { exit !found }' "$layout"; then
   dfu-util -d 0483:df11 -a 0 -e </dev/null
-  echo "flash-dfu: loaded, nothing to write"
+  say "loaded, nothing to write"
   exit 0
 fi
 next
 
+say "layout -> stm32prog"
 dfu -a 0 -D "$layout"
 next
 
 # U-Boot gives every non-RAM row an alt, numbered in id order
 # Write 'P' (Program) rows ('E' = Empty)
-parts=$(awk -F'\t' '!/^#/ && NF >= 7 && $5 != "none" { print $2, $1, $7 }' "$layout" | sort)
+parts=$(awk -F'\t' '!/^#/ && NF >= 7 && $5 != "none" { print $2, $1, $3, $6, $7 }' "$layout" | sort)
 alt=0
-while read -r _id opt bin; do
+while read -r _id opt name off bin; do
   case $opt in
-    *E*) ;;
-    *P*) dfu -a "$alt" -D "$bin" ;;
+    *E*) say "$name ($off): erase only" ;;
+    *P*)
+      say "$name ($off) <- $bin"
+      dfu -a "$alt" -D "$bin"
+      ;;
   esac
   alt=$((alt + 1))
 done <<EOF
@@ -76,4 +88,4 @@ if [ "$code" != fe ]; then
   echo "flash-dfu: device reports phase 0x$code: $msg" >&2
   exit 1
 fi
-echo "flash-dfu: done"
+say "done"
