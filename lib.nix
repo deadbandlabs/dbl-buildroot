@@ -46,6 +46,8 @@ in
       # images by default. Override with a project-specific fragment path, or
       # set to null to disable the programmer build entirely.
       programmerFragment ? "configs/myd_yf135_programmer.fragment",
+      # Consent session variant fragment
+      consentFragment ? "configs/myd_yf135_consent.fragment",
       extraExternalSrcs ? [ ],
       # Extra rootfs overlay dirs to stack onto BR2_ROOTFS_OVERLAY
       # for image content built by Nix instead of a Buildroot package
@@ -108,6 +110,7 @@ in
                 extraRootfsOverlays
                 configFragment
                 programmerFragment
+                consentFragment
                 extraSourceHashes
                 ;
               self = ./.;

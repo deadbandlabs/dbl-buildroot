@@ -32,10 +32,21 @@ next() {
 #   2. TF-A loads the FIP (id 0x03) to RAM
 #   3. U-Boot stm32prog takes the layout
 # RAM rows have IP "none"
-for id in 0x01 0x03; do
-  dfu -a 0 -D "$(awk -F'\t' -v id="$id" '$2 == id && $5 == "none" { print $7 }' "$layout")"
-  next
-done
+ram_row() {
+  awk -F'\t' -v id="$1" '$2 == id && $5 == "none" { print $7 }' "$layout"
+}
+
+dfu -a 0 -D "$(ram_row 0x01)"
+next
+dfu -a 0 -D "$(ram_row 0x03)"
+
+# For RAM-only rows (consent.tsv): detach without waiting for DFU device
+if ! awk -F'\t' '!/^#/ && NF >= 7 && $5 != "none" { found = 1 } END { exit !found }' "$layout"; then
+  dfu-util -d 0483:df11 -a 0 -e </dev/null
+  echo "flash-dfu: loaded, nothing to write"
+  exit 0
+fi
+next
 
 dfu -a 0 -D "$layout"
 next

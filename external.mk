@@ -97,6 +97,7 @@ DBL_UBOOT_ENV_FILES := \
 define UBOOT_MYD_YF135_DEFAULT_ENV
 	cat $(DBL_UBOOT_ENV_FILES) \
 		$(if $(BR2_PACKAGE_DBL_CONSENT),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-consent.txt) \
+		$(if $(BR2_PACKAGE_DBL_CONSENT_BOOT),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-consent-boot.txt) \
 		> $(@D)/dbl-default-env.txt
 	if grep -q '^CONFIG_ENV_WRITEABLE_LIST=y' $(@D)/.config; then \
 		cat $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-flags.txt \

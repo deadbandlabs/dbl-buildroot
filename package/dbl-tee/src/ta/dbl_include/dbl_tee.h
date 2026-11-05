@@ -43,4 +43,45 @@
 #define DBL_ATTEST_PREFIX		"dbl-attest-v1"
 #define DBL_ATTEST_NONCE_MAX		64
 
+/*
+ * Unit keys: eight P-256 keys (slots) for STM32 ROM public key table
+ * Consent build only (BR2_PACKAGE_DBL_CONSENT_BOOT)
+ */
+/* f0a3fe84-5a1e-4d3c-89d3-65cf6b1b0b7e */
+#define DBL_UNITKEY_UUID { 0xf0a3fe84, 0x5a1e, 0x4d3c, \
+		{ 0x89, 0xd3, 0x65, 0xcf, 0x6b, 0x1b, 0x0b, 0x7e } }
+
+#define DBL_UNITKEY_SLOTS		8
+
+/*
+ * Public keys X || Y of all slots, in slot order
+ * [out] memref[0]  DBL_UNITKEY_SLOTS * 64 bytes
+ */
+#define DBL_UNITKEY_CMD_GET_PUBKEYS	0
+
+/*
+ * Signs an FSBL for the ROM: STM32 header v2 with the authentication
+ * extension (pk_idx, the slot's public key, hashes of all slot keys).
+ * Payload, entry, load address and binary type come from the input image.
+ * [in]  value[0].a  pk_idx (slot)
+ * [in]  value[0].b  image_version
+ * [in]  memref[1]   STM32 image (header v2)
+ * [out] memref[2]   signed image, DBL_FSBL_HEADER_SIZE + padded payload
+ */
+#define DBL_UNITKEY_CMD_SIGN_FSBL	1
+
+#define DBL_FSBL_HEADER_SIZE		0x200
+#define DBL_FSBL_MAX			(512 * 1024)
+
+/*
+ * TF-A Trusted Key Certificate (TBBR), self-signed by a slot key
+ * [in]  value[0].a  slot
+ * [in]  memref[1]   trusted world public key, SEC1 uncompressed (65 bytes)
+ * [in]  memref[2]   non-trusted world public key, SEC1 uncompressed
+ * [out] memref[3]   DER certificate, at most DBL_TKC_MAX bytes
+ */
+#define DBL_UNITKEY_CMD_SIGN_TKC	2
+
+#define DBL_TKC_MAX			1024
+
 #endif /* DBL_TEE_H */

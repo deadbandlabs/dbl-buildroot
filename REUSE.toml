@@ -29,6 +29,7 @@ path = [
   "configs/myd_yf135_debug.fragment",
   "configs/myd_yf135_external_toolchain.fragment",
   "configs/myd_yf135_programmer.fragment",
+  "configs/myd_yf135_consent.fragment",
   "configs/myd_yf135_verified.fragment",
   "board/myd-yf135/linux.config",
   "board/myd-yf135/rootfs-overlay/boot/extlinux/extlinux.conf",

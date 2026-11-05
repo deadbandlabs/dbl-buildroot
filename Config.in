@@ -44,6 +44,13 @@ config BR2_PACKAGE_DBL_CONSENT
 	  OP-TEE leaves the SOM EEPROM write-protect pin non-secure.
 	  The consent TA reports a consent build.
 
+config BR2_PACKAGE_DBL_CONSENT_BOOT
+	bool "Consent session build"
+	depends on BR2_PACKAGE_DBL_CONSENT
+	help
+	  U-Boot boots the factory rootfs instead of the USB programmer.
+	  OP-TEE includes the unitkey TA.
+
 config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
 	string "dm-verity root hash signing certificates"
 	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT

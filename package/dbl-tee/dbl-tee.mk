@@ -24,6 +24,10 @@ endef
 
 ifeq ($(BR2_PACKAGE_DBL_TEE),y)
 DBL_TEE_TAS = dbl_consent dbl_deviceid
+# Unit keys only exist in the consent session OP-TEE
+ifeq ($(BR2_PACKAGE_DBL_CONSENT_BOOT),y)
+DBL_TEE_TAS += dbl_unitkey
+endif
 DBL_TEE_TA_DIR = $(DBL_TEE_PKGDIR)/src/ta
 define OPTEE_OS_DBL_TEE_COPY_TAS
 	cp -r $(DBL_TEE_TA_DIR)/dbl_include $(addprefix $(DBL_TEE_TA_DIR)/,$(DBL_TEE_TAS)) $(@D)/ta/

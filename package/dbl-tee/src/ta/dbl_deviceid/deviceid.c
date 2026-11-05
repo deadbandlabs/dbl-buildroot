@@ -8,88 +8,20 @@
  * Requires hardware SAES. On STM32MP13xD OP-TEE derives from an all-zero HUK:
  * every such device has the same, publicly computable key.
  *
- * Changing DERIVE_LABEL, the UUID or the derivation changes every device's key.
+ * Changing DERIVE_LABEL or the UUID changes every device's key (dbl_key.h).
  */
+#include <dbl_key.h>
 #include <dbl_tee.h>
-#include <mbedtls/ecdsa.h>
-#include <mbedtls/ecp.h>
 #include <mbedtls/sha256.h>
-#include <pta_system.h>
 #include <string.h>
-#include <string_ext.h>
 #include <tee_internal_api.h>
 
 #define DERIVE_LABEL	"dbl-deviceid-v1"
-#define SCALAR_SIZE	32
-/* Retries for a derived value outside [1, n-1] (probability ~2^-32 each) */
-#define MAX_TRIES	8
 
-static int rng(void *ctx __unused, unsigned char *buf, size_t len)
-{
-	TEE_GenerateRandom(buf, len);
-	return 0;
-}
-
-static TEE_Result derive(uint8_t counter, uint8_t *out)
-{
-	static const TEE_UUID system_uuid = PTA_SYSTEM_UUID;
-	uint8_t extra[sizeof(DERIVE_LABEL)] = DERIVE_LABEL;
-	TEE_TASessionHandle sess = TEE_HANDLE_NULL;
-	TEE_Param params[TEE_NUM_PARAMS] = { };
-	uint32_t pt = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
-				      TEE_PARAM_TYPE_MEMREF_OUTPUT,
-				      TEE_PARAM_TYPE_NONE,
-				      TEE_PARAM_TYPE_NONE);
-	uint32_t origin = 0;
-	TEE_Result res = TEE_ERROR_GENERIC;
-
-	/* Label's NUL is replaced by the counter */
-	extra[sizeof(extra) - 1] = counter;
-
-	res = TEE_OpenTASession(&system_uuid, TEE_TIMEOUT_INFINITE, 0, NULL,
-				&sess, &origin);
-	if (res)
-		return res;
-
-	params[0].memref.buffer = extra;
-	params[0].memref.size = sizeof(extra);
-	params[1].memref.buffer = out;
-	params[1].memref.size = SCALAR_SIZE;
-	res = TEE_InvokeTACommand(sess, TEE_TIMEOUT_INFINITE,
-				  PTA_SYSTEM_DERIVE_TA_UNIQUE_KEY, pt, params,
-				  &origin);
-	TEE_CloseTASession(sess);
-	return res;
-}
-
-/* Loads the DeviceID private key and computes its public key */
 static TEE_Result load_key(mbedtls_ecp_keypair *kp)
 {
-	uint8_t d[SCALAR_SIZE] = { };
-	TEE_Result res = TEE_ERROR_GENERIC;
-	int ret = 0;
-	uint8_t i = 0;
-
-	for (i = 0; i < MAX_TRIES; i++) {
-		res = derive(i, d);
-		if (res)
-			goto out;
-		/* Rejects d = 0 and d >= n */
-		ret = mbedtls_ecp_read_key(MBEDTLS_ECP_DP_SECP256R1, kp, d,
-					   sizeof(d));
-		if (ret != MBEDTLS_ERR_ECP_INVALID_KEY)
-			break;
-	}
-	if (i == MAX_TRIES || ret) {
-		res = TEE_ERROR_GENERIC;
-		goto out;
-	}
-
-	if (mbedtls_ecp_keypair_calc_public(kp, rng, NULL))
-		res = TEE_ERROR_GENERIC;
-out:
-	memzero_explicit(d, sizeof(d));
-	return res;
+	return dbl_key_load((const uint8_t *)DERIVE_LABEL,
+			    sizeof(DERIVE_LABEL) - 1, kp);
 }
 
 static TEE_Result get_pubkey(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
@@ -133,8 +65,6 @@ static TEE_Result attest(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 	uint8_t hash[32] = { };
 	uint8_t sig[DBL_DEVICEID_SIG_SIZE] = { };
 	mbedtls_ecp_keypair kp;
-	mbedtls_mpi r;
-	mbedtls_mpi s;
 	TEE_Result res = TEE_ERROR_GENERIC;
 
 	if (pt != TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
@@ -157,24 +87,13 @@ static TEE_Result attest(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 		return TEE_ERROR_GENERIC;
 
 	mbedtls_ecp_keypair_init(&kp);
-	mbedtls_mpi_init(&r);
-	mbedtls_mpi_init(&s);
 	res = load_key(&kp);
-	if (res)
-		goto out;
-	if (mbedtls_ecdsa_sign(&kp.MBEDTLS_PRIVATE(grp), &r, &s,
-			       &kp.MBEDTLS_PRIVATE(d), hash, sizeof(hash),
-			       rng, NULL) ||
-	    mbedtls_mpi_write_binary(&r, sig, 32) ||
-	    mbedtls_mpi_write_binary(&s, sig + 32, 32)) {
-		res = TEE_ERROR_GENERIC;
-		goto out;
+	if (!res)
+		res = dbl_key_sign(&kp, hash, sig);
+	if (!res) {
+		memcpy(params[1].memref.buffer, sig, sizeof(sig));
+		params[1].memref.size = sizeof(sig);
 	}
-	memcpy(params[1].memref.buffer, sig, sizeof(sig));
-	params[1].memref.size = sizeof(sig);
-out:
-	mbedtls_mpi_free(&r);
-	mbedtls_mpi_free(&s);
 	mbedtls_ecp_keypair_free(&kp);
 	return res;
 }

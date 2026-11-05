@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# Consent session (dbl.consent=1, set by the consent U-Boot):
+# Writable /var set to tmpfs instead of data volume, preventing
+# arbitrary user data from affecting a consent session
+
+[Unit]
+Description=Consent Boot volatile /var
+DefaultDependencies=no
+ConditionKernelCommandLine=dbl.consent=1
+Before=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/mkdir -p /run/consent-var/upper /run/consent-var/work
+ExecStart=/bin/mount -t overlay -o noexec,nosuid,nodev,lowerdir=/var,upperdir=/run/consent-var/upper,workdir=/run/consent-var/work overlay /var
+
+[Install]
+WantedBy=local-fs.target

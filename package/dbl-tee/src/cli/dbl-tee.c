@@ -7,9 +7,18 @@
  *   dbl-tee deviceid-pubkey    DeviceID public key, hex SEC1 uncompressed
  *   dbl-tee attest NONCE_HEX   hex r||s over SHA-256(prefix || nonce)
  *
+ * Consent session unitkey TA:
+ *   dbl-tee unitkey-pubkeys    slot public keys, one hex X||Y per line
+ *   dbl-tee sign-fsbl PK_IDX IMAGE_VERSION IN OUT
+ *                              STM32 image signed with slot PK_IDX
+ *   dbl-tee sign-tkc SLOT TW_HEX NTW_HEX OUT
+ *                              TF-A trusted key certificate (DER) for the
+ *                              world public keys (hex SEC1 uncompressed)
+ *
  * OP-TEE without the consent TA reports stock
  */
 #include <dbl_tee.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -150,6 +159,162 @@ static int cmd_attest(const char *nonce_hex)
 	return 0;
 }
 
+static int parse_u32(const char *s, uint32_t *v)
+{
+	char *end = NULL;
+	unsigned long n = strtoul(s, &end, 0);
+
+	if (!*s || *end || n > UINT32_MAX)
+		return -1;
+	*v = n;
+	return 0;
+}
+
+static int write_file(const char *path, const void *buf, size_t len)
+{
+	FILE *f = fopen(path, "wb");
+
+	if (!f || fwrite(buf, 1, len, f) != len || fclose(f)) {
+		perror(path);
+		return 1;
+	}
+	return 0;
+}
+
+static int cmd_unitkey_pubkeys(void)
+{
+	const TEEC_UUID uuid = DBL_UNITKEY_UUID;
+	uint8_t xy[DBL_UNITKEY_SLOTS * 64] = { };
+	TEEC_Operation op = { };
+	uint32_t origin = 0;
+	TEEC_Result res = open_ta(&uuid);
+
+	if (res != TEEC_SUCCESS)
+		return fail("open unitkey TA", res);
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_TEMP_OUTPUT, TEEC_NONE,
+					 TEEC_NONE, TEEC_NONE);
+	op.params[0].tmpref.buffer = xy;
+	op.params[0].tmpref.size = sizeof(xy);
+	res = TEEC_InvokeCommand(&sess, DBL_UNITKEY_CMD_GET_PUBKEYS, &op,
+				 &origin);
+	close_ta();
+	if (res != TEEC_SUCCESS)
+		return fail("get pubkeys", res);
+	for (int i = 0; i < DBL_UNITKEY_SLOTS; i++)
+		print_hex(xy + 64 * i, 64);
+	return 0;
+}
+
+static int cmd_sign_fsbl(const char *idx_s, const char *ver_s,
+			 const char *in_path, const char *out_path)
+{
+	const TEEC_UUID uuid = DBL_UNITKEY_UUID;
+	size_t out_max = DBL_FSBL_MAX + 32;
+	uint8_t *in = malloc(DBL_FSBL_MAX + 1);
+	uint8_t *out = malloc(out_max);
+	TEEC_Operation op = { };
+	uint32_t origin = 0;
+	uint32_t idx = 0;
+	uint32_t ver = 0;
+	size_t in_len = 0;
+	TEEC_Result res = TEEC_ERROR_GENERIC;
+	FILE *f = NULL;
+	int ret = 1;
+
+	if (!in || !out)
+		goto out;
+	if (parse_u32(idx_s, &idx) || idx >= DBL_UNITKEY_SLOTS ||
+	    parse_u32(ver_s, &ver)) {
+		fprintf(stderr, "dbl-tee: PK_IDX 0-%d, IMAGE_VERSION u32\n",
+			DBL_UNITKEY_SLOTS - 1);
+		ret = 2;
+		goto out;
+	}
+	f = fopen(in_path, "rb");
+	if (!f) {
+		perror(in_path);
+		goto out;
+	}
+	in_len = fread(in, 1, DBL_FSBL_MAX + 1, f);
+	fclose(f);
+	if (in_len > DBL_FSBL_MAX) {
+		fprintf(stderr, "dbl-tee: %s larger than %d bytes\n", in_path,
+			DBL_FSBL_MAX);
+		goto out;
+	}
+
+	res = open_ta(&uuid);
+	if (res != TEEC_SUCCESS) {
+		ret = fail("open unitkey TA", res);
+		goto out;
+	}
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT,
+					 TEEC_MEMREF_TEMP_INPUT,
+					 TEEC_MEMREF_TEMP_OUTPUT, TEEC_NONE);
+	op.params[0].value.a = idx;
+	op.params[0].value.b = ver;
+	op.params[1].tmpref.buffer = in;
+	op.params[1].tmpref.size = in_len;
+	op.params[2].tmpref.buffer = out;
+	op.params[2].tmpref.size = out_max;
+	res = TEEC_InvokeCommand(&sess, DBL_UNITKEY_CMD_SIGN_FSBL, &op,
+				 &origin);
+	close_ta();
+	if (res != TEEC_SUCCESS)
+		ret = fail("sign fsbl", res);
+	else
+		ret = write_file(out_path, out, op.params[2].tmpref.size);
+out:
+	free(in);
+	free(out);
+	return ret;
+}
+
+static int cmd_sign_tkc(const char *slot_s, const char *tw_hex,
+			const char *ntw_hex, const char *out_path)
+{
+	const TEEC_UUID uuid = DBL_UNITKEY_UUID;
+	uint8_t tw[65] = { };
+	uint8_t ntw[65] = { };
+	uint8_t der[DBL_TKC_MAX] = { };
+	size_t tw_len = 0;
+	size_t ntw_len = 0;
+	TEEC_Operation op = { };
+	uint32_t origin = 0;
+	uint32_t slot = 0;
+	TEEC_Result res = TEEC_ERROR_GENERIC;
+
+	if (parse_u32(slot_s, &slot) || slot >= DBL_UNITKEY_SLOTS ||
+	    parse_hex(tw_hex, tw, sizeof(tw), &tw_len) ||
+	    tw_len != sizeof(tw) ||
+	    parse_hex(ntw_hex, ntw, sizeof(ntw), &ntw_len) ||
+	    ntw_len != sizeof(ntw)) {
+		fprintf(stderr, "dbl-tee: SLOT 0-%d, keys 65 bytes hex (04 || X || Y)\n",
+			DBL_UNITKEY_SLOTS - 1);
+		return 2;
+	}
+
+	res = open_ta(&uuid);
+	if (res != TEEC_SUCCESS)
+		return fail("open unitkey TA", res);
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT,
+					 TEEC_MEMREF_TEMP_INPUT,
+					 TEEC_MEMREF_TEMP_INPUT,
+					 TEEC_MEMREF_TEMP_OUTPUT);
+	op.params[0].value.a = slot;
+	op.params[1].tmpref.buffer = tw;
+	op.params[1].tmpref.size = sizeof(tw);
+	op.params[2].tmpref.buffer = ntw;
+	op.params[2].tmpref.size = sizeof(ntw);
+	op.params[3].tmpref.buffer = der;
+	op.params[3].tmpref.size = sizeof(der);
+	res = TEEC_InvokeCommand(&sess, DBL_UNITKEY_CMD_SIGN_TKC, &op, &origin);
+	close_ta();
+	if (res != TEEC_SUCCESS)
+		return fail("sign tkc", res);
+	return write_file(out_path, der, op.params[3].tmpref.size);
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc == 2 && !strcmp(argv[1], "mode"))
@@ -158,10 +323,19 @@ int main(int argc, char *argv[])
 		return cmd_pubkey();
 	if (argc == 3 && !strcmp(argv[1], "attest"))
 		return cmd_attest(argv[2]);
+	if (argc == 2 && !strcmp(argv[1], "unitkey-pubkeys"))
+		return cmd_unitkey_pubkeys();
+	if (argc == 6 && !strcmp(argv[1], "sign-fsbl"))
+		return cmd_sign_fsbl(argv[2], argv[3], argv[4], argv[5]);
+	if (argc == 6 && !strcmp(argv[1], "sign-tkc"))
+		return cmd_sign_tkc(argv[2], argv[3], argv[4], argv[5]);
 
 	fprintf(stderr,
 		"usage: dbl-tee mode\n"
 		"       dbl-tee deviceid-pubkey\n"
-		"       dbl-tee attest NONCE_HEX\n");
+		"       dbl-tee attest NONCE_HEX\n"
+		"       dbl-tee unitkey-pubkeys\n"
+		"       dbl-tee sign-fsbl PK_IDX IMAGE_VERSION IN OUT\n"
+		"       dbl-tee sign-tkc SLOT TW_HEX NTW_HEX OUT\n");
 	return 2;
 }
