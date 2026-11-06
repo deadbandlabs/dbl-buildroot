@@ -45,7 +45,7 @@ endif
 # dbl-bootid EEPROM layout (board/myd-yf135/dbl-bootid.toml)
 MYD_YF135_BOOTID = $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dbl-bootid
 MYD_YF135_BOOTID_DTSI = $(HOST_DIR)/bin/python3 \
-	$(BR2_EXTERNAL_MYD_YF135_PATH)/support/dbl-bootid.py dtsi $(MYD_YF135_BOOTID).toml
+	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dbl-bootid.py dtsi $(MYD_YF135_BOOTID).toml
 LINUX_DEPENDENCIES += host-python3
 UBOOT_DEPENDENCIES += host-python3
 

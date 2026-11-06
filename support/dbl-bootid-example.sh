@@ -43,7 +43,7 @@ openssl req -x509 -new -key "$key" -sha256 -days 36500 -outform DER \
   -subj "/CN=dbl-INSECURE-test-deviceid/serialNumber=TEST0000" \
   -out "$tmp/deviceid.der"
 
-python3 "$repo/support/dbl-bootid.py" pack "$repo/board/myd-yf135/dbl-bootid.toml" \
+python3 "$repo/board/myd-yf135/dbl-bootid.py" pack "$repo/board/myd-yf135/dbl-bootid.toml" \
   "$repo/board/myd-yf135/dbl-bootid-example.bin" \
   fsbl="$tmp/fsbl-v2.stm32" \
   fsbl-prev="$tmp/fsbl-v1.stm32" \

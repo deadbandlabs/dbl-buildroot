@@ -68,7 +68,7 @@ def object_len(fmt, b, version):
 
 def dtsi(layout):
     lay = load(layout)
-    print("/* Generated from dbl-bootid.toml by support/dbl-bootid.py */")
+    print("/* Generated from dbl-bootid.toml by dbl-bootid.py */")
     print("nvmem-layout {")
     print('\tcompatible = "fixed-layout";')
     print("\t#address-cells = <1>;")
