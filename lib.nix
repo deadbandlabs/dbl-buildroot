@@ -148,6 +148,12 @@ in
               toolchain-lockfile
               ;
             stm32cubeprog = cubeprog;
+            # dbl-bootid EEPROM layout + example image for host tools
+            dbl-bootid-layout = pkgs.runCommand "dbl-bootid-layout" { } ''
+              mkdir -p $out
+              cp ${./board/myd-yf135/dbl-bootid.toml} $out/dbl-bootid.toml
+              cp ${./board/myd-yf135/dbl-bootid-example.bin} $out/dbl-bootid-example.bin
+            '';
           };
           devShells.${system} = shells;
         };

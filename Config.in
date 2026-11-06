@@ -11,6 +11,8 @@ config BR2_PACKAGE_DBL_VERIFIED_BOOT
 	select BR2_PACKAGE_MTD_NANDDUMP
 	select BR2_PACKAGE_MTD_NANDWRITE
 	select BR2_PACKAGE_MTD_FLASH_ERASE
+	select BR2_PACKAGE_LIBGPIOD2
+	select BR2_PACKAGE_LIBGPIOD2_TOOLS
 	help
 	  Adds the verified-boot kernel and U-Boot config fragments on top
 	  of the image: configs/myd_yf135_verified.fragment pulls in

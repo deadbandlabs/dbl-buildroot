@@ -231,6 +231,7 @@ in
       gnutar
       mdformat
       commitizen
+      python3
     ];
 
     shellHook = ''

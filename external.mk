@@ -42,12 +42,25 @@ ifneq ($(word 2,$(DBL_PARENT_TF_A_FW_CONFIG_DTSI)),)
 $(error multiple externals provide parent-tf-a-fw-config.dtsi: $(DBL_PARENT_TF_A_FW_CONFIG_DTSI))
 endif
 
+# dbl-bootid EEPROM layout (board/myd-yf135/dbl-bootid.toml)
+MYD_YF135_BOOTID = $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dbl-bootid
+MYD_YF135_BOOTID_DTSI = $(HOST_DIR)/bin/python3 \
+	$(BR2_EXTERNAL_MYD_YF135_PATH)/support/dbl-bootid.py dtsi $(MYD_YF135_BOOTID).toml
+LINUX_DEPENDENCIES += host-python3
+UBOOT_DEPENDENCIES += host-python3
+
+define MYD_YF135_BOOTID_INSTALL_IMAGES
+	$(INSTALL) -D -m 0644 -t $(BINARIES_DIR) $(MYD_YF135_BOOTID).toml $(MYD_YF135_BOOTID)-example.bin
+endef
+TARGET_FINALIZE_HOOKS += MYD_YF135_BOOTID_INSTALL_IMAGES
+
 # U-Boot compiles the base Linux dts as its control DT: provide the empty
 # parent-linux.dtsi stub (Linux-only peripherals) and the parent's U-Boot file.
 # Runs with the build step only: after DT edits, `make uboot-rebuild`.
 define UBOOT_MYD_YF135_COPY_DTSI
 	cp $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-linux.dtsi \
 		$(@D)/arch/arm/dts/parent-linux.dtsi
+	$(MYD_YF135_BOOTID_DTSI) > $(@D)/arch/arm/dts/dbl-bootid-layout.dtsi
 	cp $(or $(DBL_PARENT_UBOOT_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-u-boot.dtsi) \
 		$(@D)/arch/arm/dts/parent-u-boot.dtsi
 endef
@@ -119,6 +132,7 @@ define LINUX_MYD_YF135_COPY_DTS
 		$(@D)/arch/arm/boot/dts/st/stm32mp135d-myd-yf135.dts
 	cp $(or $(DBL_PARENT_LINUX_DTSI),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dts/parent-linux.dtsi) \
 		$(@D)/arch/arm/boot/dts/st/parent-linux.dtsi
+	$(MYD_YF135_BOOTID_DTSI) > $(@D)/arch/arm/boot/dts/st/dbl-bootid-layout.dtsi
 	grep -q 'stm32mp135d-myd-yf135\.dtb' $(@D)/arch/arm/boot/dts/st/Makefile || \
 		printf '\ndtb-$$(CONFIG_ARCH_STM32) += stm32mp135d-myd-yf135.dtb\n' \
 			>> $(@D)/arch/arm/boot/dts/st/Makefile
