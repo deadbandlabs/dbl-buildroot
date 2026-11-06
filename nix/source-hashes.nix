@@ -15,4 +15,7 @@
   # TF-A, GitHub archive of lts-v2.14.10 (c50e04eba2ca)
   "arm-trusted-firmware-lts-v2.14.10.tar.gz" =
     "27ea020f37b253f2638fdeb1f16ce7f59bfecf955777fee2feeebe423bd7a929";
+
+  # mbedTLS for TF-A TBB (package/dbl-tf-a-mbedtls/dbl-tf-a-mbedtls.hash)
+  "mbedtls-3.6.7.tar.bz2" = "a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6";
 }

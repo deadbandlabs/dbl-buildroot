@@ -15,6 +15,8 @@
 #
 # Provides: STM32_Programmer_CLI  STM32_SigningTool_CLI  STM32_KeyGen_CLI
 #
+# Optional x86_64 only alternative to provided flash-dfu (dfu-util) and stm32-sign tools
+#
 # USB access without sudo requires the bundled udev rules.
 #
 # Arch (or most systemd/udev distros):

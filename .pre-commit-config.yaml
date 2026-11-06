@@ -10,6 +10,14 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
+      - id: dbl-bootid-example
+        name: dbl-bootid example matches layout
+        entry: support/pre-commit/check-dbl-bootid-example.sh
+        language: system
+        files: ^board/myd-yf135/dbl-bootid.*$
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: shellcheck
         name: shellcheck
         entry: shellcheck -x

@@ -285,4 +285,5 @@
 	status = "okay";
 };
 
+#include "stm32mp135d-myd-yf135-optee-eeprom.dtsi"
 #include "parent-optee.dtsi"

@@ -44,6 +44,9 @@
   # Optional programmer (USB DFU loader TF-A + FIP) defconfig fragment.
   # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
   programmerFragment ? null,
+  # Optional consent session (USB DFU loaded, boots factory rootfs) fragment.
+  # Built only with programmerFragment; bundled as fip-consent.bin + consent.tsv.
+  consentFragment ? null,
   # Lockfile path used for source prefetch + lock generation
   # Parent repos override this via lib.nix's `lockfile` param
   # (paths resolve relative to the parent repo root)
@@ -179,6 +182,32 @@ let
   baseDefconfig = self + "/configs/${defconfigName}";
   verifiedFragment = self + "/configs/myd_yf135_verified.fragment";
 
+  # USB DFU loader variant (programmer, consent): TF-A + FIP only, in output-<name>
+  buildLoaderVariant =
+    name: fragment:
+    let
+      deltas = [
+        verifiedFragment
+      ]
+      ++ (pkgs.lib.optional (configFragment != null) configFragment)
+      ++ [
+        (buildExternalSrc + "/${fragment}")
+        externalToolchainFragment
+      ];
+    in
+    mergeFragments "${name}_defconfig" baseDefconfig deltas
+    + ''
+      ${makeFHSEnv}/bin/make-with-fhs-env \
+        O=$PWD/output-${name} \
+        BR2_EXTERNAL=${brExternalValue} \
+        BR2_DEFCONFIG=$PWD/${name}_defconfig defconfig
+      ${makeFHSEnv}/bin/make-with-fhs-env \
+        O=$PWD/output-${name} \
+        BR2_JLEVEL=$NIX_BUILD_CORES \
+        BR2_EXTERNAL=${brExternalValue} \
+        arm-trusted-firmware
+    '';
+
   # defconfig passed to mkBuildroot for lock generation, in mkBuildroot's
   # string form: `defconfig BR2_DEFCONFIG=<path>`
   # Uses toolchainFragment to avoid BR2_TOOLCHAIN_EXTERNAL_PATH forcing an SDK build to derive
@@ -279,30 +308,8 @@ let
         sdk
     ''
     + pkgs.lib.optionalString (programmerFragment != null) (
-      # Programmer merge chain: base + parent CONFIG_FRAGMENT + programmer fragment
-      let
-        progFragmentPath = buildExternalSrc + "/${programmerFragment}";
-        deltas = [
-          verifiedFragment
-        ]
-        ++ (pkgs.lib.optional (configFragment != null) configFragment)
-        ++ [
-          progFragmentPath
-          externalToolchainFragment
-        ];
-      in
-      mergeFragments "programmer_defconfig" baseDefconfig deltas
-      + ''
-        ${makeFHSEnv}/bin/make-with-fhs-env \
-          O=$PWD/output-programmer \
-          BR2_EXTERNAL=${brExternalValue} \
-          BR2_DEFCONFIG=$PWD/programmer_defconfig defconfig
-        ${makeFHSEnv}/bin/make-with-fhs-env \
-          O=$PWD/output-programmer \
-          BR2_JLEVEL=$NIX_BUILD_CORES \
-          BR2_EXTERNAL=${brExternalValue} \
-          arm-trusted-firmware
-      ''
+      buildLoaderVariant "programmer" programmerFragment
+      + pkgs.lib.optionalString (consentFragment != null) (buildLoaderVariant "consent" consentFragment)
     );
 
     installPhase = ''
@@ -319,7 +326,8 @@ let
           ${pkgs.bash}/bin/bash ${bundleImagesScript} \
             $out/images \
             $PWD/output-programmer/images \
-            ${buildExternalSrc}/${flashLayoutPath}
+            ${buildExternalSrc}/${flashLayoutPath} \
+            ${pkgs.lib.optionalString (consentFragment != null) "$PWD/output-consent/images"}
         ''
       else
         ''

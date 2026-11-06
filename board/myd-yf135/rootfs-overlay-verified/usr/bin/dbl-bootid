@@ -1,0 +1,93 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# dbl-bootid: access per-unit verified boot data
+#
+# Usage:
+#   dbl-bootid dump OUT          read full EEPROM (4 KiB)
+#   dbl-bootid read SLOT OUT     read slot with 0xff padding
+#   dbl-bootid write SLOT IN     write slot**
+#   dbl-bootid erase SLOT        erase slot**
+#
+# ** The EEPROM accepts writes only while its write-protect (PA14) is low.
+#    OP-TEE blocks access to PA14 except in a DBL_VERIFIED_BOOT consent session,
+#    else gpioset fails and EEPROM writes are dropped.
+
+set -eu
+
+usage() {
+  sed -n '7,11s/^# \{0,1\}//p' "$0" >&2
+  exit 2
+}
+
+fail() {
+  echo "dbl-bootid: $*" >&2
+  exit 1
+}
+
+for dev in /sys/bus/nvmem/devices/dbl-bootid*; do break; done
+[ -e "$dev/nvmem" ] || fail "no EEPROM device"
+
+# Set offset and size of slot $1 from nvmem cell "<slot>@<hex offset>,0"
+slot() {
+  for cell in "$dev/cells/$1@"*; do break; done
+  [ -e "$cell" ] || fail "unknown slot $1"
+  at=${cell##*@}
+  off=$((0x${at%,*}))
+  size=$(wc -c <"$cell")
+}
+
+gpioset_pid=
+
+wp_off() {
+  gpioset -c gpiochip0 14=0 &
+  gpioset_pid=$!
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    gpioinfo -c gpiochip0 14 | grep -q output && return 0
+    kill -0 "$gpioset_pid" 2>/dev/null || break
+    sleep 0.01
+  done
+  gpioset_pid=
+  fail "cannot set PA14"
+}
+
+# gpioget ensures PA14 is input (SOM pull-up) if gpioset is killed
+wp_on() {
+  [ -n "$gpioset_pid" ] || return 0
+  kill "$gpioset_pid" 2>/dev/null || true
+  wait "$gpioset_pid" 2>/dev/null || true
+  gpioset_pid=
+  gpioget -c gpiochip0 14 >/dev/null
+}
+
+case ${1:-} in
+  dump)
+    [ $# -eq 2 ] || usage
+    cat "$dev/nvmem" >"$2"
+    ;;
+  read)
+    [ $# -eq 3 ] || usage
+    slot "$2"
+    cat "$cell" >"$3"
+    ;;
+  write | erase)
+    if [ "$1" = write ]; then [ $# -eq 3 ] || usage; else [ $# -eq 2 ] || usage; fi
+    slot "$2"
+    data=$(mktemp)
+    trap 'wp_on; rm -f "$data"' EXIT
+    # Slot image = file contents, then pad 0xff to the slot size
+    head -c "$size" /dev/zero | tr '\0' '\377' >"$data"
+    if [ "$1" = write ]; then
+      [ "$(wc -c <"$3")" -le "$size" ] || fail "$3 is larger than slot $2 ($size bytes)"
+      dd if="$3" of="$data" conv=notrunc 2>/dev/null
+    fi
+    wp_off
+    dd if="$data" of="$dev/nvmem" bs="$size" count=1 seek="$off" oflag=seek_bytes conv=notrunc 2>/dev/null
+    wp_on
+    dd if="$dev/nvmem" bs="$size" count=1 skip="$off" iflag=skip_bytes 2>/dev/null | cmp -s - "$data" ||
+      fail "slot $2 readback failed (write-protect enabled?)"
+    ;;
+  *)
+    usage
+    ;;
+esac

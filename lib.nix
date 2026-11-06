@@ -46,6 +46,8 @@ in
       # images by default. Override with a project-specific fragment path, or
       # set to null to disable the programmer build entirely.
       programmerFragment ? "configs/myd_yf135_programmer.fragment",
+      # Consent session variant fragment
+      consentFragment ? "configs/myd_yf135_consent.fragment",
       extraExternalSrcs ? [ ],
       # Extra rootfs overlay dirs to stack onto BR2_ROOTFS_OVERLAY
       # for image content built by Nix instead of a Buildroot package
@@ -66,6 +68,9 @@ in
         "aarch64-linux"
       ],
       extraDevShellPackages ? [ ],
+      # Add STM32CubeProgrammer (x86_64-linux build only) to the default dev shell
+      # Optional: see nix/stm32cubeprog.nix
+      stm32cubeprog ? false,
     }:
     let
       lib = nixpkgs.lib;
@@ -79,8 +84,7 @@ in
             config.allowUnfreePredicate = pkg: pkg.pname == "stm32cubeprog";
           };
 
-          stm32cubeprog =
-            if pkgs.stdenv.hostPlatform.isx86_64 then pkgs.callPackage ./nix/stm32cubeprog.nix { } else null;
+          cubeprog = pkgs.callPackage ./nix/stm32cubeprog.nix { };
           cmake-compat = pkgs.callPackage ./nix/cmake-compat.nix { };
 
           # Shared CA cert env for Nix-provided wget/curl/git (no system CA bundle)
@@ -106,6 +110,7 @@ in
                 extraRootfsOverlays
                 configFragment
                 programmerFragment
+                consentFragment
                 extraSourceHashes
                 ;
               self = ./.;
@@ -124,10 +129,10 @@ in
             inherit
               pkgs
               cmake-compat
-              stm32cubeprog
               certEnv
               ;
             inherit buildroot;
+            stm32cubeprog = if stm32cubeprog then cubeprog else null;
             extraPackages = extraDevShellPackages;
             # Share the cached toolchain with make builds in the dev/ci shells
             toolchainSdk = buildPkgs.toolchain;
@@ -142,8 +147,14 @@ in
               toolchain
               toolchain-lockfile
               ;
-          }
-          // lib.optionalAttrs (stm32cubeprog != null) { inherit stm32cubeprog; };
+            stm32cubeprog = cubeprog;
+            # dbl-bootid EEPROM layout + example image for host tools
+            dbl-bootid-layout = pkgs.runCommand "dbl-bootid-layout" { } ''
+              mkdir -p $out
+              cp ${./board/myd-yf135/dbl-bootid.toml} $out/dbl-bootid.toml
+              cp ${./board/myd-yf135/dbl-bootid-example.bin} $out/dbl-bootid-example.bin
+            '';
+          };
           devShells.${system} = shells;
         };
     in
