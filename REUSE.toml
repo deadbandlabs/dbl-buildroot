@@ -48,6 +48,7 @@ path = [
   "board/myd-yf135/insecure-test-key/insecure-test-key.key",
   "board/myd-yf135/insecure-test-key/insecure-test-key.crt",
   "board/myd-yf135/insecure-test-key/insecure-tbb-key.pem",
+  "board/myd-yf135/insecure-test-key/insecure-deviceid-ca.crt",
   "board/myd-yf135/dbl-bootid-example.bin",
 ]
 precedence = "aggregate"

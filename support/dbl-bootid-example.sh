@@ -8,7 +8,8 @@
 #   fsbl, fsbl-prev   build FSBL signed with the test key in all 8 key slots
 #                     (image_version 2 and 1)
 #   tkc-*, cfg-cert   certificates from the build's stock and consent FIPs
-#   deviceid          self-signed device certificate
+#   deviceid          certificate from insecure-deviceid-ca.crt for the
+#                     DeviceID key of an STM32MP13xD (zeroed HUK)
 # Signatures differ on every run: rerun only after a layout change.
 #
 # Usage: dbl-bootid-example.sh <images dir> <fiptool>
@@ -39,9 +40,12 @@ mkdir "$tmp/stock" "$tmp/consent"
 "$fiptool" unpack --out "$tmp/stock" "$images/fip.bin" >/dev/null
 "$fiptool" unpack --out "$tmp/consent" "$images/fip-consent.bin" >/dev/null
 
-openssl req -x509 -new -key "$key" -sha256 -days 36500 -outform DER \
-  -subj "/CN=dbl-INSECURE-test-deviceid/serialNumber=TEST0000" \
-  -out "$tmp/deviceid.der"
+# dbl-tee deviceid-pubkey for STM32MP13xD
+d_pubkey=04c05242d8df23fd74ab49638a3e1e73c729d3417adb0d7f737d5cdda7019f38212f2bec9c3e2dc3977ffcd37b1c84665781b8483e24183744380011e08801d908
+sh "$repo/support/dbl-deviceid.sh" issue \
+  "$repo/board/myd-yf135/insecure-test-key/insecure-deviceid-ca.crt" "$key" \
+  "$d_pubkey" "/CN=dbl-INSECURE-test-deviceid/serialNumber=TEST-0000" \
+  "$tmp/deviceid.der"
 
 python3 "$repo/board/myd-yf135/dbl-bootid.py" pack "$repo/board/myd-yf135/dbl-bootid.toml" \
   "$repo/board/myd-yf135/dbl-bootid-example.bin" \

@@ -12,6 +12,8 @@ can set its own keys.
 - `insecure-test-key.crt`: self-signed certificate,
   `CN=dbl-INSECURE-test-key-DO-NOT-TRUST`
 - `insecure-tbb-key.pem`: ECDSA P-256 private key for TF-A TBB
+- `insecure-deviceid-ca.crt`: self-signed DeviceID CA certificate for
+  `insecure-tbb-key.pem`, `CN=dbl-INSECURE-test-deviceid-ca`
 
 U-Boot names the verifying key at boot. A test-signed image shows
 `sha256,rsa3072:insecure-test-key+` in the boot log.
