@@ -46,13 +46,15 @@ endif
 MYD_YF135_BOOTID = $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dbl-bootid
 MYD_YF135_BOOTID_DTSI = $(HOST_DIR)/bin/python3 \
 	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/dbl-bootid.py dtsi $(MYD_YF135_BOOTID).toml
-LINUX_DEPENDENCIES += host-python3
-UBOOT_DEPENDENCIES += host-python3
+# _DEPENDENCIES is read when linux.mk/uboot.mk are parsed, before this file
+$(LINUX_TARGET_BUILD) $(UBOOT_TARGET_BUILD): | host-python3
 
+ifeq ($(BR2_PACKAGE_DBL_VERIFIED_BOOT),y)
 define MYD_YF135_BOOTID_INSTALL_IMAGES
 	$(INSTALL) -D -m 0644 -t $(BINARIES_DIR) $(MYD_YF135_BOOTID).toml $(MYD_YF135_BOOTID)-example.bin
 endef
 TARGET_FINALIZE_HOOKS += MYD_YF135_BOOTID_INSTALL_IMAGES
+endif
 
 # U-Boot compiles the base Linux dts as its control DT: provide the empty
 # parent-linux.dtsi stub (Linux-only peripherals) and the parent's U-Boot file.
@@ -84,7 +86,9 @@ endif
 # No loadable TAs: in-tree TAs are signed with OP-TEE's public default key,
 # which may be loaded by root. Early TAs (built into OP-TEE) remain.
 ifneq ($(BR2_TARGET_OPTEE_OS_SERVICES),y)
-OPTEE_OS_MAKE_OPTS += CFG_REE_FS_TA=n CFG_SECSTOR_TA=n CFG_EARLY_TA=y
+OPTEE_OS_MAKE_OPTS += CFG_REE_FS_TA=n CFG_SECSTOR_TA=n
+else ifeq ($(BR2_PACKAGE_DBL_VERIFIED_BOOT),y)
+$(error BR2_TARGET_OPTEE_OS_SERVICES enables loadable TAs, incompatible BR2_PACKAGE_DBL_VERIFIED_BOOT)
 endif
 
 define ARM_TRUSTED_FIRMWARE_MYD_YF135_COPY_DTSI
@@ -165,8 +169,7 @@ $(BINARIES_DIR)/optee_ss.ubifs: $(BR2_EXTERNAL_MYD_YF135_PATH)/external.mk | hos
 $(BINARIES_DIR)/uboot.env: $(DBL_UBOOT_ENV_FILES) | host-uboot-tools
 	cat $(DBL_UBOOT_ENV_FILES) | $(HOST_DIR)/bin/mkenvimage -s 0x4000 -r -o $@ -
 
-# PUBLIC, INSECURE test key (see board/myd-yf135/insecure-test-key/README.md)
-# Parents must set their own keys using BR2_PACKAGE_DBL_{FIT_PUBKEYS,RAUC_KEYRING}
+# See board/myd-yf135/insecure-test-key/README.md
 MYD_YF135_TEST_KEY = $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/insecure-test-key/insecure-test-key
 
 # Rootfs slot image + RAUC bundle payload (mkrootimg.sh)
@@ -190,8 +193,8 @@ endef
 UBOOT_POST_BUILD_HOOKS += UBOOT_MYD_YF135_FIT_PUBKEYS
 $(UBOOT_TARGET_BUILD): $(MYD_YF135_FIT_PUBKEYS) | host-dtc
 
-# TF-A Trusted Board Boot: Every certificate is signed with the test key;
-# re-sign release FIPs with cert_create + fiptool update
+# TF-A Trusted Board Boot: every certificate is signed with the test key;
+# always re-sign release FIPs with sign-fip.sh
 MYD_YF135_TBB_KEY = $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/insecure-test-key/insecure-tbb-key.pem
 $(ARM_TRUSTED_FIRMWARE_TARGET_BUILD): $(MYD_YF135_TBB_KEY) | dbl-tf-a-mbedtls $(BR2_CMAKE_HOST_DEPENDENCY)
 define ARM_TRUSTED_FIRMWARE_MYD_YF135_CHECK_TBB_KEYS
@@ -213,9 +216,12 @@ define ARM_TRUSTED_FIRMWARE_MYD_YF135_TARGET_FIPTOOL
 		-o $(@D)/fiptool-target $(MYD_YF135_FIPTOOL_DIR)/fiptool.c \
 		$(MYD_YF135_FIPTOOL_DIR)/tbbr_config.c \
 		$(MYD_YF135_FIPTOOL_DIR)/plat_fiptool/st/plat_def_uuid_config.c -lcrypto
-	$(INSTALL) -D -m 0755 $(@D)/fiptool-target $(TARGET_DIR)/usr/bin/fiptool
 endef
 ARM_TRUSTED_FIRMWARE_POST_BUILD_HOOKS += ARM_TRUSTED_FIRMWARE_MYD_YF135_TARGET_FIPTOOL
+define ARM_TRUSTED_FIRMWARE_MYD_YF135_INSTALL_FIPTOOL
+	$(INSTALL) -D -m 0755 $(@D)/fiptool-target $(TARGET_DIR)/usr/bin/fiptool
+endef
+ARM_TRUSTED_FIRMWARE_POST_INSTALL_TARGET_HOOKS += ARM_TRUSTED_FIRMWARE_MYD_YF135_INSTALL_FIPTOOL
 $(ARM_TRUSTED_FIRMWARE_TARGET_BUILD): | openssl
 ARM_TRUSTED_FIRMWARE_MAKE_OPTS += \
 	TRUSTED_BOARD_BOOT=1 GENERATE_COT=1 \
@@ -228,7 +234,7 @@ ARM_TRUSTED_FIRMWARE_MAKE_OPTS += \
 
 MYD_YF135_ROOTIMG_OPTS = --verity --sign-key $(MYD_YF135_FIT_KEY) --sign-algo $(MYD_YF135_FIT_ALGO)
 MYD_YF135_ROOTIMG_DEPS = host-cryptsetup uboot $(MYD_YF135_FIT_KEY)
-# NB: buildroot host-uboot-tools is not compatible with current U-boot (2021.07)
+# NB: Buildroot host-uboot-tools (2021.07) is too old for this U-Boot's FIT
 MYD_YF135_ROOTIMG_PATH = $(UBOOT_DIR)/tools:
 
 # After certificate changes run `make linux-reconfigure`

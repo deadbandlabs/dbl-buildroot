@@ -4,7 +4,8 @@
 #
 # Build a rootfs slot image.
 #
-# Usage: mkrootimg.sh [--verity] [--sign-key <dir/name.key> [--sign-algo <algo>]] <zImage> <dtb> <rootfs.squashfs> <out.img>
+# USAGE: mkrootimg.sh [--verity] [--sign-key <dir/name.key> [--sign-algo <algo>]] <zImage> <dtb> <rootfs.squashfs> <out.img>
+# /ENDUSAGE
 # Requires mkimage + dtc in PATH (+ veritysetup with --verity)
 #
 # Layout:
@@ -25,8 +26,8 @@
 set -eu
 
 usage() {
-  echo "Usage: $0 [--verity] [--sign-key <key> [--sign-algo <algo>]] <zImage> <dtb> <rootfs.squashfs> <out.img>" >&2
-  exit 1
+  sed -n '/^# \/ENDUSAGE/q; /^# USAGE:/,$s/^# \{0,1\}//p' "$0" >&2
+  exit 2
 }
 
 verity=0

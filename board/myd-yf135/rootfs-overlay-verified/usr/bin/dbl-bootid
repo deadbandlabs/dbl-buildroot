@@ -3,20 +3,21 @@
 # Copyright 2026 Deadband Inc.
 # dbl-bootid: access per-unit verified boot data
 #
-# Usage:
-#   dbl-bootid dump OUT          read full EEPROM (4 KiB)
-#   dbl-bootid read SLOT OUT     read slot with 0xff padding
-#   dbl-bootid write SLOT IN     write slot**
-#   dbl-bootid erase SLOT        erase slot**
+# The EEPROM accepts writes only while its write-protect (PA14) is low.
+# OP-TEE blocks access to PA14 except in a consent build
+# (BR2_PACKAGE_DBL_CONSENT), else gpioset fails and EEPROM writes are dropped.
 #
-# ** The EEPROM accepts writes only while its write-protect (PA14) is low.
-#    OP-TEE blocks access to PA14 except in a DBL_VERIFIED_BOOT consent session,
-#    else gpioset fails and EEPROM writes are dropped.
+# USAGE:
+#   dbl-bootid dump OUT          read 0x100-0xfff (dbl-bootid area)
+#   dbl-bootid read SLOT OUT     read slot with 0xff padding
+#   dbl-bootid write SLOT IN     write slot (consent session only)
+#   dbl-bootid erase SLOT        erase slot (consent session only)
+# /ENDUSAGE
 
 set -eu
 
 usage() {
-  sed -n '7,11s/^# \{0,1\}//p' "$0" >&2
+  sed -n '/^# \/ENDUSAGE/q; /^# USAGE:/,$s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -63,7 +64,8 @@ wp_on() {
 case ${1:-} in
   dump)
     [ $# -eq 2 ] || usage
-    cat "$dev/nvmem" >"$2"
+    # 0x000-0x0ff belongs to the parent project
+    dd if="$dev/nvmem" bs=256 skip=1 of="$2" 2>/dev/null
     ;;
   read)
     [ $# -eq 3 ] || usage
@@ -75,6 +77,7 @@ case ${1:-} in
     slot "$2"
     data=$(mktemp)
     trap 'wp_on; rm -f "$data"' EXIT
+    trap 'exit 1' INT TERM HUP
     # Slot image = file contents, then pad 0xff to the slot size
     head -c "$size" /dev/zero | tr '\0' '\377' >"$data"
     if [ "$1" = write ]; then

@@ -46,7 +46,7 @@ def der_len(b):
     if b[1] < 0x80:
         return 2 + b[1]
     n = b[1] & 0x7F
-    if n > 2:
+    if not 1 <= n <= 2:
         return 0
     return 2 + n + int.from_bytes(b[2 : 2 + n], "big")
 

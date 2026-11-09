@@ -11,13 +11,16 @@
 #
 # Used by both the make and nix builds.
 #
-# Usage: bundle-images.sh <variant_images_dir> <programmer_images_dir> <src_tsv> [<consent_images_dir>]
+# USAGE: bundle-images.sh <variant_images_dir> <programmer_images_dir> <src_tsv> [<consent_images_dir>]
+# /ENDUSAGE
 set -eu
 
-if [ "$#" -ne 3 ] && [ "$#" -ne 4 ]; then
-  echo "Usage: $0 <variant_images_dir> <programmer_images_dir> <src_tsv> [<consent_images_dir>]" >&2
-  exit 1
-fi
+usage() {
+  sed -n '/^# \/ENDUSAGE/q; /^# USAGE:/,$s/^# \{0,1\}//p' "$0" >&2
+  exit 2
+}
+
+[ "$#" -eq 3 ] || [ "$#" -eq 4 ] || usage
 
 variant_images=$1
 programmer_images=$2
@@ -52,14 +55,14 @@ if [ -n "$consent_images" ]; then
   cp "$consent_stm32" "$variant_images/tf-a-consent.stm32"
   cp "$consent_images/fip.bin" "$variant_images/fip-consent.bin"
   # flashlayout.tsv header + RAM rows (IP "none"), pointed at the consent files
-  awk -F'\t' -v OFS='\t' '
+  if ! awk -F'\t' -v OFS='\t' '
     /^#Opt/ { print; next }
     /^#/ || NF < 7 || $5 != "none" { next }
-    $7 == "tf-a-programmer.stm32" { $7 = "tf-a-consent.stm32" }
-    $7 == "fip-programmer.bin" { $7 = "fip-consent.bin" }
+    $7 == "tf-a-programmer.stm32" { $7 = "tf-a-consent.stm32"; n++ }
+    $7 == "fip-programmer.bin" { $7 = "fip-consent.bin"; n++ }
     { print }
-  ' "$variant_images/flashlayout.tsv" >"$variant_images/consent.tsv"
-  if [ "$(grep -c 'consent\.' "$variant_images/consent.tsv")" -ne 2 ]; then
+    END { exit n != 2 }
+  ' "$variant_images/flashlayout.tsv" >"$variant_images/consent.tsv"; then
     echo "bundle-images: consent.tsv requires RAM rows from flashlayout.tsv" >&2
     exit 1
   fi

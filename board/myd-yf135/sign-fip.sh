@@ -4,15 +4,16 @@
 #
 # Re-sign the TF-A TBB certificates of a finished FIP keeping all images and fw_config
 #
-# Usage: sign-fip.sh [-p <pub.pem>] <fip.bin> <key>
+# USAGE: sign-fip.sh [-p <pub.pem>] <fip.bin> <key>
 #   key: P-256 PEM file, or PKCS#11 URI (pkcs11 engine config via OPENSSL_CONF)
 #   -p:  refuse unless the new certificates carry this public key
+# /ENDUSAGE
 # Requires cert_create + fiptool (TF-A build tools/) and openssl in PATH
 set -eu
 
 usage() {
-  echo "Usage: $0 [-p <pub.pem>] <fip.bin> <key>" >&2
-  exit 1
+  sed -n '/^# \/ENDUSAGE/q; /^# USAGE:/,$s/^# \{0,1\}//p' "$0" >&2
+  exit 2
 }
 
 pub=
@@ -113,5 +114,6 @@ for f in "$work"/*.bin; do
   }
 done
 
-cp "$work/signed.fip" "$fip"
+cp "$work/signed.fip" "$fip.tmp"
+mv "$fip.tmp" "$fip"
 echo "sign-fip: $fip re-signed${pub:+ (key = $pub)}"

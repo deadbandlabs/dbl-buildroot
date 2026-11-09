@@ -2,12 +2,12 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 #
-# Host side of DeviceID attestation
+# Host side DeviceID attestation example
 #
-# DeviceID TA gives a P-256 public key and signs SHA-256("dbl-attest-v1" || nonce) (see dbl_tee.h).
-# Certificate for this key is stored in the dbl-bootid "deviceid" slot.
+# DeviceID TA (dbl_tee.h) provides a P-256 public key and signs SHA-256("dbl-attest-v1" || nonce)
+# Certificate for this key is stored in the EEPROM dbl-bootid "deviceid" slot
 #
-# Usage:
+# USAGE:
 #   dbl-deviceid.sh verify PUBKEY NONCE SIG
 #   dbl-deviceid.sh issue CA_CRT CA_KEY PUBKEY SUBJECT OUT
 #   dbl-deviceid.sh check CA_CRT CERT NONCE SIG
@@ -24,6 +24,7 @@
 #   pkcs11: URI (libp11 engine and PIN in OPENSSL_CONF).
 # check: CERT chains to CA_CRT (validity dates ignored) and SIG verifies with
 #   the CERT key. Prints the CERT subject.
+# /ENDUSAGE
 #
 # Example application:
 #   nonce=$(openssl rand -hex 32)
@@ -33,7 +34,7 @@
 set -eu
 
 usage() {
-  sed -n '10,13s/^# \{0,1\}//p' "$0" >&2
+  sed -n '/^# \/ENDUSAGE/q; /^# USAGE:/,$s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
 
@@ -94,7 +95,7 @@ case ${1:-} in
       pkcs11:*) set -- -engine pkcs11 -CAkeyform engine ;;
       *) set -- ;;
     esac
-    # With No -set_serial OpenSSL selects random 159-bit serial
+    # Without -set_serial OpenSSL picks a random 159-bit serial
     openssl x509 -new -force_pubkey "$tmp/pub.pem" -subj "$subject" \
       -CA "$ca_crt" -CAkey "$ca_key" "$@" -sha256 \
       -not_after 99991231235959Z -extfile "$tmp/ext" -out "$tmp/cert.pem"

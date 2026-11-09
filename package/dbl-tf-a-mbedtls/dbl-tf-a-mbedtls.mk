@@ -6,6 +6,7 @@
 #
 ################################################################################
 
+# Source only: TF-A builds from DBL_TF_A_MBEDTLS_DIR (MBEDTLS_DIR in external.mk)
 DBL_TF_A_MBEDTLS_VERSION = 3.6.7
 DBL_TF_A_MBEDTLS_SITE = https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-$(DBL_TF_A_MBEDTLS_VERSION)
 DBL_TF_A_MBEDTLS_SOURCE = mbedtls-$(DBL_TF_A_MBEDTLS_VERSION).tar.bz2

@@ -63,9 +63,7 @@ Neither is enabled by default. Verified-boot builds (`BR2_PACKAGE_DBL_VERIFIED_B
 
 ## Signing keys
 
-Builds sign the rootfs FIT, the TF-A Trusted Board Boot certificates and trust RAUC bundles with **public, insecure test keys** shipped in `board/myd-yf135/insecure-test-key/`. Anyone can sign images and bundles that such a build accepts.
-
-Products must set their own certificates (`BR2_PACKAGE_DBL_FIT_PUBKEYS`, `BR2_PACKAGE_DBL_RAUC_KEYRING`, `BR2_PACKAGE_DBL_VERITY_SIG_CERTS`) and re-sign release images with `board/myd-yf135/sign-rootimg.sh` (FIT) and TF-A `cert_create` + `fiptool update` (FIP). A device running a test-signed image shows `sha256,rsa3072:insecure-test-key+` in the U-Boot log.
+Builds sign with **public, insecure test keys**. See `board/myd-yf135/insecure-test-key/README.md` for what they cover and how products set their own keys and re-sign release images.
 
 ## Safe harbour and acknowledgements
 

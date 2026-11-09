@@ -20,7 +20,7 @@ nand_qspi_done=for i in 1 2 3 4 5 6 7 8; do setexpr.l nl_sr *0x58003008; setexpr
 
 # NB: setexpr checks bits with / % and sets with +; values are hex. & and | are not allowed in hush
 nand_feat_set=mw.l 0x58003010 0; mw.l 0x58003014 0x0100051f; mw.l 0x58003018 ${nl_reg}; mw.b 0x58003020 ${nl_val}; run nand_qspi_done
-nand_feat_get=mw.l 0x58003010 0; mw.l 0x58003014 0x0500050f; mw.l 0x58003018 ${nl_reg}; setexpr.b nl_val *0x58003020; run nand_qspi_done
+nand_feat_get=mw.l 0x58003010 0; mw.l 0x58003014 0x0500050f; mw.l 0x58003018 ${nl_reg}; run nand_qspi_done; setexpr.b nl_val *0x58003020
 nand_lot_bit=setexpr nl_lot ${nl_val} / 20; setexpr nl_lot ${nl_lot} % 2
 nand_qspi_en=setexpr.l nl_cr *0x58003000; setexpr nl_en ${nl_cr} % 2; if test ${nl_en} = 0; then setexpr nl_cr ${nl_cr} + 1; mw.l 0x58003000 ${nl_cr}; fi
 nand_qspi_dis=setexpr.l nl_cr *0x58003000; setexpr nl_en ${nl_cr} % 2; if test ${nl_en} = 1; then setexpr nl_cr ${nl_cr} - 1; mw.l 0x58003000 ${nl_cr}; fi; setenv nl_cr; setenv nl_en

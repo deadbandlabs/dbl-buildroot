@@ -9,17 +9,20 @@
 #                     (image_version 2 and 1)
 #   tkc-*, cfg-cert   certificates from the build's stock and consent FIPs
 #   deviceid          certificate from insecure-deviceid-ca.crt for the
-#                     DeviceID key of an STM32MP13xD (zeroed HUK)
+#                     STM32MP13xD DeviceID key
 # Signatures differ on every run: rerun only after a layout change.
 #
-# Usage: dbl-bootid-example.sh <images dir> <fiptool>
-#   <images dir>: a completed build's images/ (FSBL, fip.bin, fip-consent.bin)
+# USAGE: dbl-bootid-example.sh <images> <fiptool>
+#   <images>: images/ dir including FSBL, fip.bin, fip-consent.bin
+# /ENDUSAGE
 set -eu
 
-[ "$#" -eq 2 ] || {
-  echo "Usage: $0 <images dir> <fiptool>" >&2
+usage() {
+  sed -n '/^# \/ENDUSAGE/q; /^# USAGE:/,$s/^# \{0,1\}//p' "$0" >&2
   exit 2
 }
+
+[ "$#" -eq 2 ] || usage
 images=$1
 fiptool=$2
 repo=$(cd "$(dirname "$0")/.." && pwd)
@@ -40,7 +43,8 @@ mkdir "$tmp/stock" "$tmp/consent"
 "$fiptool" unpack --out "$tmp/stock" "$images/fip.bin" >/dev/null
 "$fiptool" unpack --out "$tmp/consent" "$images/fip-consent.bin" >/dev/null
 
-# dbl-tee deviceid-pubkey for STM32MP13xD
+# DeviceID public key of every STM32MP13xD (see package/dbl-tee/src/ta/dbl_include/dbl_key.h)
+# Read with `dbl-tee deviceid-pubkey`
 d_pubkey=04c05242d8df23fd74ab49638a3e1e73c729d3417adb0d7f737d5cdda7019f38212f2bec9c3e2dc3977ffcd37b1c84665781b8483e24183744380011e08801d908
 sh "$repo/support/dbl-deviceid.sh" issue \
   "$repo/board/myd-yf135/insecure-test-key/insecure-deviceid-ca.crt" "$key" \

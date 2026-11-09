@@ -11,7 +11,7 @@ repos:
         stages: [pre-commit]
 
       - id: dbl-bootid-example
-        name: dbl-bootid example matches layout
+        name: dbl-bootid example layout
         entry: support/pre-commit/check-dbl-bootid-example.sh
         language: system
         files: ^board/myd-yf135/dbl-bootid.*$

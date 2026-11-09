@@ -23,11 +23,7 @@ config BR2_PACKAGE_DBL_VERIFIED_BOOT
 
 	  Builds DBL early TAs into OP-TEE (package/dbl-tee).
 
-	  Set this in the defconfig or a parent fragment. Turning it on in
-	  menuconfig alone does nothing: the fragments are only merged when
-	  the merged defconfig already contains this setting.
-
-	  Default off
+	  Set this in a parent fragment directly, not menuconfig.
 
 config BR2_PACKAGE_DBL_FIT_PUBKEYS
 	string "FIT signing public keys"
@@ -38,10 +34,10 @@ config BR2_PACKAGE_DBL_FIT_PUBKEYS
 	  List a primary and a backup to switch keys.
 	  Signing key name = certificate file name without .crt.
 
-	  The build signs with the PUBLIC, INSECURE test key in
-	  board/myd-yf135/insecure-test-key/. When empty, U-Boot accepts
-	  only that key. Anyone can sign images for such a device.
-	  Re-sign images with a listed key using sign-rootimg.sh.
+	  The build signs with the test key
+	  (board/myd-yf135/insecure-test-key/README.md). When empty,
+	  U-Boot accepts only that key. Re-sign images with a listed key
+	  using sign-rootimg.sh.
 
 config BR2_PACKAGE_DBL_CONSENT
 	bool "Consent/programmer build"
@@ -64,11 +60,9 @@ config BR2_PACKAGE_DBL_NAND_LOCK
 	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
 	help
 	  U-Boot write-protects fsbl1, fsbl2 and fip-factory before
-	  Linux starts (uboot-env.txt nand_lock). Only a power cycle
+	  Linux starts (uboot-env-nand-lock.txt). Only a power cycle
 	  removes the lock: USB DFU flashing after a reset without
 	  power-off fails on these partitions.
-
-	  Default on
 
 config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
 	string "dm-verity root hash signing certificates"
@@ -86,9 +80,8 @@ config BR2_PACKAGE_DBL_RAUC_KEYRING
 	  PEM file with the certificates RAUC bundles must chain to,
 	  installed as /etc/rauc/keyring.pem.
 
-	  When empty, the PUBLIC, INSECURE test certificate in
-	  board/myd-yf135/insecure-test-key/ is installed.
-	  Anyone can sign bundles for such a device.
+	  When empty, the test certificate is installed
+	  (board/myd-yf135/insecure-test-key/README.md).
 
 config BR2_PACKAGE_DBL_OTP_WRITE
 	bool "OTP fuse writes from Linux and U-Boot"
@@ -99,5 +92,3 @@ config BR2_PACKAGE_DBL_OTP_WRITE
 
 	  Use caution with fuse write, changes are permanent and an
 	  incorrect fuse can result in a bricked unit.
-
-	  Default on

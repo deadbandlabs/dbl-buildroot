@@ -46,7 +46,8 @@ in
       # images by default. Override with a project-specific fragment path, or
       # set to null to disable the programmer build entirely.
       programmerFragment ? "configs/myd_yf135_programmer.fragment",
-      # Consent session variant fragment
+      # Consent session variant fragment, built alongside programmer variant
+      # with BR2_PACKAGE_DBL_VERIFIED_BOOT=y. Set to null to disable.
       consentFragment ? "configs/myd_yf135_consent.fragment",
       extraExternalSrcs ? [ ],
       # Extra rootfs overlay dirs to stack onto BR2_ROOTFS_OVERLAY
@@ -147,14 +148,14 @@ in
               toolchain
               toolchain-lockfile
               ;
-            stm32cubeprog = cubeprog;
             # dbl-bootid EEPROM layout + example image for host tools
             dbl-bootid-layout = pkgs.runCommand "dbl-bootid-layout" { } ''
               mkdir -p $out
               cp ${./board/myd-yf135/dbl-bootid.toml} $out/dbl-bootid.toml
               cp ${./board/myd-yf135/dbl-bootid-example.bin} $out/dbl-bootid-example.bin
             '';
-          };
+          }
+          // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 { stm32cubeprog = cubeprog; };
           devShells.${system} = shells;
         };
     in

@@ -110,8 +110,8 @@
 };
 
 /*
- * SOM EEPROM on I2C3 stores DBL_VERIFIED_BOOT records
- * PA14 write-portect is set in OP-TEE (stm32mp135d-myd-yf135-optee-eeprom.dtsi)
+ * SOM EEPROM on I2C3 holds the dbl-bootid layout (board/myd-yf135/dbl-bootid.toml)
+ * PA14 write-protect is set in OP-TEE (stm32mp135d-myd-yf135-optee-eeprom.dtsi)
  */
 &pinctrl {
 	i2c3_pins_som: i2c3-som-0 {

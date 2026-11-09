@@ -38,14 +38,14 @@ name = "fsbl"
 offset = 0x120
 size = 0x200
 format = "fsbl-header"
-usage = "Current FSBL, zero padded to image_length"
+usage = "Header of the current FSBL; image = header + published BL2 zero padded to image_length"
 
 [[slot]]
 name = "fsbl-prev"
 offset = 0x320
 size = 0x200
 format = "fsbl-header"
-usage = "Previous FSBL, retained until new FSBL is verifed"
+usage = "Header of the previous FSBL, kept until the new FSBL is verified"
 
 [[slot]]
 name = "tkc-consent"

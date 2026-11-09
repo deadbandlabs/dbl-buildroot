@@ -177,6 +177,8 @@ def sign(args):
     pubs = [key_xy(p) for p in args.pub]
     if not 0 <= args.idx < NB_PK:
         die(f"pk_idx {args.idx} out of range")
+    if not 0 <= args.version <= 0xFFFFFFFF:
+        die(f"image_version {args.version} out of range")
     xy = key_xy(args.key, public=False, engine=args.engine)
     if xy != pubs[args.idx]:
         die(f"key does not match public key {args.idx}")
@@ -222,9 +224,9 @@ def sign(args):
         data=digest,
     )
     img[4:68] = der_to_rs(der)
+    check(bytes(img), pubs)
     with open(args.output, "wb") as out:
         out.write(img)
-    check(bytes(img), pubs)
 
 
 def check(img, pubs=None):

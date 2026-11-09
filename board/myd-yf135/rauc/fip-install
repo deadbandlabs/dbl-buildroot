@@ -13,8 +13,9 @@
 #   filename=hook.sh     (hook.sh: exec /usr/lib/rauc/fip-install "$@")
 #
 # Unit certs are restored from fip-active, else fip-factory if active is broken.
-# Refuses a bundle whose fw_config differs from the one the unit cert covers.
-# Written unchanged if NAND FIP and the bundle FIP have certs signed by same key.
+# Refuses a bundle whose fw_config differs from the one the unit cert covers,
+# or whose world keys differ from the ones the unit cert lists.
+# Written unchanged if the NAND FIP and the bundle FIP certs are signed by the same key.
 
 set -eu
 
@@ -45,6 +46,11 @@ FWCFG_EXT=060b2b06010401a0209034814c0101ff04333031300d06096086480165030402010500
 # the first public key in the cert (subject key) is the signer
 signer() {
 	xxd -p "$1" | tr -d '\n' | grep -o "$SPKI_P256[0-9a-f]\{130\}" | head -n1
+}
+
+# Trusted + non-trusted world keys listed in trusted key cert $1, hex
+world_keys() {
+	xxd -p "$1" | tr -d '\n' | grep -o "$SPKI_P256[0-9a-f]\{130\}" | sed -n '2,3p'
 }
 
 # fw_config SHA-256 that cfg cert $1 covers, hex
@@ -79,15 +85,26 @@ else
 		echo "fip-install: bundle fw_config differs from the unit's cfg cert, requires consent signing" >&2
 		exit 1
 	fi
+	want=$(world_keys "$work/new/trusted-key-cert.bin")
+	have=$(world_keys "$src/trusted-key-cert.bin")
+	if [ -z "$want" ] || [ "$want" != "$have" ]; then
+		echo "fip-install: bundle world keys differ from the unit's trusted key cert" >&2
+		exit 1
+	fi
 	out=$work/fip.bin
 	fiptool update --trusted-key-cert "$src/trusted-key-cert.bin" \
 		--stm32mp-cfg-cert "$src/stm32mp-cfg-cert.bin" --out "$out" "$fip" >/dev/null
 	echo "fip-install: kept unit certs from $(basename "$src")"
 fi
 
+len=$(wc -c <"$out")
+if [ "$len" -gt "$(mtd_size "$dev")" ]; then
+	echo "fip-install: FIP ($len bytes) larger than $dev" >&2
+	exit 1
+fi
+
 flash_erase --quiet "$dev" 0 0
 nandwrite --pad --quiet "$dev" "$out"
-len=$(wc -c <"$out")
 nanddump --quiet --bb=skipbad -l "$len" -f "$work/readback.bin" "$dev"
 if ! cmp -s -n "$len" "$out" "$work/readback.bin"; then
 	echo "fip-install: read-back mismatch on $dev" >&2

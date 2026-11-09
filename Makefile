@@ -96,7 +96,8 @@ LOG     ?= $(LOG_DIR)/$(shell date +%Y%m%d-%H%M%S).log
 #                                 (fip-consent.bin; flash-dfu --consent)
 # Override O directly to use a custom output path.
 #
-# release/debug builds chain programmer and consent builds
+# release/debug builds chain programmer and consent build with
+# BR2_PACKAGE_DBL_VERIFIED_BOOT=y
 # Set BUILD_PROGRAMMER=0 to opt out of both
 BUILD_PROGRAMMER ?= 1
 
@@ -190,9 +191,15 @@ regen-programmer-defconfig:
 regen-toolchain-defconfig:
 	$(CURDIR)/support/pre-commit/check-toolchain-defconfig.sh
 
+# Merged config sets verified boot (run after $(_APPLY_DEFCONFIG))
+_IS_VERIFIED = grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' $(O)/.config
+
 all:
 	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
 	$(_APPLY_DEFCONFIG)
+ifeq ($(MODE),consent)
+	@$(_IS_VERIFIED) || { echo "ERROR: MODE=consent requires BR2_PACKAGE_DBL_VERIFIED_BOOT=y" >&2; exit 1; }
+endif
 	$(BR2_MAKE) $(_BUILD_TARGETS) 2>&1 | tee $(LOG); exit $${PIPESTATUS[0]}
 	@if [ "$(_UPDATE_LATEST)" = "true" ]; then \
 		ln -sfn $(MODE) $(OUTPUT_BASE)/output/latest; \
@@ -201,15 +208,12 @@ all:
 ifeq ($(filter programmer consent,$(MODE)),)
 ifeq ($(BUILD_PROGRAMMER),1)
 	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
-	$(MAKE) MODE=consent OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
-	@if [ -f $(FLASHLAYOUT_SRC) ]; then \
-		$(BUNDLE_IMAGES_SCRIPT) \
-			$(O)/images \
-			$(OUTPUT_BASE)/output/programmer/images \
-			$(FLASHLAYOUT_SRC) \
-			$(OUTPUT_BASE)/output/consent/images; \
-		echo "INFO: Generated $(O)/images/flashlayout.tsv"; \
-	fi
+	if $(_IS_VERIFIED); then $(MAKE) MODE=consent OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all; fi
+ifneq ($(wildcard $(FLASHLAYOUT_SRC)),)
+	$(BUNDLE_IMAGES_SCRIPT) $(O)/images $(OUTPUT_BASE)/output/programmer/images $(FLASHLAYOUT_SRC) \
+		$$($(_IS_VERIFIED) && echo $(OUTPUT_BASE)/output/consent/images)
+	@echo "INFO: Generated $(O)/images/flashlayout.tsv"
+endif
 endif
 endif
 

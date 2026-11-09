@@ -309,7 +309,12 @@ let
     ''
     + pkgs.lib.optionalString (programmerFragment != null) (
       buildLoaderVariant "programmer" programmerFragment
-      + pkgs.lib.optionalString (consentFragment != null) (buildLoaderVariant "consent" consentFragment)
+      + pkgs.lib.optionalString (consentFragment != null) ''
+        # BR2_PACKAGE_DBL_CONSENT depends on verified boot
+        if grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' output/.config; then
+        ${buildLoaderVariant "consent" consentFragment}
+        fi
+      ''
     );
 
     installPhase = ''
@@ -327,7 +332,7 @@ let
             $out/images \
             $PWD/output-programmer/images \
             ${buildExternalSrc}/${flashLayoutPath} \
-            ${pkgs.lib.optionalString (consentFragment != null) "$PWD/output-consent/images"}
+            $([ -d output-consent/images ] && echo "$PWD/output-consent/images")
         ''
       else
         ''

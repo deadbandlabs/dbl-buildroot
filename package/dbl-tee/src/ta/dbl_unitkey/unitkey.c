@@ -18,7 +18,6 @@
  */
 #include <dbl_key.h>
 #include <dbl_tee.h>
-#include <mbedtls/asn1write.h>
 #include <mbedtls/oid.h>
 #include <mbedtls/pk.h>
 #include <mbedtls/sha256.h>
@@ -53,7 +52,7 @@
 #define TKC_CN			"CN=Trusted Key Certificate"
 /* STM32MP config certificate (TF-A plat/st/stm32mp1/stm32mp1_tbb_cert.c) */
 #define CFG_CN			"CN=STM32MP config FW Certificate"
-/* Fixed validity: TF-A doesn't check it; output stays reproducible */
+/* Fixed validity, not checked by TF-A */
 #define CERT_NOT_BEFORE		"20260101000000"
 #define CERT_NOT_AFTER		"20460101000000"
 /* DigestInfo DER of a SHA-256 hash: 19-byte prefix + hash */
@@ -183,10 +182,10 @@ static TEE_Result sign_fsbl(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 	uint8_t xy_all[DBL_UNITKEY_SLOTS][64] = { };
 	uint8_t hash[32] = { };
 	mbedtls_ecp_keypair kp;
-	const uint8_t *in = params[1].memref.buffer;
-	size_t in_len = params[1].memref.size;
-	uint32_t pk_idx = params[0].value.a;
-	uint32_t version = params[0].value.b;
+	const uint8_t *in = NULL;
+	size_t in_len = 0;
+	uint32_t pk_idx = 0;
+	uint32_t version = 0;
 	uint32_t entry = 0;
 	uint32_t load = 0;
 	uint32_t btype = 0;
@@ -203,6 +202,10 @@ static TEE_Result sign_fsbl(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 				  TEE_PARAM_TYPE_MEMREF_OUTPUT,
 				  TEE_PARAM_TYPE_NONE))
 		return TEE_ERROR_BAD_PARAMETERS;
+	in = params[1].memref.buffer;
+	in_len = params[1].memref.size;
+	pk_idx = params[0].value.a;
+	version = params[0].value.b;
 	if (pk_idx >= DBL_UNITKEY_SLOTS || in_len < DBL_FSBL_HEADER_SIZE ||
 	    in_len > DBL_FSBL_MAX)
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -275,7 +278,7 @@ static TEE_Result world_spki(const void *pt, size_t len,
 	mbedtls_ecp_keypair kp;
 	mbedtls_pk_context pk;
 	uint8_t buf[65] = { };
-	int ret = 0;
+	TEE_Result res = TEE_ERROR_GENERIC;
 
 	if (len != sizeof(buf))
 		return TEE_ERROR_BAD_PARAMETERS;
@@ -283,28 +286,32 @@ static TEE_Result world_spki(const void *pt, size_t len,
 
 	mbedtls_ecp_keypair_init(&kp);
 	mbedtls_pk_init(&pk);
-	ret = mbedtls_ecp_group_load(&kp.MBEDTLS_PRIVATE(grp),
-				     MBEDTLS_ECP_DP_SECP256R1) ||
-	      mbedtls_ecp_point_read_binary(&kp.MBEDTLS_PRIVATE(grp),
-					    &kp.MBEDTLS_PRIVATE(Q), buf,
-					    sizeof(buf)) ||
-	      mbedtls_ecp_check_pubkey(&kp.MBEDTLS_PRIVATE(grp),
-				       &kp.MBEDTLS_PRIVATE(Q)) ||
-	      mbedtls_pk_setup(&pk,
-			       mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
-	if (!ret)
-		ret = mbedtls_ecp_copy(&mbedtls_pk_ec(pk)->MBEDTLS_PRIVATE(Q),
-				       &kp.MBEDTLS_PRIVATE(Q)) ||
-		      mbedtls_ecp_group_copy(
-				&mbedtls_pk_ec(pk)->MBEDTLS_PRIVATE(grp),
-				&kp.MBEDTLS_PRIVATE(grp));
+	if (mbedtls_ecp_group_load(&kp.MBEDTLS_PRIVATE(grp),
+				   MBEDTLS_ECP_DP_SECP256R1))
+		goto out;
+	if (mbedtls_ecp_point_read_binary(&kp.MBEDTLS_PRIVATE(grp),
+					  &kp.MBEDTLS_PRIVATE(Q), buf,
+					  sizeof(buf)) ||
+	    mbedtls_ecp_check_pubkey(&kp.MBEDTLS_PRIVATE(grp),
+				     &kp.MBEDTLS_PRIVATE(Q))) {
+		res = TEE_ERROR_BAD_PARAMETERS;
+		goto out;
+	}
 	/* mbedtls_pk_write_pubkey_der writes at the end of the buffer */
-	if (!ret)
-		ret = mbedtls_pk_write_pubkey_der(&pk, spki, SPKI_P256_LEN) !=
-		      SPKI_P256_LEN;
+	if (mbedtls_pk_setup(&pk,
+			     mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY)) ||
+	    mbedtls_ecp_copy(&mbedtls_pk_ec(pk)->MBEDTLS_PRIVATE(Q),
+			     &kp.MBEDTLS_PRIVATE(Q)) ||
+	    mbedtls_ecp_group_copy(&mbedtls_pk_ec(pk)->MBEDTLS_PRIVATE(grp),
+				   &kp.MBEDTLS_PRIVATE(grp)) ||
+	    mbedtls_pk_write_pubkey_der(&pk, spki, SPKI_P256_LEN) !=
+	    SPKI_P256_LEN)
+		goto out;
+	res = TEE_SUCCESS;
+out:
 	mbedtls_pk_free(&pk);
 	mbedtls_ecp_keypair_free(&kp);
-	return ret ? TEE_ERROR_BAD_PARAMETERS : TEE_SUCCESS;
+	return res;
 }
 
 /* One critical TBBR extension */
@@ -400,7 +407,7 @@ static TEE_Result sign_tkc(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 {
 	uint8_t tw[SPKI_P256_LEN] = { };
 	uint8_t ntw[SPKI_P256_LEN] = { };
-	uint32_t slot = params[0].value.a;
+	uint32_t slot = 0;
 	TEE_Result res = TEE_ERROR_GENERIC;
 	const struct tbb_ext exts[] = {
 		{ OID_TRUSTED_WORLD_PK, MBEDTLS_OID_SIZE(OID_TRUSTED_WORLD_PK),
@@ -414,6 +421,7 @@ static TEE_Result sign_tkc(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 				  TEE_PARAM_TYPE_MEMREF_INPUT,
 				  TEE_PARAM_TYPE_MEMREF_OUTPUT))
 		return TEE_ERROR_BAD_PARAMETERS;
+	slot = params[0].value.a;
 	if (slot >= DBL_UNITKEY_SLOTS)
 		return TEE_ERROR_BAD_PARAMETERS;
 	res = world_spki(params[1].memref.buffer, params[1].memref.size, tw);
@@ -444,7 +452,7 @@ static TEE_Result sign_cfg(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 	static const uint8_t zero[32] = { };
 	uint8_t hw[DIGEST_INFO_LEN] = { };
 	uint8_t fw[DIGEST_INFO_LEN] = { };
-	uint32_t slot = params[0].value.a;
+	uint32_t slot = 0;
 	const struct tbb_ext exts[] = {
 		{ OID_HW_CONFIG_HASH, MBEDTLS_OID_SIZE(OID_HW_CONFIG_HASH),
 		  hw, sizeof(hw) },
@@ -457,6 +465,7 @@ static TEE_Result sign_cfg(uint32_t pt, TEE_Param params[TEE_NUM_PARAMS])
 				  TEE_PARAM_TYPE_MEMREF_OUTPUT,
 				  TEE_PARAM_TYPE_NONE))
 		return TEE_ERROR_BAD_PARAMETERS;
+	slot = params[0].value.a;
 	if (slot >= DBL_UNITKEY_SLOTS || params[1].memref.size != 32)
 		return TEE_ERROR_BAD_PARAMETERS;
 	digest_info(hw, zero);
