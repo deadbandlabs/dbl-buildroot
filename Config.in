@@ -64,6 +64,14 @@ config BR2_PACKAGE_DBL_NAND_LOCK
 	  removes the lock: USB DFU flashing after a reset without
 	  power-off fails on these partitions.
 
+config BR2_PACKAGE_DBL_UBOOT_ENV_WRITEABLE
+	string "U-Boot env vars writable from flash"
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  Allows root to set listed U-Boot variables from Linux
+	  (fw_setenv), e.g. "dev_bootcmd:sw". Default must be in
+	  parent-u-boot.env.
+
 config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
 	string "dm-verity root hash signing certificates"
 	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT

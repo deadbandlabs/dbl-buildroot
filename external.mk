@@ -107,6 +107,7 @@ UBOOT_PRE_BUILD_HOOKS += UBOOT_MYD_YF135_COPY_DTSI
 # Append uboot-env-flags.txt only with CONFIG_ENV_WRITEABLE_LIST. Without it,
 # U-Boot warns on unknown "w" flag.
 # After env edits run `make uboot-rebuild`
+DBL_UBOOT_ENV_WRITEABLE := $(subst $(space),,$(patsubst %,$(comma)%,$(call qstrip,$(BR2_PACKAGE_DBL_UBOOT_ENV_WRITEABLE))))
 DBL_UBOOT_ENV_FILES := \
 	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/default-env.env \
 	$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env.txt \
@@ -118,7 +119,8 @@ define UBOOT_MYD_YF135_DEFAULT_ENV
 		$(if $(BR2_PACKAGE_DBL_CONSENT_BOOT),$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-consent-boot.txt) \
 		> $(@D)/dbl-default-env.txt
 	if grep -q '^CONFIG_ENV_WRITEABLE_LIST=y' $(@D)/.config; then \
-		cat $(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-flags.txt \
+		sed '/^\.flags=/s/$$/$(DBL_UBOOT_ENV_WRITEABLE)/' \
+			$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/uboot-env-flags.txt \
 			>> $(@D)/dbl-default-env.txt; \
 	fi
 endef
