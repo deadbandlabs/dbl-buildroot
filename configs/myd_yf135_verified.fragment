@@ -7,3 +7,5 @@ BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/rootfs-overlay-verified"
 # veritysetup for dm-verity hash tree in rootfs.img
 BR2_PACKAGE_HOST_CRYPTSETUP=y
+# OP-TEE secure storage: see rootfs-overlay-verified/etc/fstab
+BR2_PACKAGE_OPTEE_CLIENT_TEE_FS_PATH="/mnt/tee"

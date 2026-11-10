@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# SPI-NAND block lock, run from try_boot (uboot-env.txt).
+#
+# Locks blocks 0-31 (fsbl1, fsbl2, fip-factory) to refuse programming and
+# erase until power-off, including pin reset. Uses "lock tight" to make
+# chip probe unlocks a no-op. Runs after the initial `ubi part` probe.
+#
+# Uses raw QSPI registers, sequence as drivers/spi/stm32_qspi.c (DLR, CCR, AR, DR).
+# Driver clears CR.EN (bit 0) after each transfer, nand_lock sets it again.
+# CCR 0x0100051f write (SET FEATURE 1Fh), 0x0500050f read (GET FEATURE 0Fh),
+# both 1-line instruction, 1-byte address, 1 data byte
+# A0h = 2c: TB + BP 0101, lower 1/64. B0h bit 5: lock tight.
+#
+# Lock failure prints a warning and boots.
+
+# nand_qspi_done: wait for transfer complete (SR bit 1), clear flags
+nand_qspi_done=for i in 1 2 3 4 5 6 7 8; do setexpr.l nl_sr *0x58003008; setexpr nl_sr ${nl_sr} / 2; setexpr nl_sr ${nl_sr} % 2; if test ${nl_sr} = 0; then sleep 0.01; fi; done; mw.l 0x5800300c 0x1b; setenv nl_sr
+
+# NB: setexpr checks bits with / % and sets with +; values are hex. & and | are not allowed in hush
+nand_feat_set=mw.l 0x58003010 0; mw.l 0x58003014 0x0100051f; mw.l 0x58003018 ${nl_reg}; mw.b 0x58003020 ${nl_val}; run nand_qspi_done
+nand_feat_get=mw.l 0x58003010 0; mw.l 0x58003014 0x0500050f; mw.l 0x58003018 ${nl_reg}; run nand_qspi_done; setexpr.b nl_val *0x58003020
+nand_lot_bit=setexpr nl_lot ${nl_val} / 20; setexpr nl_lot ${nl_lot} % 2
+nand_qspi_en=setexpr.l nl_cr *0x58003000; setexpr nl_en ${nl_cr} % 2; if test ${nl_en} = 0; then setexpr nl_cr ${nl_cr} + 1; mw.l 0x58003000 ${nl_cr}; fi
+nand_qspi_dis=setexpr.l nl_cr *0x58003000; setexpr nl_en ${nl_cr} % 2; if test ${nl_en} = 1; then setexpr nl_cr ${nl_cr} - 1; mw.l 0x58003000 ${nl_cr}; fi; setenv nl_cr; setenv nl_en
+
+nand_lock=run nand_qspi_en; setenv nl_reg a0; setenv nl_val 2c; run nand_feat_set; setenv nl_reg b0; run nand_feat_get; run nand_lot_bit; if test ${nl_lot} = 0; then setexpr nl_val ${nl_val} + 20; run nand_feat_set; run nand_feat_get; run nand_lot_bit; fi; setenv nl_b0 ${nl_val}; setenv nl_reg a0; run nand_feat_get; run nand_qspi_dis; if test ${nl_val} != 2c || test ${nl_lot} != 1; then echo "WARNING: NAND lock failed (A0h=${nl_val} B0h=${nl_b0})"; fi; setenv nl_reg; setenv nl_val; setenv nl_b0; setenv nl_lot

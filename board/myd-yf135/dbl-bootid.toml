@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# dbl-bootid: per-unit verified boot data
+#
+# Contains required data to start a consent session or repair a unit's boot chain.
+# Each slot holds one signed object padded with 0xff.
+# If any slot's object fails its signature check, it is counted as empty.
+#
+# Formats:
+#   bytes        raw/free data not read by dbl-buildroot
+#   header       "DBID" + u8 layout_version, padded 0xff
+#   fsbl-header  first 512 bytes of a signed STM32MP13 FSBL image
+#                (see: support/stm32-sign.py)
+#   x509-der     one X.509 certificate, DER
+
+[eeprom]
+size = 0x1000
+page = 32
+layout_version = 1
+
+[[slot]]
+name = "parent"
+offset = 0x000
+size = 0x100
+format = "bytes"
+usage = "Parent project usage (may contain SOM serial numbers 0x00/0x20)"
+
+[[slot]]
+name = "header"
+offset = 0x100
+size = 0x20
+format = "header"
+usage = "Erased indicates unprovisioned"
+
+[[slot]]
+name = "fsbl"
+offset = 0x120
+size = 0x200
+format = "fsbl-header"
+usage = "Header of the current FSBL; image = header + published BL2 zero padded to image_length"
+
+[[slot]]
+name = "fsbl-prev"
+offset = 0x320
+size = 0x200
+format = "fsbl-header"
+usage = "Header of the previous FSBL, kept until the new FSBL is verified"
+
+[[slot]]
+name = "tkc-consent"
+offset = 0x520
+size = 0x300
+format = "x509-der"
+usage = "TF-A trusted key cert for consent keys, used for building consent FIP"
+
+[[slot]]
+name = "tkc-stock"
+offset = 0x820
+size = 0x300
+format = "x509-der"
+usage = "TF-A trusted key cert stock keys, rescue backup if NAND FIP is lost"
+
+[[slot]]
+name = "cfg-cert"
+offset = 0xb20
+size = 0x280
+format = "x509-der"
+usage = "TF-A STM32MP config cert, paired with either trusted key cert"
+
+[[slot]]
+name = "deviceid"
+offset = 0xda0
+size = 0x260
+format = "x509-der"
+usage = "DeviceID cert for unit identity attestation"

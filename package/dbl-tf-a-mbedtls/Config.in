@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+config BR2_PACKAGE_DBL_TF_A_MBEDTLS
+	bool
+	help
+	  Mbed TLS source tree for TF-A Trusted Board Boot (MBEDTLS_DIR).
+	  Pinned to the latest 3.6 LTS release, separate from the target
+	  mbedtls package.

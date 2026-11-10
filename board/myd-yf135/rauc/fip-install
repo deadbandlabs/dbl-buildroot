@@ -1,0 +1,112 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+# RAUC install hook for [image.bootloader]
+# Writes the bundle FIP to fip-active, keeping the unit's TF-A root certificates
+# (trusted key cert, STM32MP config cert) from the current FIP on NAND.
+#
+# Usage, bundle manifest:
+#   [image.bootloader]
+#   filename=fip.img
+#   hooks=install
+#   [hooks]
+#   filename=hook.sh     (hook.sh: exec /usr/lib/rauc/fip-install "$@")
+#
+# Unit certs are restored from fip-active, else fip-factory if active is broken.
+# Refuses a bundle whose fw_config differs from the one the unit cert covers,
+# or whose world keys differ from the ones the unit cert lists.
+# Written unchanged if the NAND FIP and the bundle FIP certs are signed by the same key.
+
+set -eu
+
+[ "${1:-}" = slot-install ] || exit 0
+
+fip=$RAUC_IMAGE_NAME
+dev=$RAUC_SLOT_DEVICE
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+mtd_size() {
+	cat "/sys/class/mtd/$(basename "$(readlink -f "$1")")/size"
+}
+
+# Unpacks the root certs + fw_config of FIP $1 into dir $2
+unpack() {
+	mkdir -p "$2"
+	fiptool unpack --force --out "$2" "$1" >/dev/null 2>&1 &&
+		[ -s "$2/trusted-key-cert.bin" ] && [ -s "$2/stm32mp-cfg-cert.bin" ]
+}
+
+# DER patterns (hex): P-256 SubjectPublicKeyInfo header; fw_config hash
+# extension (OID .2100.204, critical, SHA-256 DigestInfo header)
+SPKI_P256=3059301306072a8648ce3d020106082a8648ce3d030107034200
+FWCFG_EXT=060b2b06010401a0209034814c0101ff04333031300d060960864801650304020105000420
+
+# Signer key of DER cert $1, hex: root certs are self-signed,
+# the first public key in the cert (subject key) is the signer
+signer() {
+	xxd -p "$1" | tr -d '\n' | grep -o "$SPKI_P256[0-9a-f]\{130\}" | head -n1
+}
+
+# Trusted + non-trusted world keys listed in trusted key cert $1, hex
+world_keys() {
+	xxd -p "$1" | tr -d '\n' | grep -o "$SPKI_P256[0-9a-f]\{130\}" | sed -n '2,3p'
+}
+
+# fw_config SHA-256 that cfg cert $1 covers, hex
+cfg_fw_hash() {
+	xxd -p "$1" | tr -d '\n' | grep -o "$FWCFG_EXT[0-9a-f]\{64\}" |
+		tail -c 65
+}
+
+unpack "$fip" "$work/new" || { echo "fip-install: bundle FIP has no TBB certs" >&2; exit 1; }
+
+# Unit certs: first FIP on NAND with both certs
+src=
+for part in fip-active fip-factory; do
+	m=/dev/mtd/by-name/$part
+	[ -e "$m" ] || continue
+	nanddump --quiet --bb=skipbad -l "$(mtd_size "$m")" -f "$work/$part.bin" "$m" 2>/dev/null || continue
+	if unpack "$work/$part.bin" "$work/$part"; then
+		src=$work/$part
+		break
+	fi
+done
+
+out=$fip
+if [ -z "$src" ]; then
+	echo "fip-install: no unit certs on NAND, writing bundle FIP as-is"
+elif [ "$(signer "$src/trusted-key-cert.bin")" = "$(signer "$work/new/trusted-key-cert.bin")" ]; then
+	echo "fip-install: NAND certs = bundle certs, writing bundle FIP as-is"
+else
+	want=$(sha256sum "$work/new/fw-config.bin" | cut -d' ' -f1)
+	have=$(cfg_fw_hash "$src/stm32mp-cfg-cert.bin")
+	if [ "$want" != "$have" ]; then
+		echo "fip-install: bundle fw_config differs from the unit's cfg cert, requires consent signing" >&2
+		exit 1
+	fi
+	want=$(world_keys "$work/new/trusted-key-cert.bin")
+	have=$(world_keys "$src/trusted-key-cert.bin")
+	if [ -z "$want" ] || [ "$want" != "$have" ]; then
+		echo "fip-install: bundle world keys differ from the unit's trusted key cert" >&2
+		exit 1
+	fi
+	out=$work/fip.bin
+	fiptool update --trusted-key-cert "$src/trusted-key-cert.bin" \
+		--stm32mp-cfg-cert "$src/stm32mp-cfg-cert.bin" --out "$out" "$fip" >/dev/null
+	echo "fip-install: kept unit certs from $(basename "$src")"
+fi
+
+len=$(wc -c <"$out")
+if [ "$len" -gt "$(mtd_size "$dev")" ]; then
+	echo "fip-install: FIP ($len bytes) larger than $dev" >&2
+	exit 1
+fi
+
+flash_erase --quiet "$dev" 0 0
+nandwrite --pad --quiet "$dev" "$out"
+nanddump --quiet --bb=skipbad -l "$len" -f "$work/readback.bin" "$dev"
+if ! cmp -s -n "$len" "$out" "$work/readback.bin"; then
+	echo "fip-install: read-back mismatch on $dev" >&2
+	exit 1
+fi

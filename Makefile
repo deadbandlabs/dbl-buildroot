@@ -23,6 +23,7 @@ DEBUG_DEFCONFIG      := $(O)/myd_yf135_debug_defconfig
 DEBUG_FRAGMENT       := $(CURDIR)/configs/myd_yf135_debug.fragment
 PROGRAMMER_DEFCONFIG := $(O)/myd_yf135_programmer_defconfig
 PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myd_yf135_programmer.fragment
+CONSENT_FRAGMENT     := $(CURDIR)/configs/myd_yf135_consent.fragment
 # Gated by BR2_PACKAGE_DBL_VERIFIED_BOOT inside merge-defconfig.py (dbl-merge-if)
 VERIFIED_FRAGMENT    := $(CURDIR)/configs/myd_yf135_verified.fragment
 _HOST_PYTHON3        := $(RELEASE_O)/host/bin/python3
@@ -91,16 +92,22 @@ LOG     ?= $(LOG_DIR)/$(shell date +%Y%m%d-%H%M%S).log
 # debug      = output/debug/      verbose logging variant of release
 # programmer = output/programmer/ USB DFU loader (ENV_IS_NOWHERE), used as
 #                                 fsbl-boot/fip-boot in flashlayout.tsv
+# consent    = output/consent/    USB DFU loaded, boots the factory rootfs
+#                                 (fip-consent.bin; flash-dfu --consent)
 # Override O directly to use a custom output path.
 #
-# release/debug builds chain a programmer build in output/programmer/
-# Set BUILD_PROGRAMMER=0 to opt out
+# release/debug builds chain programmer and consent build with
+# BR2_PACKAGE_DBL_VERIFIED_BOOT=y
+# Set BUILD_PROGRAMMER=0 to opt out of both
 BUILD_PROGRAMMER ?= 1
 
 ifeq ($(MODE),debug)
 _BUILD_TARGETS  :=
 _UPDATE_LATEST  := true
 else ifeq ($(MODE),programmer)
+_BUILD_TARGETS  := arm-trusted-firmware
+_UPDATE_LATEST  := false
+else ifeq ($(MODE),consent)
 _BUILD_TARGETS  := arm-trusted-firmware
 _UPDATE_LATEST  := false
 else
@@ -113,6 +120,7 @@ endif
 #   debug      = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + DEBUG_FRAGMENT + CONFIG_FRAGMENT_DEBUG
 #   programmer = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + PROGRAMMER_FRAGMENT
 #                (same chain as the nix programmer build, which is what ships)
+#   consent    = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + CONSENT_FRAGMENT
 # VERIFIED_FRAGMENT only applies when the merged result sets BR2_PACKAGE_DBL_VERIFIED_BOOT=y.
 # Empty/unset slots are filtered out.
 _MERGE_DELTAS := $(VERIFIED_FRAGMENT)
@@ -123,6 +131,9 @@ ifeq ($(MODE),debug)
 else ifeq ($(MODE),programmer)
   _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
   _MERGE_DELTAS += $(PROGRAMMER_FRAGMENT)
+else ifeq ($(MODE),consent)
+  _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
+  _MERGE_DELTAS += $(CONSENT_FRAGMENT)
 else
   _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
 endif
@@ -148,16 +159,18 @@ _APPLY_DEFCONFIG = $(_WRITE_TC_PATH) && $(_WRITE_ROOTFS_OVERLAY) && $(MERGE_DEFC
 
 .DEFAULT_GOAL := all
 
-.PHONY: help all release debug programmer regen-debug-defconfig regen-programmer-defconfig regen-toolchain-defconfig toolchain
+.PHONY: help all release debug programmer consent regen-debug-defconfig regen-programmer-defconfig regen-toolchain-defconfig toolchain
 
 help:
 	@echo "Common targets:"
 	@echo "  make                              Build release variant"
 	@echo "  MODE=debug make                   Build debug variant"
 	@echo "  MODE=programmer make              Build programmer (USB DFU) variant (TF-A + FIP only)"
+	@echo "  MODE=consent make                 Build consent session variant (TF-A + FIP only)"
 	@echo "  make release                      Alias for release build"
 	@echo "  make debug                        Alias for debug build"
 	@echo "  make programmer                   Alias for programmer build"
+	@echo "  make consent                      Alias for consent build"
 	@echo "  make regen-debug-defconfig        Regenerate debug defconfig"
 	@echo "  make regen-programmer-defconfig   Regenerate programmer defconfig"
 	@echo "  make regen-toolchain-defconfig    Regenerate toolchain defconfig from main"
@@ -178,24 +191,29 @@ regen-programmer-defconfig:
 regen-toolchain-defconfig:
 	$(CURDIR)/support/pre-commit/check-toolchain-defconfig.sh
 
+# Merged config sets verified boot (run after $(_APPLY_DEFCONFIG))
+_IS_VERIFIED = grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' $(O)/.config
+
 all:
 	@mkdir -p $(O) $(LOG_DIR) $(CCACHE_DIR)
 	$(_APPLY_DEFCONFIG)
+ifeq ($(MODE),consent)
+	@$(_IS_VERIFIED) || { echo "ERROR: MODE=consent requires BR2_PACKAGE_DBL_VERIFIED_BOOT=y" >&2; exit 1; }
+endif
 	$(BR2_MAKE) $(_BUILD_TARGETS) 2>&1 | tee $(LOG); exit $${PIPESTATUS[0]}
 	@if [ "$(_UPDATE_LATEST)" = "true" ]; then \
 		ln -sfn $(MODE) $(OUTPUT_BASE)/output/latest; \
 		echo "INFO: $(OUTPUT_BASE)/output/latest -> $(MODE)"; \
 	fi
-ifneq ($(MODE),programmer)
+ifeq ($(filter programmer consent,$(MODE)),)
 ifeq ($(BUILD_PROGRAMMER),1)
 	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
-	@if [ -f $(FLASHLAYOUT_SRC) ]; then \
-		$(BUNDLE_IMAGES_SCRIPT) \
-			$(O)/images \
-			$(OUTPUT_BASE)/output/programmer/images \
-			$(FLASHLAYOUT_SRC); \
-		echo "INFO: Generated $(O)/images/flashlayout.tsv"; \
-	fi
+	if $(_IS_VERIFIED); then $(MAKE) MODE=consent OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all; fi
+ifneq ($(wildcard $(FLASHLAYOUT_SRC)),)
+	$(BUNDLE_IMAGES_SCRIPT) $(O)/images $(OUTPUT_BASE)/output/programmer/images $(FLASHLAYOUT_SRC) \
+		$$($(_IS_VERIFIED) && echo $(OUTPUT_BASE)/output/consent/images)
+	@echo "INFO: Generated $(O)/images/flashlayout.tsv"
+endif
 endif
 endif
 
@@ -207,6 +225,9 @@ debug:
 
 programmer:
 	$(MAKE) MODE=programmer all
+
+consent:
+	$(MAKE) MODE=consent all
 
 # Build SDK from the toolchain-only defconfig and unpack it to $(TOOLCHAIN_SDK_OUT)
 # Mirrors the Nix stage-1 (.#toolchain): make sdk -> untar -> relocate-sdk.sh

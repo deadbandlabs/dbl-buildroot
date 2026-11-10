@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright 2026 Deadband Inc.
+#
+# Consent session U-Boot env (BR2_PACKAGE_DBL_CONSENT_BOOT),
+# boots the factory rootfs, appended after uboot-env-consent.txt
+consent_arg=dbl.consent=1
+bootcmd=run consent_gate; run set_machine_id; ubi part UBI && run boot_factory; echo "consent: factory rootfs failed, resetting"; reset

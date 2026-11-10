@@ -59,11 +59,11 @@ The STM32MP135D supports two hardware security features:
 - OTP (one-time programmable) fuses, which can lock boot sources, disable JTAG, and similar.
 - Secure boot through TF-A and OP-TEE, which provides a verified boot chain.
 
-Neither is enabled by default, and secure boot (`TRUSTED_BOARD_BOOT`) is not yet integrated. Enabling it requires an understanding of the OTP and fuse implications (fuse programming is permanent), secure key management (RSA keys for boot attestation), and testing with secure boot enabled in all variants (release, debug, and so on). Consult the ST documentation and the TF-A and OP-TEE security guidelines before enabling it.
+Neither is enabled by default. Verified-boot builds (`BR2_PACKAGE_DBL_VERIFIED_BOOT`) build TF-A with Trusted Board Boot (`TRUSTED_BOARD_BOOT`), but the root of trust only takes effect once the FSBL is signed and the key hash is fused in OTP. Enabling that requires an understanding of the OTP and fuse implications (fuse programming is permanent), secure key management (ECDSA keys for the boot chain), and testing with secure boot enabled in all variants (release, debug, and so on). Consult the ST documentation and the TF-A and OP-TEE security guidelines before enabling it.
 
-## OTA updates
+## Signing keys
 
-RAUC integration is scaffolded, and RAUC bundle signing is configured, but no signing key is shipped. Downstream consumers must generate and manage their own keys before deploying OTA updates.
+Builds sign with **public, insecure test keys**. See `board/myd-yf135/insecure-test-key/README.md` for what they cover and how products set their own keys and re-sign release images.
 
 ## Safe harbour and acknowledgements
 

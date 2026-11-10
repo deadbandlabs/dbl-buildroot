@@ -29,10 +29,12 @@ path = [
   "configs/myd_yf135_debug.fragment",
   "configs/myd_yf135_external_toolchain.fragment",
   "configs/myd_yf135_programmer.fragment",
+  "configs/myd_yf135_consent.fragment",
   "configs/myd_yf135_verified.fragment",
   "board/myd-yf135/linux.config",
   "board/myd-yf135/rootfs-overlay/boot/extlinux/extlinux.conf",
   "README.md",
+  "board/myd-yf135/insecure-test-key/README.md",
   "CONTRIBUTING.md",
   "SECURITY.md",
 ]
@@ -40,9 +42,29 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
 SPDX-License-Identifier = "GPL-2.0-or-later"
 
+# Public, insecure test key material
+[[annotations]]
+path = [
+  "board/myd-yf135/insecure-test-key/insecure-test-key.key",
+  "board/myd-yf135/insecure-test-key/insecure-test-key.crt",
+  "board/myd-yf135/insecure-test-key/insecure-tbb-key.pem",
+  "board/myd-yf135/insecure-test-key/insecure-deviceid-ca.crt",
+  "board/myd-yf135/dbl-bootid-example.bin",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Deadband Inc."
+SPDX-License-Identifier = "CC0-1.0"
+
 # Carry patches for upstream projects take the license of the patched project
 [[annotations]]
 path = "board/myd-yf135/patches/arm-trusted-firmware/*.patch"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Deadband Inc."
 SPDX-License-Identifier = "BSD-3-Clause"
+
+# Package hash files are factual upstream checksum data, not authored code
+[[annotations]]
+path = "package/**/*.hash"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "CC0-1.0"

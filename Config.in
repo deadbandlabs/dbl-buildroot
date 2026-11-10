@@ -4,28 +4,65 @@ source "$BR2_EXTERNAL_MYD_YF135_PATH/package/Config.in"
 
 config BR2_PACKAGE_DBL_VERIFIED_BOOT
 	bool "DBL verified boot"
+	select BR2_PACKAGE_DBL_TF_A_MBEDTLS
+	select BR2_PACKAGE_DBL_TEE
+	select BR2_PACKAGE_OPENSSL
+	select BR2_PACKAGE_MTD
+	select BR2_PACKAGE_MTD_NANDDUMP
+	select BR2_PACKAGE_MTD_NANDWRITE
+	select BR2_PACKAGE_MTD_FLASH_ERASE
+	select BR2_PACKAGE_LIBGPIOD2
+	select BR2_PACKAGE_LIBGPIOD2_TOOLS
 	help
 	  Adds the verified-boot kernel and U-Boot config fragments on top
 	  of the image: configs/myd_yf135_verified.fragment pulls in
 	  board/myd-yf135/linux-verified.fragment and uboot-verified.fragment.
 
-	  Set this in the defconfig or a parent fragment. Turning it on in
-	  menuconfig alone does nothing: the fragments are only merged when
-	  the merged defconfig already contains this setting.
+	  Builds TF-A with Trusted Board Boot: fip.bin carries certificates
+	  signed with the insecure test key. TBB BL2 refuses unsigned FIPs.
 
-	  Default off
+	  Builds DBL early TAs into OP-TEE (package/dbl-tee).
+
+	  Set this in a parent fragment directly, not menuconfig.
 
 config BR2_PACKAGE_DBL_FIT_PUBKEYS
 	string "FIT signing public keys"
 	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
 	help
-	  Space-separated paths to X.509 certificates (.crt, RSA-2048).
+	  Space-separated paths to X.509 certificates (.crt, RSA-3072).
 	  U-Boot boots a rootfs FIT signed by any one of these keys.
+	  List a primary and a backup to switch keys.
 	  Signing key name = certificate file name without .crt.
 
-	  The build always signs with an initial throwaway key in
-	  <output>/fit-key/. When empty, U-Boot accepts only the throwaway key.
-	  Otherwise, re-sign images with a listed key using sign-rootimg.sh.
+	  The build signs with the test key
+	  (board/myd-yf135/insecure-test-key/README.md). When empty,
+	  U-Boot accepts only that key. Re-sign images with a listed key
+	  using sign-rootimg.sh.
+
+config BR2_PACKAGE_DBL_CONSENT
+	bool "Consent/programmer build"
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  Run U-Boot only when the boot pins select USB DFU boot.
+	  OP-TEE leaves the SOM EEPROM write-protect pin non-secure.
+	  The consent TA reports a consent build.
+
+config BR2_PACKAGE_DBL_CONSENT_BOOT
+	bool "Consent session build"
+	depends on BR2_PACKAGE_DBL_CONSENT
+	help
+	  U-Boot boots the factory rootfs instead of the USB programmer.
+	  OP-TEE includes the unitkey TA.
+
+config BR2_PACKAGE_DBL_NAND_LOCK
+	bool "Lock FSBLs and fip-factory in NAND"
+	default y
+	depends on BR2_PACKAGE_DBL_VERIFIED_BOOT
+	help
+	  U-Boot write-protects fsbl1, fsbl2 and fip-factory before
+	  Linux starts (uboot-env-nand-lock.txt). Only a power cycle
+	  removes the lock: USB DFU flashing after a reset without
+	  power-off fails on these partitions.
 
 config BR2_PACKAGE_DBL_VERITY_SIG_CERTS
 	string "dm-verity root hash signing certificates"
@@ -43,8 +80,8 @@ config BR2_PACKAGE_DBL_RAUC_KEYRING
 	  PEM file with the certificates RAUC bundles must chain to,
 	  installed as /etc/rauc/keyring.pem.
 
-	  When empty, a throwaway certificate in <output>/rauc-key/
-	  (throwaway.crt, throwaway.key) is generated and installed.
+	  When empty, the test certificate is installed
+	  (board/myd-yf135/insecure-test-key/README.md).
 
 config BR2_PACKAGE_DBL_OTP_WRITE
 	bool "OTP fuse writes from Linux and U-Boot"
@@ -55,5 +92,3 @@ config BR2_PACKAGE_DBL_OTP_WRITE
 
 	  Use caution with fuse write, changes are permanent and an
 	  incorrect fuse can result in a bricked unit.
-
-	  Default on

@@ -11,7 +11,7 @@
 # `ver` (CONFIG_VERSION_VARIABLE) is provided to Linux to detect FIP fallback
 # using fw_printenv ver vs /etc/firmware/expected-bl33-version
 
-bootcmd=if test ${boot_device} = serial || test ${boot_device} = usb; then stm32prog ${boot_device} ${boot_instance}; else run try_boot; fi
+bootcmd=if test "${boot_device}" = serial || test "${boot_device}" = usb; then stm32prog ${boot_device} ${boot_instance}; else run try_boot; fi
 
 # = CONFIG_SYS_LOAD_ADDR. zImage runs in place (kernel_noload)
 fitaddr=0xc2000000
@@ -33,10 +33,12 @@ boot_factory=setenv slot_name rootfs_factory; setenv slot_vol 2; setenv rauc_slo
 
 # Per-slot try wrappers: decrement counter, persist, run boot recipe.
 # `bootm` returns only on failure.
-try_A=if test ${BOOT_A_LEFT} -gt 0; then setexpr BOOT_A_LEFT ${BOOT_A_LEFT} - 1; saveenv; echo "Booting slot A (attempts left: ${BOOT_A_LEFT})"; run boot_A; echo "Slot A returned (boot failed)"; fi
-try_B=if test ${BOOT_B_LEFT} -gt 0; then setexpr BOOT_B_LEFT ${BOOT_B_LEFT} - 1; saveenv; echo "Booting slot B (attempts left: ${BOOT_B_LEFT})"; run boot_B; echo "Slot B returned (boot failed)"; fi
+try_A=if test "${BOOT_A_LEFT}" -gt 0; then setexpr BOOT_A_LEFT ${BOOT_A_LEFT} - 1; saveenv; echo "Booting slot A (attempts left: ${BOOT_A_LEFT})"; run boot_A; echo "Slot A returned (boot failed)"; fi
+try_B=if test "${BOOT_B_LEFT}" -gt 0; then setexpr BOOT_B_LEFT ${BOOT_B_LEFT} - 1; saveenv; echo "Booting slot B (attempts left: ${BOOT_B_LEFT})"; run boot_B; echo "Slot B returned (boot failed)"; fi
 
-# parent_boot_hook (optional, parent-u-boot.env) must read only hardware/OTP,
-# never flash env vars.
+# SPI-NAND lock: nand_lock, defined in uboot-env-nand-lock.txt
+
+# parent_boot_hook (see parent-u-boot.env) must read only hardware/OTP,
+# or may set parent_bootargs (appended to the kernel cmdline)
 # BOOT_ORDER comes from flash: values other than A and B ignored.
-try_boot=run set_machine_id; ubi part UBI; if test -n "${parent_boot_hook}"; then run parent_boot_hook; fi; for slot in ${BOOT_ORDER}; do if test "${slot}" = A || test "${slot}" = B; then run try_${slot}; fi; done; echo "BOOT_ORDER exhausted, falling back to factory"; run boot_factory; echo "Factory rootfs failed, dropping to DFU"; stm32prog usb 0
+try_boot=run set_machine_id; ubi part UBI; if test -n "${nand_lock}"; then run nand_lock; fi; if test -n "${parent_boot_hook}"; then run parent_boot_hook; fi; for slot in ${BOOT_ORDER}; do if test "${slot}" = A || test "${slot}" = B; then run try_${slot}; fi; done; echo "BOOT_ORDER exhausted, falling back to factory"; run boot_factory; echo "Factory rootfs failed, dropping to DFU"; stm32prog usb 0

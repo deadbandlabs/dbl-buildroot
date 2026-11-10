@@ -33,7 +33,7 @@ Full documentation lives in the [wiki](https://github.com/deadbandlabs/dbl-build
 - [Setup](https://github.com/deadbandlabs/dbl-buildroot/wiki/1.-Setup): Prerequisites, Nix environment, build commands, incremental targets, hermetic builds
 - [Hardware](https://github.com/deadbandlabs/dbl-buildroot/wiki/2.-Hardware): SoC, RAM, flash, console, memory map, SPI-NAND partition layout
 - [Boot Chain](https://github.com/deadbandlabs/dbl-buildroot/wiki/3.-Boot-Chain): Boot sequence, device tree, NAND parameters with OTP fuse details
-- [Flashing](https://github.com/deadbandlabs/dbl-buildroot/wiki/4.-Flashing): DFU flashing via STM32CubeProgrammer, BOOT pin settings
+- [Flashing](https://github.com/deadbandlabs/dbl-buildroot/wiki/4.-Flashing): USB DFU flashing with `flash-dfu` (dfu-util), BOOT pin settings
 - [Build Variants](https://github.com/deadbandlabs/dbl-buildroot/wiki/5.-Build-Variants): Release and debug build variants, external toolchain SDK, configuration fragments
 - [CI](https://github.com/deadbandlabs/dbl-buildroot/wiki/6.-CI): GitHub Actions workflows, running locally with act, caching
 - [Parent Integration](https://github.com/deadbandlabs/dbl-buildroot/wiki/7.-Parent-Integration): Submodule usage, mkProject parameters, Nix-built rootfs overlays, updating, drift detection
