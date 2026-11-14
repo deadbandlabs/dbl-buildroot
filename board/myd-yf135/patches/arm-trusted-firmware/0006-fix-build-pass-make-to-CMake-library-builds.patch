@@ -1,0 +1,72 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Austin Shirley <austin@deadband.dev>
+Date: Sat, 14 Nov 2026 16:48:05 -0600
+Subject: [PATCH] fix(build): pass make to CMake library builds
+
+CMake picks its own make program, preferring `gmake` on PATH. If that
+is an older make than the one running the build, it can fail on the
+jobserver in MAKEFLAGS (e.g. make 4.3 under make 4.4).
+
+Pass $(MAKE) as CMAKE_MAKE_PROGRAM unless CMAKE_GENERATOR is set.
+
+Tested building TF-A with Mbed TLS using make 4.4.1, with a make 4.3
+`gmake` on PATH.
+
+Change-Id: Iccb065439ad1d12a219db3801a367fdf834e5bab
+Upstream: https://review.trustedfirmware.org/c/TF-A/trusted-firmware-a/+/56535
+Signed-off-by: Austin Shirley <austin@deadband.dev>
+---
+ drivers/auth/mbedtls/mbedtls_common.mk       | 1 +
+ drivers/measured_boot/event_log/event_log.mk | 1 +
+ make_helpers/common.mk                       | 8 +++++++-
+ 3 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/auth/mbedtls/mbedtls_common.mk b/drivers/auth/mbedtls/mbedtls_common.mk
+index f72bf171b6..bde41c72f7 100644
+--- a/drivers/auth/mbedtls/mbedtls_common.mk
++++ b/drivers/auth/mbedtls/mbedtls_common.mk
+@@ -153,6 +153,7 @@ $(MBEDTLS_TARGETS) $(MBEDTLS_INSTALL_DIR)/ &: $(BUILD_PLAT)/lib/libc.a
+ 		-DCMAKE_SYSTEM_NAME=Generic \
+ 		-DCMAKE_SYSTEM_VERSION= \
+ 		-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
++		$(cmake-make-program) \
+ 		-DCMAKE_C_COMPILER=$(call shell-quote,$(call shell-join,$($(ARCH)-cc-program),;)) \
+ 		$(if $($(ARCH)-cc-wrapper),-DCMAKE_C_COMPILER_LAUNCHER=$(call shell-quote,$(call shell-join,$($(ARCH)-cc-wrapper),;))) \
+ 		-DCMAKE_C_FLAGS=$(call escape-shell,$(FILTERED_LIBMBEDTLS_CFLAGS)) \
+diff --git a/drivers/measured_boot/event_log/event_log.mk b/drivers/measured_boot/event_log/event_log.mk
+index 87b2f90c8a..e039eb07ac 100644
+--- a/drivers/measured_boot/event_log/event_log.mk
++++ b/drivers/measured_boot/event_log/event_log.mk
+@@ -70,6 +70,7 @@ $(LIBEVLOG_TARGET) $(LIBEVLOG_INSTALL_DIR)/ &: $(LIB_DIR)/libc.a
+ 		-DCMAKE_SYSTEM_NAME=Generic \
+ 		-DCMAKE_SYSTEM_VERSION= \
+ 		-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
++		$(cmake-make-program) \
+ 		-DCMAKE_C_COMPILER=$(call shell-quote,$(call shell-join,$($(ARCH)-cc-program),;)) \
+ 		-DCMAKE_C_COMPILER_LAUNCHER=$(call shell-quote,$(call shell-join,$($(ARCH)-cc-wrapper),;)) \
+ 		-DCMAKE_C_FLAGS=$(call escape-shell,$(LIBEVLOG_CFLAGS)) \
+diff --git a/make_helpers/common.mk b/make_helpers/common.mk
+index a4b69c74bd..68214778aa 100644
+--- a/make_helpers/common.mk
++++ b/make_helpers/common.mk
+@@ -1,5 +1,5 @@
+ #
+-# Copyright (c) 2024-2025, Arm Limited and Contributors. All rights reserved.
++# Copyright (c) 2024-2026, Arm Limited and Contributors. All rights reserved.
+ #
+ # SPDX-License-Identifier: BSD-3-Clause
+ #
+@@ -16,4 +16,10 @@ ifndef common-mk
+         q := $(if $(verbose),,@)
+ 
+         .exe := $(if $(filter Windows_NT,$(OS)),.exe)
++
++        # CMake searches for its own make program (`gmake` before `make`), which
++        # may not understand the jobserver this make passes down via MAKEFLAGS.
++        # Use this make unless the user has selected a CMake generator.
++        cmake-make-program := $(if $(CMAKE_GENERATOR),,$\
++                -DCMAKE_MAKE_PROGRAM=$(call shell-quote,$(MAKE)))
+ endif
+-- 
+2.51.2
+
