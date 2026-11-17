@@ -53,6 +53,7 @@ Hermetic full builds via buildroot.nix:
 
 ```bash
 nix build                 # release image
+nix build .#debug         # debug image
 nix build .#sdk           # relocatable cross-compiler SDK
 ```
 
@@ -60,21 +61,23 @@ See the [Setup](https://github.com/deadbandlabs/dbl-buildroot/wiki/1.-Setup) wik
 
 ## Use as a submodule
 
-To use this repo as a submodule of a superproject, create a new `BR2_EXTERNAL` tree for project-specific packages, overlays, and defconfigs:
+To use this repo as a submodule of a superproject, add it at `modules/dbl-buildroot` and generate the parent files from the template:
+
+```bash
+git submodule add git@github.com:deadbandlabs/dbl-buildroot.git modules/dbl-buildroot
+modules/dbl-buildroot/support/parent/init.sh --name=my-project
+```
 
 ```text
 superproject/
-    buildroot/                  # upstream Buildroot source
-    externals/
-        dbl-buildroot/          # this repo as submodule
-        project-external/       # your project-specific BR2_EXTERNAL
+    modules/dbl-buildroot/      # this repo as submodule
+    overlay/                    # your project-specific BR2_EXTERNAL + defconfig fragments
+    flake.nix                   # calls lib.nix mkProject
+    Makefile                    # includes support/parent.mk
+    buildroot.lock              # project-local package lock
 ```
 
-```bash
-BR2_EXTERNAL="$PWD/externals/dbl-buildroot:$PWD/externals/project-external"
-```
-
-Super-project defconfigs can reference this board layer via `$(BR2_EXTERNAL_MYD_YF135_PATH)`. See the [Parent Integration](https://github.com/deadbandlabs/dbl-buildroot/wiki/7.-Parent-Integration) wiki page for full details including `init.sh`, drift detection, and `mkProject` parameters.
+The parent `make` and `nix build` then apply the project's overlay and fragments on top of this board layer. Super-project configs can reference this board layer via `$(BR2_EXTERNAL_MYD_YF135_PATH)`. See the [Parent Integration](https://github.com/deadbandlabs/dbl-buildroot/wiki/7.-Parent-Integration) wiki page for full details including `init.sh`, drift detection, and `mkProject` parameters.
 
 ## Contributing
 

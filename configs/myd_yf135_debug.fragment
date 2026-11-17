@@ -1,5 +1,5 @@
-# Debug variant overrides applied on top of myd_yf135_defconfig.
-# Parsed by the Makefile target: make regen-debug-defconfig
+# Debug variant overrides on top of myd_yf135_defconfig
+# Merged for MODE=debug (Makefile) and nix `debug` output (nix/build.nix)
 
 BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_MYD_YF135_PATH)/board/myd-yf135/linux-debug.fragment"
 BR2_TARGET_ARM_TRUSTED_FIRMWARE_ADDITIONAL_VARIABLES="BUILD_STRING=lts-v2.14.10 STM32MP13=1 STM32MP_SPI_NAND=1 STM32MP_USB_PROGRAMMER=1 AARCH32_SP=optee LOG_LEVEL=40 DTB_FILE_NAME=stm32mp135d-myd-yf135-tf-a.dtb AS=$(TARGET_CROSS)gcc OPENSSL_DIR=$(BR2_HOST_DIR) STM32MP_FORCE_MTD_START_OFFSET=0x600000 STM32MP_NAND_FIP_RECOVERY_OFFSET=0x100000"

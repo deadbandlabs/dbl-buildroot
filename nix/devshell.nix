@@ -6,68 +6,15 @@
   pkgs,
   buildroot,
   cmake-compat,
-  stm32cubeprog ? null,
   certEnv ? "",
   # Downstream-injected packages added to the default shell
   extraPackages ? [ ],
-  # Prebuilt external-toolchain SDK (.#toolchain)
-  # Make builds in this shell reuse TOOLCHAIN_SDK instead of compiling the toolchain
-  # Set to null to have make fall back to an internal or custom toolchain (see Makefile)
-  toolchainSdk ? null,
+  # Make builds in this shell use the prebuilt external-toolchain SDK (.#toolchain)
+  # The Makefile resolves it per defconfig. No SDK dependency in the shell
+  # false: make falls back to TOOLCHAIN_SDK=<path> or the internal toolchain
+  nixToolchain ? true,
 }:
 let
-  # make goals that do not need the cross toolchain: source fetch, config, clean,
-  # and the metadata targets from buildroot's package/pkg-generic.mk.
-  noToolchainGoals = [
-    "*config"
-    "*-source"
-    "*-extract"
-    "*-dirclean"
-    "*-depends"
-    "*-show-*"
-    "*-graph-*"
-    "*-legal-info"
-    "*-external-deps"
-    "clean"
-    "distclean"
-    "help"
-    "source"
-    "legal-info"
-    "external-deps"
-    "printvars"
-    "list-defconfigs"
-    "show-info"
-    "regen-*"
-    "toolchain"
-    "linux-config-init"
-    # nix-lock does not depend on completed TOOLCHAIN_SDK, runs nix directly
-    "nix-lock"
-  ];
-
-  # make wrapper to resolve the cached .#toolchain SDK for build goals only
-  # SKIP_TOOLCHAIN=1 disables the SDK entirely or automatically for noToolchainGoals above
-  # Ensures only the top-level make is wrapped, and gnumake is used directly for recursive $(MAKE)
-  # NB: '.?submodules=1' is used to resolve the wrapper in parent repos
-  makeShim = pkgs.writeShellScriptBin "make" ''
-    needToolchain=1
-    for arg in "$@"; do
-      case "$arg" in
-        -*|*=*) ;;  # option or VAR=val, not a build goal
-        ${pkgs.lib.concatStringsSep "|" noToolchainGoals}) needToolchain=0 ;;
-        *) needToolchain=1; break ;;
-      esac
-    done
-    if [ "$needToolchain" = 1 ] && [ -z "''${TOOLCHAIN_SDK:-}" ] && [ -z "''${SKIP_TOOLCHAIN:-}" ]; then
-      sdk="$(nix build '.?submodules=1#toolchain' --no-link --print-out-paths)"
-      if [ -z "$sdk" ]; then
-        echo "make: could not resolve toolchain SDK; set TOOLCHAIN_SDK= or SKIP_TOOLCHAIN=1" >&2
-        exit 1
-      fi
-      export TOOLCHAIN_SDK="$sdk"
-    fi
-    exec ${pkgs.gnumake}/bin/make "$@"
-  '';
-
   flashDfu = pkgs.writeShellApplication {
     name = "flash-dfu";
     runtimeInputs = with pkgs; [
@@ -86,6 +33,12 @@ let
 
   brShellHook = ''
     export BUILDROOT_SRC="${buildroot}"
+    # For merge-defconfig.py, python3 stays out of `packages` (see brShellPackages)
+    export DBL_PYTHON3="${pkgs.python3}/bin/python3"
+    ${pkgs.lib.optionalString nixToolchain "export DBL_NIX_TOOLCHAIN=1"}
+    # Buildroot rejects host cmake >= 4.0 and bootstraps host-cmake instead
+    # Presetting BR2_CMAKE skips that check (cmake-compat covers the 4.x breaks)
+    export BR2_CMAKE="${cmake-compat}/bin/cmake"
     ${certEnv}
   '';
 
@@ -96,15 +49,15 @@ let
     binutils
     cmake-compat
 
-    # makeShim replaces make when an SDK is enabled
-    (if toolchainSdk != null then makeShim else gnumake)
+    gnumake
 
     # Scripting / config
-    # Note: Buildroot builds its own host Python
+    # No python3 (Makefile gets one via DBL_PYTHON3)
+    #   Buildroot builds its host Python
     #   Nix's gcc-wrapper injects include paths from all devShell packages via
-    #   NIX_CFLAGS_COMPILE; having python3 here causes the 3.13 headers to
-    #   bleed into the host-python-markupsafe C extension build, producing a
-    #   cpython-313 SOABI tag that mismatches the running Python 3.12
+    #   NIX_CFLAGS_COMPILE. python3 here would bleed 3.13 headers into the
+    #   host-python-markupsafe C extension build, giving a cpython-313 SOABI tag
+    #   that mismatches the running Python 3.12
     perl
     bison
     flex
@@ -184,7 +137,6 @@ in
       name = "dbl-buildroot";
       packages =
         brShellArgs.packages
-        ++ pkgs.lib.optional (stm32cubeprog != null) stm32cubeprog
         ++ [
           # flash-dfu: flash a board over USB DFU (support/flash-dfu.sh)
           flashDfu
@@ -205,8 +157,10 @@ in
         echo "  Target:    STM32MP135D (MYD-YF135-256N-256D)"
         echo ""
         echo "Common commands:"
-        echo "  make myd_yf135_defconfig"
-        echo "  make menuconfig"
+        echo "  make                  # release image"
+        echo "  make debug            # debug image"
+        echo "  make menuconfig       # after a first build"
+        echo "  flash-dfu             # flash via USB DFU"
         echo ""
         echo "Nix hermetic build:"
         echo "  make nix-lock         # first time / after pkg version changes"

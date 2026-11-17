@@ -1,50 +1,47 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
-# BUILDROOT_SRC is inherited from the environment (set by the nix dev shell)
+# BUILDROOT_SRC comes from the environment (nix dev shell)
 
 # Build/output paths.
-# OUTPUT_BASE anchors all build artefacts (output/, dl/). When this Makefile
-# is invoked directly (developing the submodule), it defaults to the submodule
-# root. When invoked via parent.mk from a superproject, parent.mk overrides
-# OUTPUT_BASE so artefacts land in the parent repo, not inside the submodule.
+# OUTPUT_BASE anchors all artefacts (output/, dl/)
+# Direct invocation (submodule development) defaults to the submodule root
+# parent.mk overrides it so a superproject's artefacts land in the parent repo
 OUTPUT_BASE   ?= $(CURDIR)
 MODE          ?= release
 O             ?= $(OUTPUT_BASE)/output/$(MODE)
-RELEASE_O     ?= $(OUTPUT_BASE)/output/release
 CCACHE_DIR    ?= $(OUTPUT_BASE)/output/ccache
 
-# Download cache kept at the output base so it survives cleaning output dir
+# Download cache outside output/ so cleaning output/ still prevents full re-dl
 # Override with BR2_DL_DIR=/path/to/shared/cache to share across projects
 BR2_DL_DIR    ?= $(OUTPUT_BASE)/dl
 
 # Variant config/script paths
 RELEASE_DEFCONFIG    := $(CURDIR)/configs/myd_yf135_defconfig
-DEBUG_DEFCONFIG      := $(O)/myd_yf135_debug_defconfig
 DEBUG_FRAGMENT       := $(CURDIR)/configs/myd_yf135_debug.fragment
-PROGRAMMER_DEFCONFIG := $(O)/myd_yf135_programmer_defconfig
 PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myd_yf135_programmer.fragment
 CONSENT_FRAGMENT     := $(CURDIR)/configs/myd_yf135_consent.fragment
 # Gated by BR2_PACKAGE_DBL_VERIFIED_BOOT inside merge-defconfig.py (dbl-merge-if)
 VERIFIED_FRAGMENT    := $(CURDIR)/configs/myd_yf135_verified.fragment
-_HOST_PYTHON3        := $(RELEASE_O)/host/bin/python3
-_PYTHON3             := $(if $(wildcard $(_HOST_PYTHON3)),$(_HOST_PYTHON3),python3)
-MERGE_DEFCONFIG      := $(_PYTHON3) $(CURDIR)/support/build/merge-defconfig.py
+# DBL_PYTHON3 is exported by the nix dev/ci shells (python3 stays off PATH, see nix/devshell.nix)
+MERGE_DEFCONFIG      := $(or $(DBL_PYTHON3),python3) $(CURDIR)/support/build/merge-defconfig.py
 CONFIG_FRAGMENT_DEBUG ?=
 BUNDLE_IMAGES_SCRIPT := $(CURDIR)/support/build/bundle-images.sh
 FLASHLAYOUT_SRC      := $(CURDIR)/board/myd-yf135/flashlayout.tsv
 
-# When set, target will use external toolchain when TOOLCHAIN_SDK points at a existing SDK
-# The nix dev/ci shells export TOOLCHAIN_SDK (a Nix .#toolchain build, from Cachix)
-# Purely Makefile builds use can run `make toolchain` below, pass TOOLCHAIN_SDK=<path>,
-# or use any external toolchain
-# When empty, the internal toolchain is built with the target
+# External toolchain SDK used by the target build, resolved when the defconfig is applied
+#   1. TOOLCHAIN_SDK=<path>: an existing SDK (e.g. from `make toolchain` below)
+#   2. DBL_NIX_TOOLCHAIN set (exported by the nix dev/ci shells): this repo's
+#      Nix .#toolchain build, substituted from Cachix when available
+#   3. Neither: the internal toolchain is built with the target
+# A parent with a custom toolchain passes TOOLCHAIN_SDK itself
 TOOLCHAIN_SDK ?=
+DBL_NIX_TOOLCHAIN ?=
 
 # Merge external-toolchain fragment description for TOOLCHAIN_SDK builds
 EXTERNAL_TOOLCHAIN_FRAGMENT ?= $(CURDIR)/configs/myd_yf135_external_toolchain.fragment
 _TC_PATH_FRAGMENT           := $(O)/external-toolchain-path.fragment
 
-# `make toolchain` builds a relocatable SDK from the toolchain-only defconfig.
+# `make toolchain` builds a relocatable SDK from the toolchain-only defconfig
 TOOLCHAIN_DEFCONFIG := $(CURDIR)/configs/myd_yf135_toolchain_defconfig
 TOOLCHAIN_O         := $(OUTPUT_BASE)/output/toolchain
 TOOLCHAIN_SDK_OUT   := $(TOOLCHAIN_O)/sdk
@@ -75,9 +72,9 @@ LINUX_VERSION := $(shell grep BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE \
 LINUX_SRC     := $(O)/build/linux-$(LINUX_VERSION)
 LINUX_CONFIG  := $(CURDIR)/board/myd-yf135/linux.config
 
-# Host tools self-resolve libs via RUNPATH=$ORIGIN/../lib (via HOSTLDFLAGS),
-# Avoid setting LD_LIBRARY_PATH to prevent leaking into target cross-linked libs
-# when -rpath-link is absent, picking up host x86 libs (libcrypt.so) and failing with "file format not recognized".
+# Host tools self-resolve libs via RUNPATH=$ORIGIN/../lib (from HOSTLDFLAGS)
+# No LD_LIBRARY_PATH. Without -rpath-link it leaks host x86 libs (libcrypt.so)
+# into target cross-links and fails with "file format not recognized"
 BR2_ARGS = -C $(BUILDROOT_SRC) O=$(O) BR2_EXTERNAL=$(BR2_EXTERNAL) BR2_DL_DIR=$(BR2_DL_DIR) BR2_CCACHE_DIR=$(CCACHE_DIR)
 BR2_MAKE = $(MAKE) $(BR2_ARGS)
 
@@ -115,6 +112,8 @@ _BUILD_TARGETS  :=
 _UPDATE_LATEST  := true
 endif
 
+# Buildroot defconfigs do not support inheritance, release is the source of truth
+# Variants merge release + fragments into $(OVERLAY_DEFCONFIG) at build time
 # Compose the merge chain for this mode:
 #   release    = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT
 #   debug      = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + DEBUG_FRAGMENT + CONFIG_FRAGMENT_DEBUG
@@ -139,27 +138,38 @@ else
 endif
 _MERGE_DELTAS := $(strip $(_MERGE_DELTAS))
 
-# Append external toolchain SDK properties last to override the base internal-toolchain selection
-ifneq ($(strip $(TOOLCHAIN_SDK)),)
-  _MERGE_DELTAS += $(EXTERNAL_TOOLCHAIN_FRAGMENT) $(_TC_PATH_FRAGMENT)
-  _WRITE_TC_PATH = @mkdir -p $(O) && printf 'BR2_TOOLCHAIN_EXTERNAL_PATH="%s"\n' '$(TOOLCHAIN_SDK)' > $(_TC_PATH_FRAGMENT)
-else
-  _WRITE_TC_PATH = @true
-endif
-
-# Append extra rootfs overlays last to stack onto base + fragment overlays
+# Extra rootfs overlays, appended last to stack onto base + fragment overlays
 ifneq ($(strip $(EXTRA_ROOTFS_OVERLAYS)),)
-  _MERGE_DELTAS += $(_ROOTFS_OVERLAY_FRAGMENT)
-  _WRITE_ROOTFS_OVERLAY = mkdir -p $(O) && printf 'BR2_ROOTFS_OVERLAY="%s"\n' '$(EXTRA_ROOTFS_OVERLAYS)' > $(_ROOTFS_OVERLAY_FRAGMENT)
+  _ROOTFS_OVERLAY_DELTA = $(_ROOTFS_OVERLAY_FRAGMENT)
+  _WRITE_ROOTFS_OVERLAY = printf 'BR2_ROOTFS_OVERLAY="%s"\n' '$(EXTRA_ROOTFS_OVERLAYS)' > $(_ROOTFS_OVERLAY_FRAGMENT)
 else
+  _ROOTFS_OVERLAY_DELTA =
   _WRITE_ROOTFS_OVERLAY = true
 endif
 
-_APPLY_DEFCONFIG = $(_WRITE_TC_PATH) && $(_WRITE_ROOTFS_OVERLAY) && $(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) && $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
+# Merge chain into $(OVERLAY_DEFCONFIG) and apply it
+# SDK resolved here, the only consumer. config/clean/fetch goals never call nix
+# SDK fragment goes after the mode deltas to override the internal toolchain
+define _APPLY_DEFCONFIG
+@mkdir -p $(O)
+@set -e; sdk='$(strip $(TOOLCHAIN_SDK))'; tc=; \
+if [ -z "$$sdk" ] && [ -n '$(strip $(DBL_NIX_TOOLCHAIN))' ]; then \
+	sdk=$$(nix build '$(CURDIR)#toolchain' --no-link --print-out-paths); \
+	[ -n "$$sdk" ] || { echo "ERROR: could not resolve the Nix toolchain SDK; pass TOOLCHAIN_SDK=<path>" >&2; exit 1; }; \
+fi; \
+if [ -n "$$sdk" ]; then \
+	echo "INFO: external toolchain SDK: $$sdk"; \
+	printf 'BR2_TOOLCHAIN_EXTERNAL_PATH="%s"\n' "$$sdk" > $(_TC_PATH_FRAGMENT); \
+	tc='$(EXTERNAL_TOOLCHAIN_FRAGMENT) $(_TC_PATH_FRAGMENT)'; \
+fi; \
+$(_WRITE_ROOTFS_OVERLAY); \
+$(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) $$tc $(_ROOTFS_OVERLAY_DELTA)
+$(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
+endef
 
 .DEFAULT_GOAL := all
 
-.PHONY: help all release debug programmer consent regen-debug-defconfig regen-programmer-defconfig regen-toolchain-defconfig toolchain
+.PHONY: help all release debug programmer consent regen-toolchain-defconfig toolchain
 
 help:
 	@echo "Common targets:"
@@ -171,21 +181,8 @@ help:
 	@echo "  make debug                        Alias for debug build"
 	@echo "  make programmer                   Alias for programmer build"
 	@echo "  make consent                      Alias for consent build"
-	@echo "  make regen-debug-defconfig        Regenerate debug defconfig"
-	@echo "  make regen-programmer-defconfig   Regenerate programmer defconfig"
 	@echo "  make regen-toolchain-defconfig    Regenerate toolchain defconfig from main"
 	@echo "  make toolchain                    Build relocatable external-toolchain SDK"
-
-# Buildroot defconfigs do not support inheritance. Keep release as source of
-# truth and regenerate variant defconfigs from release + variant fragment at
-# build time.
-regen-debug-defconfig:
-	@mkdir -p $(O)
-	$(MERGE_DEFCONFIG) $(DEBUG_DEFCONFIG) $(RELEASE_DEFCONFIG) $(VERIFIED_FRAGMENT) $(strip $(CONFIG_FRAGMENT)) $(DEBUG_FRAGMENT) $(strip $(CONFIG_FRAGMENT_DEBUG))
-
-regen-programmer-defconfig:
-	@mkdir -p $(O)
-	$(MERGE_DEFCONFIG) $(PROGRAMMER_DEFCONFIG) $(RELEASE_DEFCONFIG) $(VERIFIED_FRAGMENT) $(strip $(CONFIG_FRAGMENT)) $(PROGRAMMER_FRAGMENT)
 
 # Sync the toolchain defconfig's tracked symbol values from the main defconfig (run in pre-commit)
 regen-toolchain-defconfig:
@@ -231,7 +228,7 @@ consent:
 
 # Build SDK from the toolchain-only defconfig and unpack it to $(TOOLCHAIN_SDK_OUT)
 # Mirrors the Nix stage-1 (.#toolchain): make sdk -> untar -> relocate-sdk.sh
-# Use with a target build with TOOLCHAIN_SDK=<path>.
+# Pass to a target build with TOOLCHAIN_SDK=<path>
 toolchain:
 	@mkdir -p $(TOOLCHAIN_O) $(CCACHE_DIR)
 	$(TOOLCHAIN_MAKE) BR2_DEFCONFIG=$(TOOLCHAIN_DEFCONFIG) defconfig
@@ -243,11 +240,8 @@ toolchain:
 	@echo "INFO: SDK ready at $(TOOLCHAIN_SDK_OUT)"
 	@echo "INFO: reuse via: make TOOLCHAIN_SDK=$(TOOLCHAIN_SDK_OUT) debug"
 
-myd_yf135_debug_defconfig: regen-debug-defconfig
-	$(BR2_MAKE) BR2_DEFCONFIG=$(DEBUG_DEFCONFIG) defconfig
-
-# If bootstrapping a new repo, see board/myd-yf135/linux.config from the upstream multi_v7_defconfig
-# Run once before the first full build; afterwards use:
+# If bootstrapping a new repo, see board/myd-yf135/linux.config (upstream multi_v7_defconfig)
+# Run once before the first full build, then use:
 #   make linux-menuconfig (interactive kernel config)
 #   make linux-update-config (writes changes back to board/myd-yf135/linux.config to commit)
 .PHONY: linux-config-init

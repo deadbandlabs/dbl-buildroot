@@ -1,5 +1,5 @@
-# Programmer variant overrides applied on top of myd_yf135_defconfig.
-# Parsed by the Makefile target: make regen-programmer-defconfig
+# Programmer variant overrides on top of myd_yf135_defconfig
+# Merged for MODE=programmer (Makefile) and nix image build (nix/build.nix)
 
 BR2_PACKAGE_DBL_OTP_WRITE=y
 BR2_PACKAGE_DBL_CONSENT=y

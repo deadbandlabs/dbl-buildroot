@@ -40,6 +40,10 @@ in
       defconfig ? "${builtins.replaceStrings [ "-" ] [ "_" ] board}_defconfig",
       flashLayout ? "board/${board}/flashlayout.tsv",
       configFragment ? null,
+      # Extra defconfig fragment for the debug image only (`debug` package output)
+      # Merged after configs/myd_yf135_debug.fragment, like DBL_BR_FRAGMENT_DEBUG
+      # Must not add packages absent from `lockfile` (release config)
+      configFragmentDebug ? null,
       # Path (relative to the build's external source) to a programmer-variant
       # defconfig fragment. Defaults to the submodule's MYD-YF135 fragment so
       # downstream consumers get a working USB DFU loader bundled into their
@@ -69,9 +73,6 @@ in
         "aarch64-linux"
       ],
       extraDevShellPackages ? [ ],
-      # Add STM32CubeProgrammer (x86_64-linux build only) to the default dev shell
-      # Optional: see nix/stm32cubeprog.nix
-      stm32cubeprog ? false,
     }:
     let
       lib = nixpkgs.lib;
@@ -79,13 +80,8 @@ in
       mkForSystem =
         system:
         let
-          pkgs = import nixpkgs {
-            inherit system;
-            # stm32cubeprog is unfree (ST license); allow it explicitly.
-            config.allowUnfreePredicate = pkg: pkg.pname == "stm32cubeprog";
-          };
+          pkgs = import nixpkgs { inherit system; };
 
-          cubeprog = pkgs.callPackage ./nix/stm32cubeprog.nix { };
           cmake-compat = pkgs.callPackage ./nix/cmake-compat.nix { };
 
           # Shared CA cert env for Nix-provided wget/curl/git (no system CA bundle)
@@ -110,6 +106,7 @@ in
                 extraExternalSrcs
                 extraRootfsOverlays
                 configFragment
+                configFragmentDebug
                 programmerFragment
                 consentFragment
                 extraSourceHashes
@@ -133,16 +130,22 @@ in
               certEnv
               ;
             inherit buildroot;
-            stm32cubeprog = if stm32cubeprog then cubeprog else null;
             extraPackages = extraDevShellPackages;
-            # Share the cached toolchain with make builds in the dev/ci shells
-            toolchainSdk = buildPkgs.toolchain;
+            # dev/ci make builds use this repo's cached toolchain SDK
+            # A custom toolchain is not resolvable from the submodule flake,
+            # pass TOOLCHAIN_SDK=<path> instead
+            nixToolchain =
+              toolchainName == null
+              && toolchainDefconfig == null
+              && toolchainLockfile == null
+              && toolchainFragment == null;
           };
         in
         {
           packages.${system} = {
             inherit (buildPkgs)
               default
+              debug
               sdk
               lockfile
               toolchain
@@ -154,8 +157,7 @@ in
               cp ${./board/myd-yf135/dbl-bootid.toml} $out/dbl-bootid.toml
               cp ${./board/myd-yf135/dbl-bootid-example.bin} $out/dbl-bootid-example.bin
             '';
-          }
-          // lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 { stm32cubeprog = cubeprog; };
+          };
           devShells.${system} = shells;
         };
     in

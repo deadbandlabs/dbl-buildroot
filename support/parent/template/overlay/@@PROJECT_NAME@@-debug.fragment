@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
+# @@PROJECT_NAME@@ debug-only defconfig overlay
+# Merged last for `make debug` and `nix build .#debug`, after base debug fragment
+# Must not select packages missing from buildroot.lock (generated from the release config)

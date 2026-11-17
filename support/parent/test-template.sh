@@ -64,9 +64,10 @@ git -C "$WORK/parent" \
 
 # All template files present?
 for f in flake.nix Makefile .envrc .gitignore .pre-commit-config.yaml \
-  REUSE.toml .github/workflows/build.yml \
+  REUSE.toml buildroot.lock .github/workflows/build.yml \
   overlay/Config.in overlay/external.desc overlay/external.mk \
-  overlay/template-test.fragment overlay/package/Config.in; do
+  overlay/template-test.fragment overlay/template-test-debug.fragment \
+  overlay/package/Config.in; do
   if [[ ! -f "$WORK/parent/$f" ]]; then
     echo "FAIL: expected template file missing: $f" >&2
     exit 1

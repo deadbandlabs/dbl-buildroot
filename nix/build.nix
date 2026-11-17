@@ -40,6 +40,10 @@
   # Optional defconfig fragment to merge over the base defconfig.
   # Merged via support/build/merge-defconfig.py.
   configFragment ? null,
+  # Optional defconfig fragment merged last in the debug image only (`debug` output),
+  # after configs/myd_yf135_debug.fragment, like DBL_BR_FRAGMENT_DEBUG
+  # Must not add packages absent from `lockfile` (release config)
+  configFragmentDebug ? null,
   certEnv ? "",
   # Optional programmer (USB DFU loader TF-A + FIP) defconfig fragment.
   # Bundled into $out/images as tf-a-programmer.stm32 / fip-programmer.bin.
@@ -170,17 +174,20 @@ let
     dontFixup = true;
   };
 
-  # Append the nix-specific SDK store path to the committed external-toolchain fragment
+  # Nix-only additions to the committed external-toolchain fragment
   externalToolchainFragment = pkgs.runCommand "external-toolchain.fragment" { } ''
     cp ${toolchainFragment} $out
     chmod +w $out
     echo 'BR2_TOOLCHAIN_EXTERNAL_PATH="${toolchainSdk}"' >> $out
+    # No persistent ccache in a nix build, skip building host-ccache
+    echo '# BR2_CCACHE is not set' >> $out
   '';
 
   ## Build (stage 2)
 
   baseDefconfig = self + "/configs/${defconfigName}";
   verifiedFragment = self + "/configs/myd_yf135_verified.fragment";
+  debugFragment = self + "/configs/myd_yf135_debug.fragment";
 
   # USB DFU loader variant (programmer, consent): TF-A + FIP only, in output-<name>
   buildLoaderVariant =
@@ -266,90 +273,121 @@ let
     ${pkgs.python3}/bin/python3 ${fixCargo2Script} $out
   '';
 
-  build = pkgs.stdenv.mkDerivation {
-    name = projectName;
-    src = buildroot;
-    outputs = [
-      "out"
-      "sdk"
-    ];
+  # Image derivation
+  # `variantFragments` merge after configFragment in same order as Makefile's _MERGE_DELTAS
+  # One lockfile feeds all variants, variant fragments must not select packages
+  # missing from the release download set
+  # Loaders build per variant (sharing would change release hash)
+  mkImage =
+    { name, variantFragments }:
+    pkgs.stdenv.mkDerivation {
+      inherit name;
+      src = buildroot;
+      outputs = [
+        "out"
+        "sdk"
+      ];
 
-    patchPhase = ''
-      sed -i 's%--disable-makeinstall-chown%--disable-makeinstall-chown --disable-makeinstall-setuid%' \
-          package/util-linux/util-linux.mk
-    '';
-
-    # mergeFragments drops null deltas.
-    configurePhase =
-      mergeFragments "merged_defconfig" baseDefconfig [
-        verifiedFragment
-        configFragment
-        externalToolchainFragment
-        rootfsOverlayFragment
-      ]
-      + ''
-        mkdir -p output/images
-        ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
+      patchPhase = ''
+        sed -i 's%--disable-makeinstall-chown%--disable-makeinstall-chown --disable-makeinstall-setuid%' \
+            package/util-linux/util-linux.mk
       '';
 
-    buildPhase = ''
-      export BR2_DL_DIR="$PWD/dl"
-      mkdir -p "$BR2_DL_DIR"
-      for lockedInput in ${lockedSources}/*; do
-        ln -s $lockedInput "$BR2_DL_DIR/$(basename $lockedInput)"
-      done
+      # mergeFragments drops null deltas
+      configurePhase =
+        mergeFragments "merged_defconfig" baseDefconfig (
+          [
+            verifiedFragment
+            configFragment
+          ]
+          ++ variantFragments
+          ++ [
+            externalToolchainFragment
+            rootfsOverlayFragment
+          ]
+        )
+        + ''
+          mkdir -p output/images
+          ${makeFHSEnv}/bin/make-with-fhs-env BR2_EXTERNAL=${brExternalValue} BR2_DEFCONFIG=merged_defconfig defconfig
+        '';
 
-      ${makeFHSEnv}/bin/make-with-fhs-env \
-        BR2_JLEVEL=$NIX_BUILD_CORES \
-        BR2_EXTERNAL=${brExternalValue}
-      ${makeFHSEnv}/bin/make-with-fhs-env \
-        BR2_JLEVEL=$NIX_BUILD_CORES \
-        BR2_EXTERNAL=${brExternalValue} \
-        sdk
-    ''
-    + pkgs.lib.optionalString (programmerFragment != null) (
-      buildLoaderVariant "programmer" programmerFragment
-      + pkgs.lib.optionalString (consentFragment != null) ''
-        # BR2_PACKAGE_DBL_CONSENT depends on verified boot
-        if grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' output/.config; then
-        ${buildLoaderVariant "consent" consentFragment}
-        fi
+      buildPhase = ''
+        export BR2_DL_DIR="$PWD/dl"
+        mkdir -p "$BR2_DL_DIR"
+        for lockedInput in ${lockedSources}/*; do
+          ln -s $lockedInput "$BR2_DL_DIR/$(basename $lockedInput)"
+        done
+
+        # Buildroot rejects host cmake >= 4.0 and bootstraps host-cmake instead
+        # Presetting BR2_CMAKE skips that check (cmake-compat covers the 4.x breaks)
+        # Applies to the loader variants below too
+        export BR2_CMAKE="${cmake-compat}/bin/cmake"
+
+        ${makeFHSEnv}/bin/make-with-fhs-env \
+          BR2_JLEVEL=$NIX_BUILD_CORES \
+          BR2_EXTERNAL=${brExternalValue}
+        ${makeFHSEnv}/bin/make-with-fhs-env \
+          BR2_JLEVEL=$NIX_BUILD_CORES \
+          BR2_EXTERNAL=${brExternalValue} \
+          sdk
       ''
-    );
-
-    installPhase = ''
-      mkdir -p $out/images $sdk
-
-      cp -r output/images/. $out/images/
-      rm -f $out/images/*_sdk-buildroot.tar.gz
-    ''
-    + (
-      if programmerFragment != null then
-        # When programmer is used, run the bundleImagesScript to produce a flashlayout.tsv
-        # This replaces a previous sed inplace replacement to unify with Makefile builds
+      + pkgs.lib.optionalString (programmerFragment != null) (
+        buildLoaderVariant "programmer" programmerFragment
+        + pkgs.lib.optionalString (consentFragment != null) ''
+          # BR2_PACKAGE_DBL_CONSENT depends on verified boot
+          # Build runs in-tree (no O=). Buildroot writes .config to $PWD, not output/
+          if grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' .config; then
+          ${buildLoaderVariant "consent" consentFragment}
+          fi
         ''
-          ${pkgs.bash}/bin/bash ${bundleImagesScript} \
-            $out/images \
-            $PWD/output-programmer/images \
-            ${buildExternalSrc}/${flashLayoutPath} \
-            $([ -d output-consent/images ] && echo "$PWD/output-consent/images")
-        ''
-      else
-        ''
-          sed 's|../../output/latest/images/|./|g' ${buildExternalSrc}/${flashLayoutPath} > $out/images/flashlayout.tsv
-        ''
-    )
-    + ''
+      );
 
-      cp output/images/*_sdk-buildroot.tar.gz $sdk/sdk.tar.gz
-    '';
+      installPhase = ''
+        mkdir -p $out/images $sdk
 
-    hardeningDisable = [ "format" ];
-    dontFixup = true;
+        cp -r output/images/. $out/images/
+        rm -f $out/images/*_sdk-buildroot.tar.gz
+      ''
+      + (
+        if programmerFragment != null then
+          # With programmer, bundleImagesScript produces the flashlayout.tsv
+          ''
+            ${pkgs.bash}/bin/bash ${bundleImagesScript} \
+              $out/images \
+              $PWD/output-programmer/images \
+              ${buildExternalSrc}/${flashLayoutPath} \
+              $([ -d output-consent/images ] && echo "$PWD/output-consent/images")
+          ''
+        else
+          ''
+            sed 's|../../output/latest/images/|./|g' ${buildExternalSrc}/${flashLayoutPath} > $out/images/flashlayout.tsv
+          ''
+      )
+      + ''
+
+        cp output/images/*_sdk-buildroot.tar.gz $sdk/sdk.tar.gz
+      '';
+
+      hardeningDisable = [ "format" ];
+      dontFixup = true;
+    };
+
+  build = mkImage {
+    name = projectName;
+    variantFragments = [ ];
+  };
+
+  # Same as Makefile MODE=debug
+  debug = mkImage {
+    name = "${projectName}-debug";
+    variantFragments = [
+      debugFragment
+      configFragmentDebug
+    ];
   };
 in
 {
-  inherit lockfile;
+  inherit lockfile debug;
   default = build;
   sdk = build.sdk;
   toolchain = toolchainSdk;

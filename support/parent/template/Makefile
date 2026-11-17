@@ -2,6 +2,7 @@
 # Copyright @@COPYRIGHT_YEAR@@ @@COPYRIGHT_HOLDER@@
 DBL_BR_OVERLAY  := overlay
 DBL_BR_FRAGMENT := overlay/@@PROJECT_NAME@@.fragment
+DBL_BR_FRAGMENT_DEBUG := overlay/@@PROJECT_NAME@@-debug.fragment
 
 include modules/dbl-buildroot/support/parent.mk
 
