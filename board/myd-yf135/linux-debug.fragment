@@ -1,5 +1,5 @@
 # Kernel debug fragment layered on top of board/myd-yf135/linux.config
-# via BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES in myd_yf135_debug_defconfig.
+# via BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES in configs/myd_yf135_debug.fragment
 
 CONFIG_DEBUG_KERNEL=y
 CONFIG_DEBUG_INFO=y

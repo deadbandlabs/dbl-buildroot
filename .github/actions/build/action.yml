@@ -31,7 +31,7 @@ inputs:
     required: true
   nix-flake:
     description: 'Path to nix flake'
-    default: '.?submodules=1'
+    default: '.'
   build-mode:
     description: "'shell' (Makefile) or 'nix-build'"
     default: 'shell'

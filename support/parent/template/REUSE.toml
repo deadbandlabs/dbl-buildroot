@@ -10,6 +10,7 @@ path = [
   ".githooks/pre-push",
   ".gitmodules",
   "flake.lock",
+  "buildroot.lock",
   "flake.nix",
 ]
 precedence = "aggregate"
@@ -19,6 +20,7 @@ SPDX-License-Identifier = "CC0-1.0"
 [[annotations]]
 path = [
   "overlay/@@PROJECT_NAME@@.fragment",
+  "overlay/@@PROJECT_NAME@@-debug.fragment",
   "overlay/external.desc",
   "overlay/external.mk",
   "overlay/Config.in",

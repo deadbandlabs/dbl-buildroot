@@ -129,6 +129,16 @@ while IFS= read -r src; do
   echo "created: $rel_subst"
 done < <(find "$TEMPLATE_DIR" -mindepth 1 -type f)
 
+# Seeds project-local lock (flake.nix lockfile) from submodule
+# Same until the overlay selects packages, then regenerated with `make nix-lock`
+if [[ ! -e "$TARGET_DIR/buildroot.lock" || "$FORCE" -eq 1 ]]; then
+  cp "$SUBMODULE_ROOT/buildroot.lock" "$TARGET_DIR/buildroot.lock"
+  chmod u+w "$TARGET_DIR/buildroot.lock"
+  echo "created: buildroot.lock"
+else
+  echo "skip (exists): buildroot.lock"
+fi
+
 echo ""
 echo "Init complete! Typical next steps:"
 echo "  cd $TARGET_DIR"

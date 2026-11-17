@@ -7,10 +7,11 @@
 #
 #   DBL_BR_OVERLAY  := overlay
 #   DBL_BR_FRAGMENT := overlay/syncro-os.fragment
+#   DBL_BR_FRAGMENT_DEBUG := overlay/syncro-os-debug.fragment  (optional)
 #   include modules/dbl-buildroot/support/parent.mk
 #
 # Provides:
-#   make build                        # nix build (.?submodules=1 wrapped)
+#   make build                        # nix build (hermetic release image)
 #   make sdk                          # nix build .#sdk
 #   make develop                      # nix develop
 #   make update-dbl-buildroot         # bump submodule + propagate SHA
@@ -30,9 +31,9 @@ DBL_BR_FRAGMENT_DEBUG ?=
 REPO_ROOT       := $(CURDIR)
 REF             ?= origin/main
 
-# `?submodules=1` makes nix include the submodule files in the flake source.
-# Required because the submodule is a separate git context from the parent.
-DBL_BR_FLAKEREF ?= .?submodules=1
+# Requires `inputs.self.submodules = true` in the parent flake.nix (Nix 2.27+)
+# to include the submodule files in the flake source
+DBL_BR_FLAKEREF ?= .
 
 .PHONY: build sdk develop nix-lock update-dbl-buildroot check-dbl-buildroot
 
