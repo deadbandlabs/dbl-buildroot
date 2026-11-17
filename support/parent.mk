@@ -33,6 +33,11 @@ REF             ?= origin/main
 
 # Requires `inputs.self.submodules = true` in the parent flake.nix (Nix 2.27+)
 # to include the submodule files in the flake source
+#
+# NB: nix builds from committed state
+# Edits only inside the submodule (parent tree clean) are dropped without warning
+# For work in progress use the make path, or set to include the dirty submodule:
+# DBL_BR_FLAKEREF='.?submodules=1'
 DBL_BR_FLAKEREF ?= .
 
 .PHONY: build sdk develop nix-lock update-dbl-buildroot check-dbl-buildroot

@@ -328,7 +328,8 @@ let
         buildLoaderVariant "programmer" programmerFragment
         + pkgs.lib.optionalString (consentFragment != null) ''
           # BR2_PACKAGE_DBL_CONSENT depends on verified boot
-          if grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' output/.config; then
+          # Build runs in-tree (no O=). Buildroot writes .config to $PWD, not output/
+          if grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' .config; then
           ${buildLoaderVariant "consent" consentFragment}
           fi
         ''
