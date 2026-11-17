@@ -174,11 +174,13 @@ let
     dontFixup = true;
   };
 
-  # Append the nix-specific SDK store path to the committed external-toolchain fragment
+  # Nix-only additions to the committed external-toolchain fragment
   externalToolchainFragment = pkgs.runCommand "external-toolchain.fragment" { } ''
     cp ${toolchainFragment} $out
     chmod +w $out
     echo 'BR2_TOOLCHAIN_EXTERNAL_PATH="${toolchainSdk}"' >> $out
+    # No persistent ccache in a nix build, skip building host-ccache
+    echo '# BR2_CCACHE is not set' >> $out
   '';
 
   ## Build (stage 2)
@@ -315,6 +317,11 @@ let
         for lockedInput in ${lockedSources}/*; do
           ln -s $lockedInput "$BR2_DL_DIR/$(basename $lockedInput)"
         done
+
+        # Buildroot rejects host cmake >= 4.0 and bootstraps host-cmake instead
+        # Presetting BR2_CMAKE skips that check (cmake-compat covers the 4.x breaks)
+        # Applies to the loader variants below too
+        export BR2_CMAKE="${cmake-compat}/bin/cmake"
 
         ${makeFHSEnv}/bin/make-with-fhs-env \
           BR2_JLEVEL=$NIX_BUILD_CORES \

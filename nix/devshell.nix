@@ -36,6 +36,9 @@ let
     # For merge-defconfig.py, python3 stays out of `packages` (see brShellPackages)
     export DBL_PYTHON3="${pkgs.python3}/bin/python3"
     ${pkgs.lib.optionalString nixToolchain "export DBL_NIX_TOOLCHAIN=1"}
+    # Buildroot rejects host cmake >= 4.0 and bootstraps host-cmake instead
+    # Presetting BR2_CMAKE skips that check (cmake-compat covers the 4.x breaks)
+    export BR2_CMAKE="${cmake-compat}/bin/cmake"
     ${certEnv}
   '';
 
