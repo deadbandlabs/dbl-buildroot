@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 // Copyright 2026 Deadband Inc.
 /*
- * OP-TEE DTS for DBL MYD-YF135-256N-256D
+ * OP-TEE DTS for DBL MYC-YF135. Used as is for STM32MP135D, included by
+ * stm32mp135f-myc-yf135-optee.dts for STM32MP135F.
  *
  * Embedded in OP-TEE at build time via CFG_EMBED_DTB_SOURCE_FILE.
  *
@@ -22,8 +23,8 @@
 #include "stm32mp13-pinctrl.dtsi"
 
 / {
-	model = "DBL MYD-YF135 OP-TEE";
-	compatible = "myir,stm32mp135d-myd-yf135", "st,stm32mp135";
+	model = "DBL MYC-YF135 OP-TEE";
+	compatible = "myir,myc-yf135", "st,stm32mp135";
 
 	aliases {
 		serial0 = &uart4;
@@ -285,5 +286,5 @@
 	status = "okay";
 };
 
-#include "stm32mp135d-myd-yf135-optee-eeprom.dtsi"
+#include "stm32mp135-myc-yf135-optee-eeprom.dtsi"
 #include "parent-optee.dtsi"

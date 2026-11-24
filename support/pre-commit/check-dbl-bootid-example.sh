@@ -7,4 +7,4 @@
 set -eu
 
 cd "$(git rev-parse --show-toplevel)"
-python3 board/myd-yf135/dbl-bootid.py check board/myd-yf135/dbl-bootid.toml board/myd-yf135/dbl-bootid-example.bin
+python3 board/myc-yf135/dbl-bootid.py check board/myc-yf135/dbl-bootid.toml board/myc-yf135/dbl-bootid-example.bin

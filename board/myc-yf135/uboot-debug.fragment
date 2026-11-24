@@ -1,4 +1,4 @@
-# U-Boot debug fragment layered on top of board/myd-yf135/uboot.config.
+# U-Boot debug fragment layered on top of board/myc-yf135/uboot.config.
 # Keeps release defaults intact while making debug images more verbose.
 
 CONFIG_LOG=y

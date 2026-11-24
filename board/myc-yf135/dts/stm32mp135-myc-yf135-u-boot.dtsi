@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 // Copyright 2026 Deadband Inc.
 /*
- * U-Boot additions for DBL MYD-YF135-256N-256D
+ * U-Boot additions for DBL MYC-YF135
  *
- * Included on top of stm32mp135d-myd-yf135.dts when building U-Boot.
+ * Included on top of stm32mp135-myc-yf135.dts when building U-Boot.
  * Adds bootph markers (so drivers initialise before relocation) and the
  * /config node for boot parameters.
  *

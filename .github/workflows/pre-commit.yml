@@ -24,11 +24,11 @@ name: Pre-commit checks
         uses: actions/cache@v5
         with:
           path: dl/
-          key: br-dl-linux-${{ hashFiles('configs/myd_yf135_defconfig') }}
+          key: br-dl-linux-${{ hashFiles('configs/myc_yf135_defconfig') }}
 
       # Smoke-test the devshell and Buildroot make on every run (no network).
       - name: Verify devshell and Buildroot make
-        run: nix develop .#ci --command bash -c 'make myd_yf135_defconfig'
+        run: nix develop .#ci --command bash -c 'make myc_yf135_defconfig'
 
       # Download latest linux-source (for dts-checkpatch) if cached download was not restored
       - name: Fetch Linux source
@@ -49,7 +49,7 @@ name: Pre-commit checks
         uses: actions/cache/restore@v5
         with:
           path: dl/
-          key: br-dl-linux-${{ hashFiles('configs/myd_yf135_defconfig') }}
+          key: br-dl-linux-${{ hashFiles('configs/myc_yf135_defconfig') }}
 
       - name: Set up pre-commit shell
         run: nix develop --option warn-dirty false .#pre-commit -c true

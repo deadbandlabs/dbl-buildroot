@@ -1,4 +1,4 @@
-# U-Boot programmer fragment layered on top of board/myd-yf135/uboot.config
+# U-Boot programmer fragment layered on top of board/myc-yf135/uboot.config
 # Built into the dedicated programmer FIP referenced by flashlayout.tsv as
 # fsbl-boot / fip-boot. Only used for loading to RAM
 #

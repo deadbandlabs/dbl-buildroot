@@ -2,22 +2,22 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
 #
-# Keep configs/myd_yf135_toolchain_defconfig + myd_yf135_external_toolchain.fragment
-# consistent with the standalone myd_yf135_defconfig.
+# Keep configs/myc_yf135_toolchain_defconfig + myc_yf135_external_toolchain.fragment
+# consistent with the standalone myc_yf135_defconfig.
 #
 # toolchain_defconfig is a minimal mirror holding no target packages,
 # used to inform what is needed for the host toolchain that matches the target. It is
 # updated directly by this script based on common keys, not normally manually updated.
 #
-# toolchain.fragment must agree with myd_yf135_defconfig however it is used to define
+# toolchain.fragment must agree with myc_yf135_defconfig however it is used to define
 # the EXTERNAL "completed" toolchain configuration used for the target build. Due to
 # different keys used, checks are advisory only and need manual updates when flagged.
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-main=$here/configs/myd_yf135_defconfig
-out=$here/configs/myd_yf135_toolchain_defconfig
-frag=$here/configs/myd_yf135_external_toolchain.fragment
+main=$here/configs/myc_yf135_defconfig
+out=$here/configs/myc_yf135_toolchain_defconfig
+frag=$here/configs/myc_yf135_external_toolchain.fragment
 
 # Emit the toolchain defconfig with each tracked symbol's value taken from main
 gen() {
@@ -38,7 +38,7 @@ gen() {
     elif main_line=$(grep -m1 -xF "# ${sym} is not set" "$main"); then
       printf '%s\n' "$main_line"
     else
-      echo "ERROR: tracked symbol ${sym} is absent from myd_yf135_defconfig" >&2
+      echo "ERROR: tracked symbol ${sym} is absent from myc_yf135_defconfig" >&2
       return 1
     fi
   done <"$out"
@@ -79,14 +79,14 @@ trap 'rm -f "$tmp"' EXIT
 if gen >"$tmp"; then
   if ! cmp -s "$tmp" "$out"; then
     mv "$tmp" "$out"
-    echo "synced $out from myd_yf135_defconfig" >&2
+    echo "synced $out from myc_yf135_defconfig" >&2
   fi
 else
   rc=1
 fi
 
 check_fragment || {
-  echo "Update $frag to match myd_yf135_defconfig, then re-run." >&2
+  echo "Update $frag to match myc_yf135_defconfig, then re-run." >&2
   rc=1
 }
 

@@ -2,11 +2,11 @@
 # USB DFU loaders: loaded into RAM, not written to NAND.
 # Use the "make programmer" build for ENV_IS_NOWHERE for empty or old NAND
 # TF-A is built with STM32MP_USB_PROGRAMMER=1 + STM32MP_SPI_NAND=1 in all modes
--	0x01	fsbl-boot	Binary	none	0x0	../../output/programmer/images/tf-a-stm32mp135d-myd-yf135-tf-a.stm32
+-	0x01	fsbl-boot	Binary	none	0x0	../../output/programmer/images/tf-a-stm32mp135-myc-yf135-tf-a.stm32
 -	0x03	fip-boot	FIP	none	0x0	../../output/programmer/images/fip.bin
 # NAND bring-up programming profile (aligned with DTS fixed-partitions).
-P	0x04	fsbl1	Binary	spi-nand0	0x000000	../../output/latest/images/tf-a-stm32mp135d-myd-yf135-tf-a.stm32
-P	0x05	fsbl2	Binary	spi-nand0	0x080000	../../output/latest/images/tf-a-stm32mp135d-myd-yf135-tf-a.stm32
+P	0x04	fsbl1	Binary	spi-nand0	0x000000	../../output/latest/images/tf-a-stm32mp135-myc-yf135-tf-a.stm32
+P	0x05	fsbl2	Binary	spi-nand0	0x080000	../../output/latest/images/tf-a-stm32mp135-myc-yf135-tf-a.stm32
 P	0x06	fip-factory	FIP	spi-nand0	0x100000	../../output/latest/images/fip.bin
 PE	0x07	pad	Binary	spi-nand0	0x400000	none
 P	0x08	fip-active	FIP	spi-nand0	0x600000	../../output/latest/images/fip.bin

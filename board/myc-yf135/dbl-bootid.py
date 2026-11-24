@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
-"""dbl-bootid layout tool (board/myd-yf135/dbl-bootid.toml).
+"""dbl-bootid layout tool (board/myc-yf135/dbl-bootid.toml).
 
 Usage:
   dbl-bootid.py dtsi  <layout.toml>

@@ -6,7 +6,7 @@ repos:
         name: toolchain defconfig sync
         entry: support/pre-commit/check-toolchain-defconfig.sh
         language: system
-        files: ^configs/myd_yf135_(defconfig|toolchain_defconfig|external_toolchain\.fragment)$
+        files: ^configs/myc_yf135_(defconfig|toolchain_defconfig|external_toolchain\.fragment)$
         pass_filenames: false
         stages: [pre-commit]
 
@@ -14,7 +14,7 @@ repos:
         name: dbl-bootid example layout
         entry: support/pre-commit/check-dbl-bootid-example.sh
         language: system
-        files: ^board/myd-yf135/dbl-bootid.*$
+        files: ^board/myc-yf135/dbl-bootid.*$
         pass_filenames: false
         stages: [pre-commit]
 

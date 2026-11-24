@@ -75,7 +75,7 @@ name: Build
         if: ${{ steps.build.outputs.images-dir != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: myd-yf135-images
+          name: myc-yf135-images
           path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error
 
@@ -83,12 +83,12 @@ name: Build
         if: ${{ steps.build.outputs.sdk-dir != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: myd-yf135-sdk
+          name: myc-yf135-sdk
           path: ${{ steps.build.outputs.sdk-dir }}/
           if-no-files-found: error
 
   debug:
-    name: Build debug image (make)
+    name: Build debug images (make)
     needs: toolchain
     runs-on: ubuntu-latest
     steps:
@@ -107,9 +107,16 @@ name: Build
         with:
           build-mode: shell
           nix-flake: .
-          build-command: make debug
+          build-command: >-
+            bash -c 'set -e;
+            make debug VERIFIED=1 SOC=135d;
+            cp -a output/debug/images output/images-135d;
+            for m in debug programmer consent; do
+            make MODE=$m optee-os-dirclean arm-trusted-firmware-dirclean; done;
+            make debug VERIFIED=1 SOC=135f;
+            cp -a output/debug/images output/images-135f'
           project-name: dbl-buildroot
-          images-path: output/debug/images/
+          images-path: output/images-135f/
           dl-cache-path: dl/
           ccache-path: output/ccache/
           host-cache-paths: |
@@ -118,23 +125,33 @@ name: Build
           dl-key-files: buildroot.lock inputs.nix
           ccache-key-files: >-
             inputs.nix
-            configs/myd_yf135_defconfig
-            configs/myd_yf135_debug.fragment
-            board/myd-yf135/linux.config
-            board/myd-yf135/linux-debug.fragment
-            board/myd-yf135/uboot.config
-            board/myd-yf135/uboot-debug.fragment
+            configs/myc_yf135_defconfig
+            configs/myc_yf135_debug.fragment
+            configs/myc_yf135_verified.fragment
+            board/myc-yf135/linux.config
+            board/myc-yf135/linux-debug.fragment
+            board/myc-yf135/linux-verified.fragment
+            board/myc-yf135/uboot.config
+            board/myc-yf135/uboot-debug.fragment
+            board/myc-yf135/uboot-verified.fragment
           host-toolchain-key-files: >-
             inputs.nix
             toolchain.lock
           host-key-files: >-
-            configs/myd_yf135_defconfig
-            configs/myd_yf135_debug.fragment
+            configs/myc_yf135_defconfig
+            configs/myc_yf135_debug.fragment
 
-      - name: Upload debug image artifacts
+      - name: Upload 135D debug image artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: myc-yf135-135d-debug-images
+          path: output/images-135d/
+          if-no-files-found: error
+
+      - name: Upload 135F debug image artifacts
         if: ${{ steps.build.outputs.images-dir != '' }}
         uses: actions/upload-artifact@v7
         with:
-          name: myd-yf135-debug-images
+          name: myc-yf135-135f-debug-images
           path: ${{ steps.build.outputs.images-dir }}/
           if-no-files-found: error

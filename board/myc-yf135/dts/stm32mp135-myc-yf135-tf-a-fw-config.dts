@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 // Copyright 2026 Deadband Inc.
 /*
- * TF-A FW_CONFIG for DBL MYD-YF135-256N-256D
+ * TF-A FW_CONFIG for DBL MYC-YF135
  *
  * Describes load addresses and sizes for BL32 (OP-TEE) and BL33 (U-Boot).
  * Memory layout must match Linux DTS reserved-memory and OP-TEE build config:
  *   BL32 (OP-TEE) -> 0xce000000, 32 MB  (CFG_TZDRAM_START)
  *   BL33 (U-Boot) -> STM32MP_BL33_BASE  (defined by TF-A platform)
- *
- * Taken from basiccode-STM32MP135_Dev_Board_Buildroot (identical memory layout).
  */
 
 #include <common/tbbr/tbbr_img_def.h>
@@ -51,5 +49,10 @@
 			DDR_SEC_BASE DDR_SEC_SIZE TZC_REGION_S_RDWR 0>;
 	};
 };
+
+/*
+ * MCE descriptor required by FW_CONFIG populator on 135F for open and closed devices
+ */
+#include "stm32mp13-fw-config-mem-encrypt.dtsi"
 
 #include "parent-tf-a-fw-config.dtsi"

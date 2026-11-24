@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 // Copyright 2026 Deadband Inc.
 /*
- * TF-A BL2 DTSI for DBL MYD-YF135-256N-256D
+ * TF-A BL2 DTSI for DBL MYC-YF135
  *
  * Based on basiccode-STM32MP135_Dev_Board_Buildroot (same SOM, same DDR chip).
  * The MYC-YF135 SOM provides all power regulation internally with no external PMIC.
@@ -97,13 +97,18 @@
 #include <dt-bindings/pinctrl/stm32-pinfunc.h>
 
 #include "stm32mp135.dtsi"
-#include "stm32mp13xd.dtsi"
+/*
+ * Uses F variant to ensure control DT has &saes/&pka. Sharing with 135D is safe
+ * as these peripherals are uninitialized (stm32mp_is_auth_supported() is false).
+ * Only the OP-TEE DT differs per variant (BR2_PACKAGE_DBL_SOC_*).
+ */
+#include "stm32mp13xf.dtsi"
 #include "stm32mp13-pinctrl.dtsi"
 #include "stm32mp13-ddr.dtsi"
 
 / {
-	model = "DBL MYD-YF135 TF-A";
-	compatible = "myir,stm32mp135d-myd-yf135", "st,stm32mp135";
+	model = "DBL MYC-YF135 TF-A";
+	compatible = "myir,myc-yf135", "st,stm32mp135";
 
 	aliases {
 		serial0 = &uart4;
@@ -385,6 +390,17 @@
 };
 
 &rng {
+	status = "okay";
+};
+
+/*
+ * Required by 135F (stm32_saes_driver_init()/stm32_pka_init() return -ENODEV)
+ */
+&saes {
+	status = "okay";
+};
+
+&pka {
 	status = "okay";
 };
 
