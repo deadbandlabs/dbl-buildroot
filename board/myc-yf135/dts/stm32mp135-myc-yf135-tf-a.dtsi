@@ -97,7 +97,12 @@
 #include <dt-bindings/pinctrl/stm32-pinfunc.h>
 
 #include "stm32mp135.dtsi"
-#include "stm32mp13xd.dtsi"
+/*
+ * Uses F variant to ensure control DT has &saes/&pka. Sharing with 135D is safe
+ * as these peripherals are uninitialized (stm32mp_is_auth_supported() is false).
+ * Only the OP-TEE DT differs per variant (BR2_PACKAGE_DBL_SOC_*).
+ */
+#include "stm32mp13xf.dtsi"
 #include "stm32mp13-pinctrl.dtsi"
 #include "stm32mp13-ddr.dtsi"
 
@@ -385,6 +390,17 @@
 };
 
 &rng {
+	status = "okay";
+};
+
+/*
+ * Required by 135F (stm32_saes_driver_init()/stm32_pka_init() return -ENODEV)
+ */
+&saes {
+	status = "okay";
+};
+
+&pka {
 	status = "okay";
 };
 

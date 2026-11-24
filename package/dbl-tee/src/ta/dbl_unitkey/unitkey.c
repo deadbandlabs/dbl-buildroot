@@ -11,8 +11,9 @@
  * The caller picks pk_idx and image_version; the ROM revokes all lower slots
  * and raises its version counter when it boots the result (per UM2885).
  *
- * Requires hardware SAES. On STM32MP13xD OP-TEE derives from an all-zero HUK:
- * every such device has the same, publicly computable keys.
+ * Requires hardware SAES (BR2_PACKAGE_DBL_SOC_STM32MP135F).
+ * On STM32MP13xD OP-TEE derives from an all-zero insecure HUK, every such device
+ * has the same, publicly computable key.
  *
  * Changing DERIVE_LABEL or the UUID changes every device's keys.
  */

@@ -54,12 +54,18 @@ Downstream consumers that use this repository as a submodule should bump the sub
 
 ## Hardware security
 
-The STM32MP135D supports two hardware security features:
+The STM32MP135 SoC supports different hardware security features depending on the variant.
 
-- OTP (one-time programmable) fuses, which can lock boot sources, disable JTAG, and similar.
-- Secure boot through TF-A and OP-TEE, which provides a verified boot chain.
+| | STM32MP135F | STM32MP135D |
+|---|---|---|
+| ROM secure boot (signed FSBL, key hash in OTP) | yes | no |
+| SAES hardware unique key (OP-TEE secure storage, unit and DeviceID keys) | yes | no (common all-zero HUK) |
+| Verified-boot (`BR2_PACKAGE_DBL_VERIFIED_BOOT`) | full support with signed signed FSBL and fused key hash | integrity only (tampering is detected, FSBL and FIP can be rewritten successfully by root) |
 
-Neither is enabled by default. Verified-boot builds (`BR2_PACKAGE_DBL_VERIFIED_BOOT`) build TF-A with Trusted Board Boot (`TRUSTED_BOARD_BOOT`), but the root of trust only takes effect once the FSBL is signed and the key hash is fused in OTP. Enabling that requires an understanding of the OTP and fuse implications (fuse programming is permanent), secure key management (ECDSA keys for the boot chain), and testing with secure boot enabled in all variants (release, debug, and so on). Consult the ST documentation and the TF-A and OP-TEE security guidelines before enabling it.
+The built variant is chosen with `BR2_PACKAGE_DBL_SOC_STM32MP135D` (default) or `BR2_PACKAGE_DBL_SOC_STM32MP135F`. If `BR2_PACKAGE_DBL_VERIFIED_BOOT` is
+selected with a 135D build, a warning will be printed. Neither OTP fusing nor ROM secure boot is enabled by default.
+
+Verified-boot builds build TF-A with Trusted Board Boot (`TRUSTED_BOARD_BOOT`), but the root of trust only takes effect once the FSBL is signed and the key hash is fused in OTP. Enabling these features requires an understanding of the OTP and fuse implications (fuse programming is permanent), secure key management (ECDSA keys for the boot chain), and testing with secure boot enabled in all variants (release, debug, etc). Consult the ST documentation and the TF-A and OP-TEE security guidelines before enabling it.
 
 ## Signing keys
 

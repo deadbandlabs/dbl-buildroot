@@ -5,8 +5,9 @@
  * (HUK) and this TA's UUID on every use.
  * Signs only attestation challenges: DBL_ATTEST_PREFIX || nonce.
  *
- * Requires hardware SAES. On STM32MP13xD OP-TEE derives from an all-zero HUK:
- * every such device has the same, publicly computable key.
+ * Requires hardware SAES (BR2_PACKAGE_DBL_SOC_STM32MP135F).
+ * On STM32MP13xD OP-TEE derives from an all-zero insecure HUK, every such device
+ * has the same, publicly computable key.
  *
  * Changing DERIVE_LABEL or the UUID changes every device's key (dbl_key.h).
  */

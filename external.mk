@@ -74,6 +74,19 @@ define OPTEE_OS_DBL_MP13X_COPY_DTSI
 endef
 OPTEE_OS_PRE_BUILD_HOOKS += OPTEE_OS_DBL_MP13X_COPY_DTSI
 
+# OP-TEE DT differs between D/F, both DTs copied by BR2_TARGET_OPTEE_OS_CUSTOM_DTS_PATH
+ifeq ($(BR2_PACKAGE_DBL_SOC_STM32MP135F),y)
+OPTEE_OS_MAKE_OPTS += CFG_EMBED_DTB_SOURCE_FILE=stm32mp135f-myc-yf135-optee.dts
+else
+OPTEE_OS_MAKE_OPTS += CFG_EMBED_DTB_SOURCE_FILE=stm32mp135-myc-yf135-optee.dts
+ifeq ($(BR2_PACKAGE_DBL_VERIFIED_BOOT),y)
+$(warning STM32MP135D with BR2_PACKAGE_DBL_VERIFIED_BOOT: integrity only, no hardware root of trust (Config.in))
+endif
+endif
+
+# Software HUK subkey derivation (D, or F without SAES), OP-TEE <= 3.x SSK scheme
+OPTEE_OS_MAKE_OPTS += CFG_CORE_HUK_SUBKEY_COMPAT=y
+
 ifneq ($(BR2_PACKAGE_DBL_OTP_WRITE),y)
 OPTEE_OS_MAKE_OPTS += CFG_STM32_BSEC_WRITE=n
 endif
@@ -251,12 +264,24 @@ endif
 
 # RAUC /etc/rauc/system.conf is composed from
 # rauc/system.conf, + rauc/system-verified.conf + parent board/rauc-system.conf
-# Groups may repeat across files; repeated keys are rejected.
+# Groups may repeat across files; repeated keys are rejected
 DBL_PARENT_RAUC_CONF := $(wildcard $(addsuffix /rauc-system.conf,$(DBL_PARENT_DIRS)))
 DBL_RAUC_CONF_FILES := \
 	$(BR2_EXTERNAL_DBL_MP13X_PATH)/board/myc-yf135/rauc/system.conf \
 	$(if $(BR2_PACKAGE_DBL_VERIFIED_BOOT),$(BR2_EXTERNAL_DBL_MP13X_PATH)/board/myc-yf135/rauc/system-verified.conf) \
 	$(DBL_PARENT_RAUC_CONF)
+
+# RAUC [system] compatible= (accepted bundles) belongs to parent repo
+# Unset: use rauc/system-compatible.conf (board name) and warn
+DBL_RAUC_COMPATIBLE_COUNT := $(shell cat $(DBL_RAUC_CONF_FILES) | grep -c '^compatible=')
+ifeq ($(DBL_RAUC_COMPATIBLE_COUNT),0)
+ifneq ($(DBL_PARENT_DIRS),)
+$(warning RAUC: no [system] compatible= set in parent board/rauc-system.conf, using myc-yf135)
+endif
+DBL_RAUC_CONF_FILES += $(BR2_EXTERNAL_DBL_MP13X_PATH)/board/myc-yf135/rauc/system-compatible.conf
+else ifneq ($(DBL_RAUC_COMPATIBLE_COUNT),1)
+$(error RAUC: $(DBL_RAUC_COMPATIBLE_COUNT) [system] compatible= lines in $(DBL_RAUC_CONF_FILES))
+endif
 
 DBL_MP13X_RAUC_KEYRING = $(or $(call qstrip,$(BR2_PACKAGE_DBL_RAUC_KEYRING)),$(DBL_MP13X_TEST_KEY).crt)
 

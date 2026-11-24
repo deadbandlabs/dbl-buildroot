@@ -47,6 +47,7 @@ Incremental `make` builds in the Nix development shell:
 make                      # release image (default)
 make debug                # debug image (debug symbols + verbose firmware)
 make MODE=debug <target>  # run a specific Buildroot target in debug mode
+make debug SOC=135f       # build for STM32MP135F (default 135D, see SECURITY.md)
 ```
 
 Hermetic full builds via buildroot.nix:

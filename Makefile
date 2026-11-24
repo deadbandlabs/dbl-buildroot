@@ -8,6 +8,11 @@
 # parent.mk overrides it so a superproject's artefacts land in the parent repo
 OUTPUT_BASE   ?= $(CURDIR)
 MODE          ?= release
+# Overrides of the defconfig and CONFIG_FRAGMENT, merged last:
+#   SOC=135d|135f  target SoC variant (BR2_PACKAGE_DBL_SOC_*)
+#   VERIFIED=1|0   BR2_PACKAGE_DBL_VERIFIED_BOOT
+SOC           ?=
+VERIFIED      ?=
 O             ?= $(OUTPUT_BASE)/output/$(MODE)
 CCACHE_DIR    ?= $(OUTPUT_BASE)/output/ccache
 
@@ -22,6 +27,14 @@ PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myc_yf135_programmer.fragment
 CONSENT_FRAGMENT     := $(CURDIR)/configs/myc_yf135_consent.fragment
 # Gated by BR2_PACKAGE_DBL_VERIFIED_BOOT inside merge-defconfig.py (dbl-merge-if)
 VERIFIED_FRAGMENT    := $(CURDIR)/configs/myc_yf135_verified.fragment
+ifeq ($(filter-out 135d 135f,$(SOC)),)
+else
+$(error SOC=$(SOC): accepted: 135d or 135f)
+endif
+ifeq ($(filter-out 0 1,$(VERIFIED)),)
+else
+$(error VERIFIED=$(VERIFIED): accepted: 1 or 0)
+endif
 # DBL_PYTHON3 is exported by the nix dev/ci shells (python3 stays off PATH, see nix/devshell.nix)
 MERGE_DEFCONFIG      := $(or $(DBL_PYTHON3),python3) $(CURDIR)/support/build/merge-defconfig.py
 CONFIG_FRAGMENT_DEBUG ?=
@@ -118,10 +131,9 @@ endif
 #   release    = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT
 #   debug      = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + DEBUG_FRAGMENT + CONFIG_FRAGMENT_DEBUG
 #   programmer = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + PROGRAMMER_FRAGMENT
-#                (same chain as the nix programmer build, which is what ships)
 #   consent    = RELEASE_DEFCONFIG + VERIFIED_FRAGMENT + CONFIG_FRAGMENT + CONSENT_FRAGMENT
-# VERIFIED_FRAGMENT only applies when the merged result sets BR2_PACKAGE_DBL_VERIFIED_BOOT=y.
-# Empty/unset slots are filtered out.
+# VERIFIED_FRAGMENT only applies when the merged result sets BR2_PACKAGE_DBL_VERIFIED_BOOT=y
+# Empty/unset slots are filtered out
 _MERGE_DELTAS := $(VERIFIED_FRAGMENT)
 ifeq ($(MODE),debug)
   _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
@@ -137,6 +149,22 @@ else
   _MERGE_DELTAS += $(strip $(CONFIG_FRAGMENT))
 endif
 _MERGE_DELTAS := $(strip $(_MERGE_DELTAS))
+
+# SOC=/VERIFIED= generated fragment merged after mode deltas
+_ARGS_FRAGMENT := $(O)/args.fragment
+_HASH := \#
+_ARGS_LINES := \
+	$(if $(filter 135d,$(SOC)),BR2_PACKAGE_DBL_SOC_STM32MP135D=y '$(_HASH) BR2_PACKAGE_DBL_SOC_STM32MP135F is not set') \
+	$(if $(filter 135f,$(SOC)),BR2_PACKAGE_DBL_SOC_STM32MP135F=y '$(_HASH) BR2_PACKAGE_DBL_SOC_STM32MP135D is not set') \
+	$(if $(filter 1,$(VERIFIED)),BR2_PACKAGE_DBL_VERIFIED_BOOT=y) \
+	$(if $(filter 0,$(VERIFIED)),'$(_HASH) BR2_PACKAGE_DBL_VERIFIED_BOOT is not set')
+ifneq ($(strip $(_ARGS_LINES)),)
+  _ARGS_DELTA = $(_ARGS_FRAGMENT)
+  _WRITE_ARGS = printf '%s\n' $(_ARGS_LINES) > $(_ARGS_FRAGMENT)
+else
+  _ARGS_DELTA =
+  _WRITE_ARGS = true
+endif
 
 # Extra rootfs overlays, appended last to stack onto base + fragment overlays
 ifneq ($(strip $(EXTRA_ROOTFS_OVERLAYS)),)
@@ -163,7 +191,8 @@ if [ -n "$$sdk" ]; then \
 	tc='$(EXTERNAL_TOOLCHAIN_FRAGMENT) $(_TC_PATH_FRAGMENT)'; \
 fi; \
 $(_WRITE_ROOTFS_OVERLAY); \
-$(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) $$tc $(_ROOTFS_OVERLAY_DELTA)
+$(_WRITE_ARGS); \
+$(MERGE_DEFCONFIG) $(OVERLAY_DEFCONFIG) $(RELEASE_DEFCONFIG) $(_MERGE_DELTAS) $(_ARGS_DELTA) $$tc $(_ROOTFS_OVERLAY_DELTA)
 $(BR2_MAKE) BR2_DEFCONFIG=$(OVERLAY_DEFCONFIG) defconfig
 endef
 
@@ -188,6 +217,15 @@ help:
 regen-toolchain-defconfig:
 	$(CURDIR)/support/pre-commit/check-toolchain-defconfig.sh
 
+# Programmer/consent sub-build dirs: output/<mode>,
+# or <O>-programmer and <O>-consent when O is given on command line
+_PROGRAMMER_O = $(OUTPUT_BASE)/output/programmer
+_CONSENT_O    = $(OUTPUT_BASE)/output/consent
+ifeq ($(origin O),command line)
+_PROGRAMMER_O = $(O)-programmer
+_CONSENT_O    = $(O)-consent
+endif
+
 # Merged config sets verified boot (run after $(_APPLY_DEFCONFIG))
 _IS_VERIFIED = grep -q '^BR2_PACKAGE_DBL_VERIFIED_BOOT=y' $(O)/.config
 
@@ -204,11 +242,11 @@ endif
 	fi
 ifeq ($(filter programmer consent,$(MODE)),)
 ifeq ($(BUILD_PROGRAMMER),1)
-	$(MAKE) MODE=programmer OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
-	if $(_IS_VERIFIED); then $(MAKE) MODE=consent OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all; fi
+	$(MAKE) MODE=programmer O=$(_PROGRAMMER_O) OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all
+	if $(_IS_VERIFIED); then $(MAKE) MODE=consent O=$(_CONSENT_O) OUTPUT_BASE=$(OUTPUT_BASE) BR2_DL_DIR=$(BR2_DL_DIR) BR2_EXTERNAL='$(BR2_EXTERNAL)' all; fi
 ifneq ($(wildcard $(FLASHLAYOUT_SRC)),)
-	$(BUNDLE_IMAGES_SCRIPT) $(O)/images $(OUTPUT_BASE)/output/programmer/images $(FLASHLAYOUT_SRC) \
-		$$($(_IS_VERIFIED) && echo $(OUTPUT_BASE)/output/consent/images)
+	$(BUNDLE_IMAGES_SCRIPT) $(O)/images $(_PROGRAMMER_O)/images $(FLASHLAYOUT_SRC) \
+		$$($(_IS_VERIFIED) && echo $(_CONSENT_O)/images)
 	@echo "INFO: Generated $(O)/images/flashlayout.tsv"
 endif
 endif

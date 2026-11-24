@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
+// Copyright 2026 Deadband Inc.
+/*
+ * OP-TEE DTS for DBL MYC-YF135 with STM32MP135F (BR2_PACKAGE_DBL_SOC_STM32MP135F)
+ *
+ * SAES provides HUK/hardware unique key. Enabled nodes match upstream
+ * stm32mp135f-dk.dts (OP-TEE 4.3.0 has no PKA driver, CRYP stays off).
+ */
+
+#include "stm32mp135-myc-yf135-optee.dts"
+#include "stm32mp13xf.dtsi"
+
+&saes {
+	status = "okay";
+};

@@ -2,7 +2,7 @@
 // Copyright 2026 Deadband Inc.
 /*
  * Device tree for the MYIR MYC-YF135 SOM (256 MB NAND, 256 MB DDR)
- * SoC:   STM32MP135DAF7 (Cortex-A7, up to 1 GHz)
+ * SoC:   STM32MP135DAF7 or STM32MP135FAF7 (Cortex-A7, up to 1 GHz)
  * RAM:   256 MB LPDDR3
  * Flash: 256 MB SPI-NAND (Micron MT29F2G01ABAGDWB) via QSPI
  *
