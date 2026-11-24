@@ -63,7 +63,7 @@ Neither is enabled by default. Verified-boot builds (`BR2_PACKAGE_DBL_VERIFIED_B
 
 ## Signing keys
 
-Builds sign with **public, insecure test keys**. See `board/myd-yf135/insecure-test-key/README.md` for what they cover and how products set their own keys and re-sign release images.
+Builds sign with **public, insecure test keys**. See `board/myc-yf135/insecure-test-key/README.md` for what they cover and how products set their own keys and re-sign release images.
 
 ## Safe harbour and acknowledgements
 

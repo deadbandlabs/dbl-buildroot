@@ -1,2 +1,2 @@
 name: @@PROJECT_NAME_UPPER@@
-desc: @@PROJECT_NAME@@ overlay for MYD-YF135 base image
+desc: @@PROJECT_NAME@@ overlay for DBL MP13X base image

@@ -16,17 +16,17 @@ CCACHE_DIR    ?= $(OUTPUT_BASE)/output/ccache
 BR2_DL_DIR    ?= $(OUTPUT_BASE)/dl
 
 # Variant config/script paths
-RELEASE_DEFCONFIG    := $(CURDIR)/configs/myd_yf135_defconfig
-DEBUG_FRAGMENT       := $(CURDIR)/configs/myd_yf135_debug.fragment
-PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myd_yf135_programmer.fragment
-CONSENT_FRAGMENT     := $(CURDIR)/configs/myd_yf135_consent.fragment
+RELEASE_DEFCONFIG    := $(CURDIR)/configs/myc_yf135_defconfig
+DEBUG_FRAGMENT       := $(CURDIR)/configs/myc_yf135_debug.fragment
+PROGRAMMER_FRAGMENT  := $(CURDIR)/configs/myc_yf135_programmer.fragment
+CONSENT_FRAGMENT     := $(CURDIR)/configs/myc_yf135_consent.fragment
 # Gated by BR2_PACKAGE_DBL_VERIFIED_BOOT inside merge-defconfig.py (dbl-merge-if)
-VERIFIED_FRAGMENT    := $(CURDIR)/configs/myd_yf135_verified.fragment
+VERIFIED_FRAGMENT    := $(CURDIR)/configs/myc_yf135_verified.fragment
 # DBL_PYTHON3 is exported by the nix dev/ci shells (python3 stays off PATH, see nix/devshell.nix)
 MERGE_DEFCONFIG      := $(or $(DBL_PYTHON3),python3) $(CURDIR)/support/build/merge-defconfig.py
 CONFIG_FRAGMENT_DEBUG ?=
 BUNDLE_IMAGES_SCRIPT := $(CURDIR)/support/build/bundle-images.sh
-FLASHLAYOUT_SRC      := $(CURDIR)/board/myd-yf135/flashlayout.tsv
+FLASHLAYOUT_SRC      := $(CURDIR)/board/myc-yf135/flashlayout.tsv
 
 # External toolchain SDK used by the target build, resolved when the defconfig is applied
 #   1. TOOLCHAIN_SDK=<path>: an existing SDK (e.g. from `make toolchain` below)
@@ -38,11 +38,11 @@ TOOLCHAIN_SDK ?=
 DBL_NIX_TOOLCHAIN ?=
 
 # Merge external-toolchain fragment description for TOOLCHAIN_SDK builds
-EXTERNAL_TOOLCHAIN_FRAGMENT ?= $(CURDIR)/configs/myd_yf135_external_toolchain.fragment
+EXTERNAL_TOOLCHAIN_FRAGMENT ?= $(CURDIR)/configs/myc_yf135_external_toolchain.fragment
 _TC_PATH_FRAGMENT           := $(O)/external-toolchain-path.fragment
 
 # `make toolchain` builds a relocatable SDK from the toolchain-only defconfig
-TOOLCHAIN_DEFCONFIG := $(CURDIR)/configs/myd_yf135_toolchain_defconfig
+TOOLCHAIN_DEFCONFIG := $(CURDIR)/configs/myc_yf135_toolchain_defconfig
 TOOLCHAIN_O         := $(OUTPUT_BASE)/output/toolchain
 TOOLCHAIN_SDK_OUT   := $(TOOLCHAIN_O)/sdk
 TOOLCHAIN_MAKE      := $(MAKE) -C $(BUILDROOT_SRC) O=$(TOOLCHAIN_O) BR2_DL_DIR=$(BR2_DL_DIR) BR2_CCACHE_DIR=$(CCACHE_DIR)
@@ -70,7 +70,7 @@ _ROOTFS_OVERLAY_FRAGMENT := $(O)/rootfs-overlays.fragment
 LINUX_VERSION := $(shell grep BR2_LINUX_KERNEL_CUSTOM_VERSION_VALUE \
 					 $(RELEASE_DEFCONFIG) | cut -d'"' -f2)
 LINUX_SRC     := $(O)/build/linux-$(LINUX_VERSION)
-LINUX_CONFIG  := $(CURDIR)/board/myd-yf135/linux.config
+LINUX_CONFIG  := $(CURDIR)/board/myc-yf135/linux.config
 
 # Host tools self-resolve libs via RUNPATH=$ORIGIN/../lib (from HOSTLDFLAGS)
 # No LD_LIBRARY_PATH. Without -rpath-link it leaks host x86 libs (libcrypt.so)
@@ -240,10 +240,10 @@ toolchain:
 	@echo "INFO: SDK ready at $(TOOLCHAIN_SDK_OUT)"
 	@echo "INFO: reuse via: make TOOLCHAIN_SDK=$(TOOLCHAIN_SDK_OUT) debug"
 
-# If bootstrapping a new repo, see board/myd-yf135/linux.config (upstream multi_v7_defconfig)
+# If bootstrapping a new repo, see board/myc-yf135/linux.config (upstream multi_v7_defconfig)
 # Run once before the first full build, then use:
 #   make linux-menuconfig (interactive kernel config)
-#   make linux-update-config (writes changes back to board/myd-yf135/linux.config to commit)
+#   make linux-update-config (writes changes back to board/myc-yf135/linux.config to commit)
 .PHONY: linux-config-init
 linux-config-init:
 	$(_APPLY_DEFCONFIG)

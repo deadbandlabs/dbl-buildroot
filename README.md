@@ -1,10 +1,10 @@
 # dbl-buildroot
 
-Buildroot external tree for STM32MP135D, targeting the **MyIR MYD-YF135-256N-256D** SOM.
+Buildroot external tree for STM32MP135D/STM32MP135F, targeting the **MYIR MYC-YF135** SOM (256 MB NAND, 256 MB DDR).
 
 ## Overview
 
-This external tree supports projects shipping on the STM32MP13, specifically the MYD-YF135 SOM, that want to stay close to upstream Buildroot, Linux, and firmware, so that security fixes land quickly and version bumps remain practical instead of waiting on vendor updates.
+This external tree supports projects shipping on the STM32MP13, specifically the MYC-YF135 SOM, that want to stay close to upstream Buildroot, Linux, and firmware, so that security fixes land quickly and version bumps remain practical instead of waiting on vendor updates.
 
 Highlights:
 
@@ -12,7 +12,7 @@ Highlights:
 - Board changes isolated in `board/` and `configs/`
 - Small drift, easier release-to-release incremental upgrades
 - A/B firmware and root filesystem updates with factory fallback, via RAUC and a TF-A BL2 fallback walk
-- Out-of-tree patches only until included in an upstream release, see `board/myd-yf135/patches/`
+- Out-of-tree patches only until included in an upstream release, see `board/myc-yf135/patches/`
 - Nix and flakes for reproducible host tooling, plus hermetic full-image and SDK builds
 
 Hardware and driver functionality is limited to what is supported in upstream Linux, U-Boot, TF-A, and OP-TEE.
@@ -77,7 +77,7 @@ superproject/
     buildroot.lock              # project-local package lock
 ```
 
-The parent `make` and `nix build` then apply the project's overlay and fragments on top of this board layer. Super-project configs can reference this board layer via `$(BR2_EXTERNAL_MYD_YF135_PATH)`. See the [Parent Integration](https://github.com/deadbandlabs/dbl-buildroot/wiki/7.-Parent-Integration) wiki page for full details including `init.sh`, drift detection, and `mkProject` parameters.
+The parent `make` and `nix build` then apply the project's overlay and fragments on top of this board layer. Super-project configs can reference this board layer via `$(BR2_EXTERNAL_DBL_MP13X_PATH)`. See the [Parent Integration](https://github.com/deadbandlabs/dbl-buildroot/wiki/7.-Parent-Integration) wiki page for full details including `init.sh`, drift detection, and `mkProject` parameters.
 
 ## Contributing
 

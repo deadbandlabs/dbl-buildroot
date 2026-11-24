@@ -3,7 +3,7 @@
 # Copyright 2026 Deadband Inc.
 """Compute UBI volume layout and emit ubinize.cfg.
 
-Generate proper fitting SPI-NAND UBI partitioning on MYD-YF135.
+Generate proper fitting SPI-NAND UBI partitioning on MYC-YF135.
 
 Usage:
     ./ubinize_check.py                  # validation table only

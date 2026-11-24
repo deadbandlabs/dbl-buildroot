@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
-source "$BR2_EXTERNAL_MYD_YF135_PATH/package/Config.in"
+source "$BR2_EXTERNAL_DBL_MP13X_PATH/package/Config.in"
 
 config BR2_PACKAGE_DBL_VERIFIED_BOOT
 	bool "DBL verified boot"
@@ -15,8 +15,8 @@ config BR2_PACKAGE_DBL_VERIFIED_BOOT
 	select BR2_PACKAGE_LIBGPIOD2_TOOLS
 	help
 	  Adds the verified-boot kernel and U-Boot config fragments on top
-	  of the image: configs/myd_yf135_verified.fragment pulls in
-	  board/myd-yf135/linux-verified.fragment and uboot-verified.fragment.
+	  of the image: configs/myc_yf135_verified.fragment pulls in
+	  board/myc-yf135/linux-verified.fragment and uboot-verified.fragment.
 
 	  Builds TF-A with Trusted Board Boot: fip.bin carries certificates
 	  signed with the insecure test key. TBB BL2 refuses unsigned FIPs.
@@ -35,7 +35,7 @@ config BR2_PACKAGE_DBL_FIT_PUBKEYS
 	  Signing key name = certificate file name without .crt.
 
 	  The build signs with the test key
-	  (board/myd-yf135/insecure-test-key/README.md). When empty,
+	  (board/myc-yf135/insecure-test-key/README.md). When empty,
 	  U-Boot accepts only that key. Re-sign images with a listed key
 	  using sign-rootimg.sh.
 
@@ -89,7 +89,7 @@ config BR2_PACKAGE_DBL_RAUC_KEYRING
 	  installed as /etc/rauc/keyring.pem.
 
 	  When empty, the test certificate is installed
-	  (board/myd-yf135/insecure-test-key/README.md).
+	  (board/myc-yf135/insecure-test-key/README.md).
 
 config BR2_PACKAGE_DBL_OTP_WRITE
 	bool "OTP fuse writes from Linux and U-Boot"

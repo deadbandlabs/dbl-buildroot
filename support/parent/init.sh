@@ -19,7 +19,7 @@
 #
 # Optional:
 #   --board=NAME             board name (drives defconfig + flashlayout convention,
-#                            default: myd-yf135)
+#                            default: myc-yf135)
 #   --copyright="YEAR HOLDER"  default: current year + "Deadband Inc."
 #   --target-dir=DIR         default: cwd
 #   --force                  overwrite existing files
@@ -30,7 +30,7 @@
 set -euo pipefail
 
 NAME=""
-BOARD="myd-yf135"
+BOARD="myc-yf135"
 COPYRIGHT_YEAR="$(date +%Y)"
 COPYRIGHT_HOLDER="Deadband Inc."
 TARGET_DIR="."

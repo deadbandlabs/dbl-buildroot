@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 // Copyright 2026 Deadband Inc.
 /*
- * TF-A FW_CONFIG for DBL MYD-YF135-256N-256D
+ * TF-A FW_CONFIG for DBL MYC-YF135
  *
  * Describes load addresses and sizes for BL32 (OP-TEE) and BL33 (U-Boot).
  * Memory layout must match Linux DTS reserved-memory and OP-TEE build config:

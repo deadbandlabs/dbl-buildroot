@@ -62,7 +62,7 @@ GitHub Actions workflows run automatically on pushes and pull requests. See the 
 
 ## Testing
 
-- Test on actual hardware where possible, on the MYD-YF135-256N-256D or a similar STM32MP135D board.
+- Test on actual hardware where possible, on a board with a MYIR MYC-YF135 SOM such as the MYD-YF13X development board.
 - For changes to `board/`, `configs/`, or the Makefiles, document the target testing in the commit or pull request, for example "tested: release build, debug build, flashing".
 - For changes to scripts, test them in the Nix environment.
 

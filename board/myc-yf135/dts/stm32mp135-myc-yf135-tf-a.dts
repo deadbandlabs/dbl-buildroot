@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
+// Copyright 2026 Deadband Inc.
+/*
+ * TF-A main DTS for MYC-YF135
+ * Included by stm32mp135-myc-yf135-tf-a.dtsi
+ */
+
+/dts-v1/;
+#include "stm32mp135-myc-yf135-tf-a.dtsi"

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: (GPL-2.0-or-later OR BSD-3-Clause)
 // Copyright 2026 Deadband Inc.
 /*
- * TF-A BL2 DTSI for DBL MYD-YF135-256N-256D
+ * TF-A BL2 DTSI for DBL MYC-YF135
  *
  * Based on basiccode-STM32MP135_Dev_Board_Buildroot (same SOM, same DDR chip).
  * The MYC-YF135 SOM provides all power regulation internally with no external PMIC.
@@ -102,8 +102,8 @@
 #include "stm32mp13-ddr.dtsi"
 
 / {
-	model = "DBL MYD-YF135 TF-A";
-	compatible = "myir,stm32mp135d-myd-yf135", "st,stm32mp135";
+	model = "DBL MYC-YF135 TF-A";
+	compatible = "myir,myc-yf135", "st,stm32mp135";
 
 	aliases {
 		serial0 = &uart4;

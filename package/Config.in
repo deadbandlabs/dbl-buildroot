@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright 2026 Deadband Inc.
-# External packages for MYD-YF135
+# External packages for DBL MP13X
 # Add source entries here as packages are added under package/
-source "$BR2_EXTERNAL_MYD_YF135_PATH/package/dbl-tee/Config.in"
-source "$BR2_EXTERNAL_MYD_YF135_PATH/package/dbl-tf-a-mbedtls/Config.in"
+source "$BR2_EXTERNAL_DBL_MP13X_PATH/package/dbl-tee/Config.in"
+source "$BR2_EXTERNAL_DBL_MP13X_PATH/package/dbl-tf-a-mbedtls/Config.in"

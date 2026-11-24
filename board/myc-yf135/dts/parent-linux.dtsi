@@ -2,7 +2,7 @@
 // Copyright 2026 Deadband Inc.
 /*
  * Linux DT parent-project stub
- * Included at the end of stm32mp135d-myd-yf135.dts by LINUX_MYD_YF135_COPY_DTS (external.mk)
+ * Included at the end of stm32mp135-myc-yf135.dts by LINUX_DBL_MP13X_COPY_DTS (external.mk)
  * At most one external may provide it.
  *
  * Advice: parent dtsi may override properties, /delete-node/, and add nodes,

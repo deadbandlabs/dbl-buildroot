@@ -112,7 +112,7 @@ EOF
 /dts-v1/;
 
 / {
-  description = "DBL MYD-YF135 kernel, DT and boot script";
+  description = "DBL MYC-YF135 kernel, DT and boot script";
   #address-cells = <1>;
 
   images {

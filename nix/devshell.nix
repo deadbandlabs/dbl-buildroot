@@ -154,7 +154,7 @@ in
       shellHook = brShellArgs.shellHook + ''
         echo "DBL buildroot development shell"
         echo "  Buildroot: 2025.02 LTS"
-        echo "  Target:    STM32MP135D (MYD-YF135-256N-256D)"
+        echo "  Target:    STM32MP135 (MYC-YF135)"
         echo ""
         echo "Common commands:"
         echo "  make                  # release image"

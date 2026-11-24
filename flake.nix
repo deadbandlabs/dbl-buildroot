@@ -6,7 +6,7 @@
 #
 # lib.nix self-fetches pins from inputs.nix
 {
-  description = "Buildroot for MYD-YF135-256N-256D (STM32MP135D) SOM";
+  description = "Buildroot for STM32MP135 on a MYIR MYC-YF135 SOM";
 
   nixConfig = {
     extra-substituters = [ "https://deadbandlabs.cachix.org" ];
@@ -20,7 +20,7 @@
   outputs =
     _:
     (import ./lib.nix).mkProject {
-      name = "myd-yf135";
-      board = "myd-yf135";
+      name = "myc-yf135";
+      board = "myc-yf135";
     };
 }

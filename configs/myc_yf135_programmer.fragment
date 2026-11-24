@@ -1,0 +1,6 @@
+# Programmer variant overrides on top of myc_yf135_defconfig
+# Merged for MODE=programmer (Makefile) and nix image build (nix/build.nix)
+
+BR2_PACKAGE_DBL_OTP_WRITE=y
+BR2_PACKAGE_DBL_CONSENT=y
+BR2_TARGET_UBOOT_CONFIG_FRAGMENT_FILES="$(BR2_EXTERNAL_DBL_MP13X_PATH)/board/myc-yf135/uboot-programmer.fragment"

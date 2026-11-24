@@ -16,21 +16,21 @@
   self,
   cmake-compat,
   # Derivation name + defconfig + flashlayout. Defaults match the in-tree
-  # MYD-YF135 board so the submodule can dogfood mkProject; downstream repos
+  # MYC-YF135 board so the submodule can dogfood mkProject; downstream repos
   # override via lib.mkProject args.
-  projectName ? "myd-yf135",
-  defconfigName ? "myd_yf135_defconfig",
-  flashLayoutPath ? "board/myd-yf135/flashlayout.tsv",
+  projectName ? "myc-yf135",
+  defconfigName ? "myc_yf135_defconfig",
+  flashLayoutPath ? "board/myc-yf135/flashlayout.tsv",
   # Toolchain SDK derivation name
   # Parents that reuse this toolchain with their own projectName still substitute the same
   # store path for the CI-built SDK from cachix
-  toolchainName ? "myd-yf135-toolchain",
+  toolchainName ? "myc-yf135-toolchain",
   # Toolchain defconfig, its lockfile, and the external-toolchain description
   # Default to the submodule's files so parents reuse the cached SDK
   # override all (with toolchainName) to build a custom toolchain.
-  toolchainDefconfig ? (self + "/configs/myd_yf135_toolchain_defconfig"),
+  toolchainDefconfig ? (self + "/configs/myc_yf135_toolchain_defconfig"),
   toolchainLockfile ? (self + "/toolchain.lock"),
-  toolchainFragment ? (self + "/configs/myd_yf135_external_toolchain.fragment"),
+  toolchainFragment ? (self + "/configs/myc_yf135_external_toolchain.fragment"),
   # Additional BR2_EXTERNAL source trees (e.g. downstream overlay/).
   # Each entry is a path containing external.desc, external.mk, Config.in, etc.
   extraExternalSrcs ? [ ],
@@ -41,7 +41,7 @@
   # Merged via support/build/merge-defconfig.py.
   configFragment ? null,
   # Optional defconfig fragment merged last in the debug image only (`debug` output),
-  # after configs/myd_yf135_debug.fragment, like DBL_BR_FRAGMENT_DEBUG
+  # after configs/myc_yf135_debug.fragment, like DBL_BR_FRAGMENT_DEBUG
   # Must not add packages absent from `lockfile` (release config)
   configFragmentDebug ? null,
   certEnv ? "",
@@ -186,8 +186,8 @@ let
   ## Build (stage 2)
 
   baseDefconfig = self + "/configs/${defconfigName}";
-  verifiedFragment = self + "/configs/myd_yf135_verified.fragment";
-  debugFragment = self + "/configs/myd_yf135_debug.fragment";
+  verifiedFragment = self + "/configs/myc_yf135_verified.fragment";
+  debugFragment = self + "/configs/myc_yf135_debug.fragment";
 
   # USB DFU loader variant (programmer, consent): TF-A + FIP only, in output-<name>
   buildLoaderVariant =

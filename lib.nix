@@ -41,18 +41,18 @@ in
       flashLayout ? "board/${board}/flashlayout.tsv",
       configFragment ? null,
       # Extra defconfig fragment for the debug image only (`debug` package output)
-      # Merged after configs/myd_yf135_debug.fragment, like DBL_BR_FRAGMENT_DEBUG
+      # Merged after configs/myc_yf135_debug.fragment, like DBL_BR_FRAGMENT_DEBUG
       # Must not add packages absent from `lockfile` (release config)
       configFragmentDebug ? null,
       # Path (relative to the build's external source) to a programmer-variant
-      # defconfig fragment. Defaults to the submodule's MYD-YF135 fragment so
+      # defconfig fragment. Defaults to the submodule's MYC-YF135 fragment so
       # downstream consumers get a working USB DFU loader bundled into their
       # images by default. Override with a project-specific fragment path, or
       # set to null to disable the programmer build entirely.
-      programmerFragment ? "configs/myd_yf135_programmer.fragment",
+      programmerFragment ? "configs/myc_yf135_programmer.fragment",
       # Consent session variant fragment, built alongside programmer variant
       # with BR2_PACKAGE_DBL_VERIFIED_BOOT=y. Set to null to disable.
-      consentFragment ? "configs/myd_yf135_consent.fragment",
+      consentFragment ? "configs/myc_yf135_consent.fragment",
       extraExternalSrcs ? [ ],
       # Extra rootfs overlay dirs to stack onto BR2_ROOTFS_OVERLAY
       # for image content built by Nix instead of a Buildroot package
@@ -154,8 +154,8 @@ in
             # dbl-bootid EEPROM layout + example image for host tools
             dbl-bootid-layout = pkgs.runCommand "dbl-bootid-layout" { } ''
               mkdir -p $out
-              cp ${./board/myd-yf135/dbl-bootid.toml} $out/dbl-bootid.toml
-              cp ${./board/myd-yf135/dbl-bootid-example.bin} $out/dbl-bootid-example.bin
+              cp ${./board/myc-yf135/dbl-bootid.toml} $out/dbl-bootid.toml
+              cp ${./board/myc-yf135/dbl-bootid-example.bin} $out/dbl-bootid-example.bin
             '';
           };
           devShells.${system} = shells;
